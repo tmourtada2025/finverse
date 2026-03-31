@@ -1,11 +1,16 @@
 /*
- * FinVerse Resources Page — Institutional Refinement
- * 
- * Color system: #111318, #F4F4F2, #3E5C76, #9EA7B3
- * Minimal curated external links only. No widgets, no feeds, no tickers.
+ * FinVerse Resources Page
+ *
+ * Sections:
+ * 1. Header
+ * 2. Recommended Brokers (IB section — contextual, disclosed)
+ * 3. Charting & Analysis Tools
+ * 4. Economic Data
+ * 5. Macro Research
+ * 6. IB Disclosure
  */
 
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, ExternalLink } from "lucide-react";
 
 interface Resource {
   name: string;
@@ -14,22 +19,60 @@ interface Resource {
   category: string;
 }
 
+interface Broker {
+  name: string;
+  type: string;
+  description: string;
+  strengths: string[];
+  url: string;
+}
+
+const brokers: Broker[] = [
+  {
+    name: "IC Markets",
+    type: "ECN",
+    description: "One of the highest-volume ECN brokers globally. Raw spread accounts average 0.0-0.1 pips on EUR/USD with a $3.50/lot commission. Execution is consistently fast during London/NY overlap. Suitable for active structural traders running frequent intraday setups.",
+    strengths: ["Raw ECN spreads", "Fast execution on limit orders", "MT4/MT5/cTrader", "Regulated ASIC/CySEC"],
+    url: "#"
+  },
+  {
+    name: "Pepperstone",
+    type: "ECN/STP",
+    description: "Strong execution infrastructure with both Razor (ECN) and Standard accounts. Particularly strong on indices — US30, NAS100, UK100 — with competitive spreads and reliable fills during high-volatility sessions. Recommended for traders who include index structure in their analysis.",
+    strengths: ["Strong index execution", "Razor ECN account", "MT4/MT5/cTrader/TradingView", "Regulated FCA/ASIC"],
+    url: "#"
+  },
+  {
+    name: "FP Markets",
+    type: "ECN",
+    description: "ECN execution with deep liquidity on FX majors and minors. Average spread on EUR/USD raw account is 0.0-0.2 pips. Consistent fills on news events and London open volatility windows. Low minimum deposit makes it accessible at most account sizes.",
+    strengths: ["Deep FX liquidity", "Competitive raw spreads", "Regulated ASIC/CySEC", "Low minimum deposit"],
+    url: "#"
+  }
+];
+
 const resources: Resource[] = [
   {
     name: "TradingView",
-    description: "Advanced charting platform for multi-timeframe structural analysis. The primary tool for liquidity mapping and structural rhythm identification.",
+    description: "Primary charting platform for multi-timeframe structural analysis. Liquidity mapping, order block identification, and session overlay tools. The Pine Script environment enables custom SMC indicator development.",
     url: "https://www.tradingview.com",
     category: "Charting"
   },
   {
+    name: "MT4 / MT5",
+    description: "Industry standard execution platforms. Required by most ECN brokers. MT5 adds depth of market, additional order types, and broader instrument coverage. If your broker supports MT4 and MT5, default to MT5.",
+    url: "https://www.metatrader5.com",
+    category: "Charting"
+  },
+  {
     name: "Forex Factory Calendar",
-    description: "Comprehensive economic calendar for session timing and volatility window planning. Essential for identifying high-impact events that affect institutional order flow.",
+    description: "Comprehensive economic calendar for session timing and volatility window planning. Essential for identifying high-impact events that affect institutional order flow and displacement candle formation.",
     url: "https://www.forexfactory.com/calendar",
     category: "Economic Data"
   },
   {
     name: "Investing.com Economic Calendar",
-    description: "Detailed economic event calendar with historical data and consensus forecasts. Useful for macro regime analysis and session preparation.",
+    description: "Detailed economic event calendar with historical data and consensus forecasts. Useful for macro regime analysis and pre-session preparation.",
     url: "https://www.investing.com/economic-calendar",
     category: "Economic Data"
   },
@@ -40,20 +83,20 @@ const resources: Resource[] = [
     category: "Macro Research"
   },
   {
-    name: "Bank for International Settlements",
-    description: "Research and data from the central bank of central banks. Institutional-grade analysis of global financial markets and monetary policy.",
-    url: "https://www.bis.org",
+    name: "CFTC Commitment of Traders",
+    description: "Weekly institutional positioning data across futures markets. The non-commercial (large speculator) net positions provide directional bias context for weekly SMC structural analysis.",
+    url: "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm",
     category: "Macro Research"
   },
   {
     name: "CME FedWatch Tool",
-    description: "Market-implied probabilities for Federal Reserve interest rate decisions. Critical for understanding macro positioning and institutional sentiment.",
+    description: "Market-implied probabilities for Federal Reserve interest rate decisions. Critical for understanding macro positioning and institutional sentiment ahead of FOMC events.",
     url: "https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html",
     category: "Macro Research"
   }
 ];
 
-const categories = Array.from(new Set(resources.map((r) => r.category)));
+const toolCategories = Array.from(new Set(resources.map((r) => r.category)));
 
 export default function Resources() {
   return (
@@ -70,9 +113,7 @@ export default function Resources() {
               Reference Materials
             </h1>
             <p className="text-[#9EA7B3]" style={{ lineHeight: "1.7", maxWidth: "600px" }}>
-              A minimal selection of external tools and data sources used within 
-              the hybrid framework. Each resource serves a specific function in 
-              the analysis process.
+              A curated selection of brokers, charting platforms, and data sources that support the hybrid framework. Each recommendation reflects actual use within the analysis and execution process.
             </p>
           </div>
         </div>
@@ -83,8 +124,97 @@ export default function Resources() {
         <div style={{ height: "1px", backgroundColor: "#9EA7B3", opacity: 0.15 }} />
       </div>
 
-      {/* Resources by Category */}
-      {categories.map((category) => (
+      {/* ===== BROKER SECTION ===== */}
+      <section className="py-16 md:py-24">
+        <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
+          <div className="flex items-start justify-between mb-2">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3]">
+              Recommended Brokers
+            </p>
+            <span
+              className="text-[10px] font-medium uppercase tracking-[0.1em] px-2 py-1"
+              style={{ backgroundColor: "rgba(62,92,118,0.15)", color: "#3E5C76", border: "1px solid rgba(62,92,118,0.3)" }}
+            >
+              Affiliate Disclosure
+            </span>
+          </div>
+
+          <p className="text-xs text-[#9EA7B3] opacity-60 mb-12 mt-3" style={{ maxWidth: "640px" }}>
+            The brokers below are selected based on execution quality relevant to SMC trading. FinVerse receives compensation through Introducing Broker (IB) agreements when you open an account using the links on this page. This does not change the recommendations — these are brokers I use or have rigorously evaluated.
+          </p>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {brokers.map((broker) => (
+              <div
+                key={broker.name}
+                className="flex flex-col"
+                style={{
+                  backgroundColor: "rgba(158,167,179,0.04)",
+                  border: "1px solid rgba(158,167,179,0.12)",
+                  padding: "1.75rem"
+                }}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="font-serif text-lg font-bold text-[#F4F4F2] mb-1">
+                      {broker.name}
+                    </h3>
+                    <span
+                      className="text-[10px] font-medium uppercase tracking-[0.1em]"
+                      style={{ color: "#3E5C76" }}
+                    >
+                      {broker.type}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-sm text-[#9EA7B3] mb-5 flex-1" style={{ lineHeight: "1.7" }}>
+                  {broker.description}
+                </p>
+
+                <div className="mb-6">
+                  {broker.strengths.map((s) => (
+                    <div key={s} className="flex items-center gap-2 mb-1.5">
+                      <div
+                        className="w-1 h-1 rounded-full shrink-0"
+                        style={{ backgroundColor: "#3E5C76" }}
+                      />
+                      <span className="text-xs text-[#9EA7B3]">{s}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <a
+                  href={broker.url}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium tracking-wide transition-colors"
+                  style={{ border: "1px solid #3E5C76", color: "#3E5C76" }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "#3E5C76";
+                    (e.currentTarget as HTMLAnchorElement).style.color = "#ffffff";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "transparent";
+                    (e.currentTarget as HTMLAnchorElement).style.color = "#3E5C76";
+                  }}
+                >
+                  Open Account
+                  <ExternalLink size={13} />
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Thin divider */}
+      <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
+        <div style={{ height: "1px", backgroundColor: "#9EA7B3", opacity: 0.15 }} />
+      </div>
+
+      {/* Tools & Data by Category */}
+      {toolCategories.map((category) => (
         <section key={category} className="py-16 md:py-20">
           <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-8">
@@ -127,13 +257,14 @@ export default function Resources() {
         </section>
       ))}
 
-      {/* Disclaimer */}
+      {/* Full IB Disclosure */}
       <section className="py-12">
         <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
-          <p className="text-xs text-[#9EA7B3] opacity-50" style={{ maxWidth: "640px" }}>
-            These resources are provided for reference only. FinVerse has no affiliation 
-            with any of the listed platforms or organizations. Always conduct your own 
-            due diligence before using any tool or data source for trading decisions.
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-4 opacity-60">
+            Affiliate & IB Disclosure
+          </p>
+          <p className="text-xs text-[#9EA7B3] opacity-50" style={{ maxWidth: "680px", lineHeight: "1.8" }}>
+            FinVerse participates in Introducing Broker (IB) programs with certain brokers listed on this page. When you open a trading account using a link from this site, FinVerse may receive compensation in the form of commission per lot traded. This compensation does not affect the cost of your account, the spreads you are offered, or any other terms. Recommendations are based on execution quality, regulatory standing, and suitability for SMC-based trading strategies. You should conduct your own due diligence before opening any account. Trading foreign exchange and derivatives involves substantial risk of loss and is not appropriate for all investors. Past performance is not indicative of future results.
           </p>
         </div>
       </section>
