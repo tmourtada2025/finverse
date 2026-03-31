@@ -7,7 +7,7 @@
  * 1. Hero — full-width landscape image, dark overlay, single CTA
  * 2. Hybrid Thesis — 3 disciplines, generous whitespace
  * 3. Featured Analysis — 3 articles, clean cards
- * 4. Subscribe CTA — email capture placeholder
+ * 4. Subscribe CTA — Weekly Structure Watch email capture
  * 5. Udemy Ad Banner — tasteful promotional strip before footer
  */
 
@@ -27,7 +27,7 @@ export default function Home() {
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
     if (email.trim()) {
-      toast.success("Thank you. You'll receive new analysis as it's published.");
+      toast.success("You're in. First edition lands Sunday before London open.");
       setEmail("");
     }
   };
@@ -52,7 +52,7 @@ export default function Home() {
               Disciplined Execution.
             </h1>
             <p className="text-base md:text-lg text-[#9EA7B3] leading-relaxed mb-10 max-w-lg">
-              Hybrid Market Structure and Capital Governance.
+              Institutional market structure analysis. Applied to real markets, without noise.
             </p>
             <Link
               href="/framework"
@@ -86,8 +86,8 @@ export default function Home() {
                 Liquidity Mechanics
               </h4>
               <p className="text-sm text-[#9EA7B3]" style={{ lineHeight: "1.7" }}>
-                Smart Money Concepts explain where institutional order flow concentrates — 
-                liquidity pools, order blocks, and fair value gaps define the zones where 
+                Smart Money Concepts explain where institutional order flow concentrates —
+                liquidity pools, order blocks, and fair value gaps define the zones where
                 price is engineered to move.
               </p>
             </div>
@@ -97,8 +97,8 @@ export default function Home() {
                 Classical Rhythm
               </h4>
               <p className="text-sm text-[#9EA7B3]" style={{ lineHeight: "1.7" }}>
-                Classical structure defines the rhythm of price — higher highs, lower lows, 
-                breaks of structure, and changes of character provide the temporal framework 
+                Classical structure defines the rhythm of price — higher highs, lower lows,
+                breaks of structure, and changes of character provide the temporal framework
                 for directional bias.
               </p>
             </div>
@@ -108,8 +108,8 @@ export default function Home() {
                 Risk Architecture
               </h4>
               <p className="text-sm text-[#9EA7B3]" style={{ lineHeight: "1.7" }}>
-                Risk architecture governs capital survival — position sizing, session filters, 
-                and graduated allocation ensure that no single trade or sequence of trades 
+                Risk architecture governs capital survival — position sizing, session filters,
+                and graduated allocation ensure that no single trade or sequence of trades
                 compromises the account.
               </p>
             </div>
@@ -196,13 +196,14 @@ export default function Home() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
             <div style={{ maxWidth: "480px" }}>
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-4">
-                Stay Current
+                Weekly Structure Watch
               </p>
               <h2 className="font-serif text-2xl md:text-3xl font-bold text-[#F4F4F2] mb-3">
-                New Analysis, Delivered.
+                Key Levels. No Noise.
               </h2>
               <p className="text-sm text-[#9EA7B3]" style={{ lineHeight: "1.7" }}>
-                Receive new market structure breakdowns and framework updates as they're published.
+                Every week: the structural levels that matter on EUR/USD, GBP/USD, and Gold —
+                plus the bias framework for the sessions ahead. Published Sunday before London open.
               </p>
             </div>
             <form onSubmit={handleSubscribe} className="flex w-full md:w-auto">
@@ -226,7 +227,7 @@ export default function Home() {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#4d6d87")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3E5C76")}
               >
-                Subscribe
+                Send Me the Levels
               </button>
             </form>
           </div>
@@ -241,7 +242,6 @@ export default function Home() {
         <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-start gap-5">
-              {/* Subtle accent line */}
               <div className="hidden md:block w-px self-stretch" style={{ backgroundColor: "#3E5C76", opacity: 0.6 }} />
               <div>
                 <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-[#9EA7B3] opacity-50 mb-2">
