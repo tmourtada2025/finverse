@@ -1,7 +1,7 @@
 /*
  * The Trader's Financial Blueprint — Sales Page
  *
- * $197 | Stripe-ready
+ * $147 | Stripe-ready
  * STRIPE_LINK constant — replace "#" with your Stripe payment link
  */
 
@@ -11,7 +11,7 @@ import { ArrowRight, CheckCircle, BookOpen, TrendingUp, Shield, Brain, DollarSig
 const STRIPE_LINK = "https://buy.stripe.com/6oUbJ1eeK6YmdRDbRufjG01";
 // ──────────────────────────────────────────────────────────────────────────────
 
-const PRICE = "$197";
+const PRICE = "$147";
 
 const modules = [
   { number: "01", title: "The Trader's Financial Paradox", description: "Why traders who can read a chart cannot read a balance sheet — and how that gap silently drains capital even during winning streaks. The psychology of separating trading performance from financial health.", icon: Brain },
@@ -72,7 +72,7 @@ export default function Blueprint() {
                 style={{ backgroundColor: "#3E5C76" }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#4d6d87")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3E5C76")}>
-                Enrol Now — $197
+                Enrol Now — $147
                 <ArrowRight size={18} />
               </a>
               <p className="text-xs text-[#9EA7B3] opacity-50 mt-4">Secure checkout via Stripe. One-time payment. Lifetime access.</p>
@@ -80,7 +80,7 @@ export default function Blueprint() {
             <div className="md:col-span-5" style={{ backgroundColor: "rgba(62,92,118,0.08)", border: "1px solid rgba(62,92,118,0.25)", padding: "2rem" }}>
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-4">Course Access</p>
               <div className="flex items-baseline gap-2 mb-6">
-                <span className="font-serif text-5xl font-bold text-[#F4F4F2]">$197</span>
+                <span className="font-serif text-5xl font-bold text-[#F4F4F2]">$147</span>
                 <span className="text-sm text-[#9EA7B3] opacity-60 ml-1">one-time</span>
               </div>
               <div style={{ height: "1px", backgroundColor: "rgba(158,167,179,0.12)", marginBottom: "1.5rem" }} />
@@ -201,7 +201,7 @@ export default function Blueprint() {
           <h2 className="font-serif text-3xl md:text-4xl font-bold text-[#F4F4F2] mb-4">One payment. Permanent access.</h2>
           <p className="text-[#9EA7B3] mb-10" style={{ lineHeight: "1.7" }}>Every module, every framework, every update — for the price of a single poorly-managed trade.</p>
           <div className="flex items-baseline justify-center gap-1 mb-8">
-            <span className="font-serif text-6xl font-bold text-[#F4F4F2]">$197</span>
+            <span className="font-serif text-6xl font-bold text-[#F4F4F2]">$147</span>
           </div>
           <a href={STRIPE_LINK} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-10 py-4 text-base font-medium tracking-wide text-white transition-colors mb-4"
