@@ -39,7 +39,7 @@ const EDUCATION_COURSES = [
     badgeExternal: false,
     href: "/blueprint",
     external: false,
-    level: "All Levels · $197",
+    level: "All Levels · $147",
   },
 ];
 
@@ -314,7 +314,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     >
                       <div>
                         <p className="text-xs font-medium text-[#F4F4F2]">The Trader's Financial Blueprint</p>
-                        <p className="text-[11px] text-[#9EA7B3] opacity-60">$197 · on FinVerse</p>
+                        <p className="text-[11px] text-[#9EA7B3] opacity-60">$147 · on FinVerse</p>
                       </div>
                       <ArrowRight size={12} className="text-[#9EA7B3] opacity-40" />
                     </Link>
