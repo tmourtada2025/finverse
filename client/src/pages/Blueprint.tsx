@@ -8,7 +8,7 @@
 import { ArrowRight, CheckCircle, BookOpen, TrendingUp, Shield, Brain, DollarSign, BarChart2 } from "lucide-react";
 
 // ─── REPLACE THIS WITH YOUR STRIPE PAYMENT LINK ───────────────────────────────
-const STRIPE_LINK = "#";
+const STRIPE_LINK = "https://buy.stripe.com/dRm00j3A66Ym5l74p2fjG00";
 // ──────────────────────────────────────────────────────────────────────────────
 
 const PRICE = "$79.99";
