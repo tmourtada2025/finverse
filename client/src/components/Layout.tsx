@@ -58,11 +58,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           style={{ maxWidth: "1200px" }}
         >
           <Link href="/" className="flex items-center">
-            <img
-              src="/finverse-logo.svg"
-              alt="FinVerse"
-              style={{ height: "36px", width: "auto" }}
-            />
+            <span className="font-serif text-xl font-bold text-[#F4F4F2] tracking-tight">
+              FinVerse
+            </span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
@@ -125,7 +123,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="px-5 mx-auto py-12" style={{ maxWidth: "1200px" }}>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
             <div>
-              <img src="/finverse-logo.svg" alt="FinVerse" style={{ height: "28px", width: "auto", marginBottom: "4px" }} />
+              <span className="font-serif text-lg font-bold text-[#F4F4F2]">FinVerse</span>
               <p className="text-xs text-[#9EA7B3] mt-1">
                 Institutional Market Structure Journal
               </p>
