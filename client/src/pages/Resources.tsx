@@ -29,25 +29,44 @@ interface Broker {
 
 const brokers: Broker[] = [
   {
+    name: "Windsor Brokers",
+    type: "STP/ECN",
+    description: "Regulated broker with competitive spreads on FX majors and indices. Suitable for SMC traders running intraday setups on EUR/USD, GBP/USD, and US30. Strong execution during London and New York sessions.",
+    strengths: ["Competitive FX spreads", "MT4/MT5 platforms", "Regulated CySEC/FSA", "No dealing desk"],
+    url: "https://sc.myuserhub.com?pt=27777",
+    affiliate: true
+  },
+  {
+    name: "One Royal",
+    type: "ECN/STP",
+    description: "Multi-regulated broker offering ECN execution on FX and CFDs. Transparent pricing with no hidden fees. Suitable for SMC traders who require reliable order execution across multiple asset classes including FX majors, minors, and indices.",
+    strengths: ["Multi-regulated", "ECN execution", "MT4/MT5 platforms", "FX, indices, commodities"],
+    url: "https://vc.cabinet.oneroyal.com/links/go/3952",
+    affiliate: true
+  },
+  {
+    name: "Taurex",
+    type: "ECN",
+    description: "ECN broker with competitive spreads and fast execution. Strong offering on FX majors and minors with transparent cost structure. Suitable for active structural traders looking for a regulated ECN environment with direct market access.",
+    strengths: ["ECN direct access", "Transparent pricing", "MT4/MT5 platforms", "Regulated IFSC/FSA"],
+    url: "https://global.mytaurex.com/live_signup?sidc=633BB30A-0954-47D4-82BE-32CF66627B91",
+    affiliate: true
+  },
+  {
     name: "IC Markets",
     type: "ECN",
-    description: "One of the highest-volume ECN brokers globally. Raw spread accounts average 0.0-0.1 pips on EUR/USD with a $3.50/lot commission. Execution is consistently fast during London/NY overlap. Suitable for active structural traders running frequent intraday setups.",
+    description: "One of the highest-volume ECN brokers globally. Raw spread accounts average 0.0-0.1 pips on EUR/USD with a $3.50/lot commission. Execution is consistently fast during London/NY overlap.",
     strengths: ["Raw ECN spreads", "Fast execution on limit orders", "MT4/MT5/cTrader", "Regulated ASIC/CySEC"],
-    url: "#"
+    url: "#",
+    affiliate: true
   },
   {
     name: "Pepperstone",
     type: "ECN/STP",
-    description: "Strong execution infrastructure with both Razor (ECN) and Standard accounts. Particularly strong on indices — US30, NAS100, UK100 — with competitive spreads and reliable fills during high-volatility sessions. Recommended for traders who include index structure in their analysis.",
+    description: "Strong execution infrastructure with both Razor (ECN) and Standard accounts. Particularly strong on indices — US30, NAS100, UK100 — with competitive spreads and reliable fills during high-volatility sessions.",
     strengths: ["Strong index execution", "Razor ECN account", "MT4/MT5/cTrader/TradingView", "Regulated FCA/ASIC"],
-    url: "#"
-  },
-  {
-    name: "FP Markets",
-    type: "ECN",
-    description: "ECN execution with deep liquidity on FX majors and minors. Average spread on EUR/USD raw account is 0.0-0.2 pips. Consistent fills on news events and London open volatility windows. Low minimum deposit makes it accessible at most account sizes.",
-    strengths: ["Deep FX liquidity", "Competitive raw spreads", "Regulated ASIC/CySEC", "Low minimum deposit"],
-    url: "#"
+    url: "#",
+    affiliate: true
   }
 ];
 
@@ -143,7 +162,7 @@ export default function Resources() {
             The brokers below are selected based on execution quality relevant to SMC trading. FinVerse receives compensation through Introducing Broker (IB) agreements when you open an account using the links on this page. This does not change the recommendations — these are brokers I use or have rigorously evaluated.
           </p>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {brokers.map((broker) => (
               <div
                 key={broker.name}
