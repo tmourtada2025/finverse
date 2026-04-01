@@ -10,6 +10,8 @@
  * 6. IB Disclosure
  */
 
+import { useState } from "react";
+import { useState } from "react";
 import { ArrowUpRight, ExternalLink } from "lucide-react";
 
 interface Resource {
@@ -126,6 +128,7 @@ const resources: Resource[] = [
 const toolCategories = Array.from(new Set(resources.map((r) => r.category)));
 
 export default function Resources() {
+  const [showDisclosure, setShowDisclosure] = useState(false);
   return (
     <div style={{ backgroundColor: "#111318" }}>
       {/* Header */}
@@ -158,12 +161,25 @@ export default function Resources() {
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3]">
               Recommended Brokers
             </p>
-            <span
-              className="text-[10px] font-medium uppercase tracking-[0.1em] px-2 py-1"
-              style={{ backgroundColor: "rgba(62,92,118,0.15)", color: "#3E5C76", border: "1px solid rgba(62,92,118,0.3)" }}
-            >
-              Affiliate Disclosure
-            </span>
+            <div style={{ position: "relative" }}>
+              <span
+                onMouseEnter={() => setShowDisclosure(true)}
+                onMouseLeave={() => setShowDisclosure(false)}
+                style={{ fontSize: "10px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.1em", padding: "3px 8px", cursor: "help", userSelect: "none", backgroundColor: "rgba(62,92,118,0.15)", color: "#3E5C76", border: "1px solid rgba(62,92,118,0.3)" }}
+              >
+                Affiliate Disclosure ⓘ
+              </span>
+              {showDisclosure && (
+                <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: "320px", zIndex: 100 }}>
+                  <div style={{ backgroundColor: "#15181f", border: "1px solid rgba(158,167,179,0.2)", boxShadow: "0 12px 40px rgba(0,0,0,0.6)", padding: "1rem 1.25rem" }}>
+                    <p style={{ fontSize: "11px", color: "#9EA7B3", lineHeight: "1.75", opacity: 0.8, margin: 0 }}>
+                      FinVerse participates in Introducing Broker (IB) programs with certain brokers listed on this page. When you open a trading account using a link from this site, FinVerse may receive compensation in the form of commission per lot traded. This does not affect the cost of your account, the spreads you are offered, or any other terms. Recommendations are based on execution quality, regulatory standing, and suitability for SMC-based trading strategies. Conduct your own due diligence before opening any account. Trading foreign exchange and derivatives involves substantial risk of loss and is not appropriate for all investors. Past performance is not indicative of future results.
+                    </p>
+                  </div>
+                  <div style={{ position: "absolute", right: "12px", top: "-5px", width: "10px", height: "10px", backgroundColor: "#15181f", borderTop: "1px solid rgba(158,167,179,0.2)", borderLeft: "1px solid rgba(158,167,179,0.2)", transform: "rotate(45deg)" }} />
+                </div>
+              )}
+            </div>
           </div>
 
           <p className="text-xs text-[#9EA7B3] opacity-60 mb-12 mt-3" style={{ maxWidth: "640px" }}>
