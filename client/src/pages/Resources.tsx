@@ -30,7 +30,7 @@ interface Broker {
 const brokers: Broker[] = [
   {
     name: "Windsor Brokers",
-    type: "STP/ECN",
+    type: "ECN/STP",
     description: "Regulated broker with competitive spreads on FX majors and indices. Suitable for SMC traders running intraday setups on EUR/USD, GBP/USD, and US30. Strong execution during London and New York sessions.",
     strengths: ["Competitive FX spreads", "MT4/MT5 platforms", "Regulated CySEC/FSA", "No dealing desk"],
     url: "https://sc.myuserhub.com?pt=27777",
