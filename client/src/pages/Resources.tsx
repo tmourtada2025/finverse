@@ -53,6 +53,14 @@ const brokers: Broker[] = [
     affiliate: true
   },
   {
+    name: "Equiti",
+    type: "ECN/STP",
+    description: "Multi-asset broker with a strong presence across MENA and international markets. Competitive spreads on FX and CFDs with reliable execution infrastructure. Suitable for traders looking for a regulated environment with broad instrument coverage including FX, indices, and commodities.",
+    strengths: ["MENA-regulated", "Broad instrument coverage", "MT4/MT5 platforms", "Regulated FCA/CySEC"],
+    url: "https://www.equiti-me.com/sc-en/?clickid=19833&affid=C01175584",
+    affiliate: true
+  },
+    {
     name: "IC Markets",
     type: "ECN",
     description: "One of the highest-volume ECN brokers globally. Raw spread accounts average 0.0-0.1 pips on EUR/USD with a $3.50/lot commission. Execution is consistently fast during London/NY overlap.",
