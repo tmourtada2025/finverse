@@ -33,7 +33,7 @@ export const articles: Article[] = [
     category: "Structure",
     date: "2026-03-18",
     readTime: "11 min",
-    thumbnail: "/articles/how-to-choose-a-broker-for-smc-execution.png",
+    thumbnail: "/articles/ChatGPT Image Apr 1, 2026, 10_36_24 AM.png",
     content: {
       intro: "The most technically sound SMC setup will fail consistently if it's executed on the wrong broker. This is not a minor variable — it is foundational. A 2-pip spread on EUR/USD looks attractive until you realize the broker is requoting during the London open, widening spreads around news, and filling your limit orders 3 pips beyond your defined entry zone. The result is death by a thousand cuts: valid setups that never reach their first target because the execution infrastructure is working against you from the moment you click Buy. This article is a systematic framework for evaluating brokers specifically through the lens of SMC execution requirements.",
       htfAnalysis: "The SMC trader's primary execution demands are different from a trend-following swing trader or a scalper. You are entering at precise structural zones — fair value gaps, order blocks, sweep lows — where 1-2 pips of slippage can push an entry beyond the zone entirely, changing the risk/reward from 4R to 2R or invalidating the setup. You are also frequently holding through high-volatility news windows because those events often generate the displacement candles that confirm structural shifts. Your broker must be capable of handling both. The critical technical criteria are: raw spread on major pairs during London/NY overlap, execution type (STP vs. ECN vs. market maker), slippage rate on limit vs. market orders, and minimum stop distance.",
@@ -50,7 +50,7 @@ export const articles: Article[] = [
     category: "Structure",
     date: "2026-03-05",
     readTime: "9 min",
-    thumbnail: "/articles/order-block-vs-fair-value-gap.png",
+    thumbnail: "/articles/US30_2026-04-01_10-25-15_64703.png",
     content: {
       intro: "In SMC methodology, order blocks and fair value gaps are the two most referenced concepts — and the two most frequently misapplied. The misapplication stems from treating them as equivalent entry signals rather than understanding their structural relationship. An order block is a cause. A fair value gap is an effect. Getting the relationship right determines whether you're entering at the origin of institutional intent or chasing the residue of a move that already happened.",
       htfAnalysis: "An order block is the last opposing candle before a significant displacement. On the daily timeframe, it represents the final bearish candle before a strong bullish impulse (bullish OB) or the final bullish candle before a strong bearish impulse (bearish OB). The logic is institutional: a large participant needed to accumulate a position in the opposite direction without revealing their hand. That final candle is the footprint of their accumulation. The order block zone is where they were active, and price returns to that zone because there are unfilled orders remaining at those levels. The order block is the zone of origin.",
@@ -67,7 +67,7 @@ export const articles: Article[] = [
     category: "Macro",
     date: "2026-02-19",
     readTime: "10 min",
-    thumbnail: "/articles/cot-report-and-smc-alignment.png",
+    thumbnail: "/articles/US30_2026-04-01_10-18-04_89354.png",
     content: {
       intro: "Most retail SMC traders operate entirely on price action without reference to the underlying positioning data that drives institutional order flow. The Commitment of Traders report, published weekly by the CFTC, reveals the net positioning of commercial hedgers, large speculators, and small speculators across futures markets. While the report has limitations — it is weekly and covers futures rather than spot FX — it provides a directional bias check that can significantly improve the quality of your SMC trade selection. Used correctly, it functions as a structural filter, not an entry signal.",
       htfAnalysis: "The COT report separates market participants into three categories. In FX futures, the category to focus on is Large Non-Commercial (large speculators/managed money). These are hedge funds and institutional traders positioning for directional moves. When large non-commercials are net long EUR/USD futures at an extreme reading — defined as the top or bottom 10% of the 3-year range — they have significant accumulated exposure in that direction. Strong trends in FX correlate with sustained large speculator positioning. Reversals often begin from extreme positioning readings.",
@@ -84,7 +84,7 @@ export const articles: Article[] = [
     category: "Psychology",
     date: "2026-02-03",
     readTime: "8 min",
-    thumbnail: "/articles/the-loss-that-changed-my-framework.png",
+    thumbnail: "/articles/US30_2026-04-01_10-24-25_00b7f.png",
     content: {
       intro: "In March 2022, EUR/USD broke through parity expectations early and I had a significant position in the right direction — short EUR/USD from a daily order block at 1.1050. The trade was working. Then the Fed released unexpectedly hawkish minutes and the position surged to 4R in a single session. I closed half. That was the last good decision I made that week. What followed was a sequence of trades that had nothing to do with the framework and everything to do with the emotional state I was in after a large win. This is not a story about how to trade. It is a story about what happens when you stop trading your system and start trading your feelings.",
       htfAnalysis: "The week after a large win is statistically one of the most dangerous periods for a discretionary trader. The literature on this is consistent across professional and retail cohorts. The mechanism is overconfidence bias compounded by increased risk appetite — you are, in psychological terms, playing with house money, which diminishes loss aversion. In behavioral economics this is the house money effect: people take larger risks with recent gains than with their baseline capital. For a trader, this manifests as wider stops, larger position sizes, entries outside the framework criteria, and an accelerating pace of trades. I did all four that week.",
@@ -101,7 +101,7 @@ export const articles: Article[] = [
     category: "Structure",
     date: "2026-01-20",
     readTime: "10 min",
-    thumbnail: "/articles/reading-liquidity-sweeps.png",
+    thumbnail: "/articles/US30_2026-04-01_10-24-15_dc69c.png",
     content: {
       intro: "The liquidity sweep is probably the most cited — and most misunderstood — concept in SMC trading communities. The typical retail interpretation: price sweeps a low, that is the entry. Long immediately. The result of this interpretation is a consistent pattern of entering into continuation moves disguised as reversals, catching falling knives on bearish displacement candles, and building a psychological association between sweeps and losses. The correct interpretation is more precise: a liquidity sweep confirms that a pool of resting orders has been triggered, and it creates the conditions necessary for a structural shift — but it is not the structural shift itself.",
       htfAnalysis: "Liquidity pools form where the market consensus expects price not to go. Below obvious swing lows, equal lows, and psychological levels, the market accumulates stop-loss orders from long positions and pending sell orders from breakout traders. These resting orders are the liquidity that large participants need to fill opposing positions. To buy a large position, institutional order flow requires a matching seller. The concentrated sell orders sitting below swing lows provide that supply. The sweep is the mechanism: price is pushed below the low to trigger those orders, fill the institutional buy interest, and then reverse. The sweep is not the reversal — it is the precondition that makes the reversal possible.",
