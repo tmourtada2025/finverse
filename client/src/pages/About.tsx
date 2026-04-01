@@ -206,6 +206,20 @@ export default function About() {
                 the standards of execution — the rules, the governance, and the accountability 
                 structures that separate systematic trading from discretionary guesswork.
               </p>
+              <div className="mt-8">
+                <a
+                  href="https://sovereigntraderinstitute.world"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide transition-colors"
+                  style={{ border: "1px solid #3E5C76", color: "#3E5C76" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#3E5C76"; e.currentTarget.style.color = "#ffffff"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#3E5C76"; }}
+                >
+                  Visit Sovereign Trader Institute
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </a>
+              </div>
             </div>
           </div>
         </div>
