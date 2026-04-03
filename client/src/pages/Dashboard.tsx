@@ -38,7 +38,7 @@ export default function Dashboard() {
     setLocation('/')
   }
 
-  if (loading || dataLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -56,9 +56,6 @@ export default function Dashboard() {
         <div className="flex items-center gap-6">
           <a href="/" className="text-white font-bold text-xl tracking-tight">
             Fin<span className="font-light">Verse</span>
-          </a>
-          <a href="/" className="text-[#555] text-sm hover:text-white transition-colors">
-            ← Back to site
           </a>
         </div>
         <div className="flex items-center gap-4">
@@ -92,7 +89,7 @@ export default function Dashboard() {
             <p className="text-[#555] mb-2">You haven't enrolled in any courses yet.</p>
             <p className="text-[#444] text-sm mb-6">Once you purchase a course, it will appear here automatically.</p>
             <a
-              href="/education"
+              href="/dashboard"
               className="inline-block bg-white text-black text-sm font-medium px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors"
             >
               Explore courses →
