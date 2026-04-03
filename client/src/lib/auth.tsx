@@ -10,7 +10,9 @@ type AuthContextType = {
   isAuthenticated: boolean
   isAdmin: boolean
   signInWithGoogle: () => Promise<void>
-  signInWithMagicLink: (email: string) => Promise<{ error: string | null }>
+  signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>
+  signUpWithEmail: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>
+  resetPassword: (email: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
 }
 
@@ -22,14 +24,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       if (session) fetchProfile(session.user.id)
       else setLoading(false)
     })
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session)
@@ -51,7 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('*')
       .eq('id', userId)
       .single()
-
     setProfile(data)
     setLoading(false)
   }
@@ -65,12 +64,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  async function signInWithMagicLink(email: string) {
-    const { error } = await supabase.auth.signInWithOtp({
+  async function signInWithEmail(email: string, password: string) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    return { error: error?.message ?? null }
+  }
+
+  async function signUpWithEmail(email: string, password: string, fullName: string) {
+    const { error } = await supabase.auth.signUp({
       email,
+      password,
       options: {
+        data: { full_name: fullName },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
+    })
+    return { error: error?.message ?? null }
+  }
+
+  async function resetPassword(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback`,
     })
     return { error: error?.message ?? null }
   }
@@ -79,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut()
     setSession(null)
     setProfile(null)
+    window.location.href = '/'
   }
 
   const value: AuthContextType = {
@@ -89,7 +103,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!session,
     isAdmin: profile?.role === 'admin',
     signInWithGoogle,
-    signInWithMagicLink,
+    signInWithEmail,
+    signUpWithEmail,
+    resetPassword,
     signOut,
   }
 
