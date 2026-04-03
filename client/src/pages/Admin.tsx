@@ -34,6 +34,9 @@ export default function Admin() {
           </a>
           <span className="text-[#333]">/</span>
           <span className="text-[#888] text-sm">Admin</span>
+          <a href="/" className="text-[#555] text-sm hover:text-white transition-colors ml-2">
+            ← Back to site
+          </a>
         </div>
         <div className="flex items-center gap-4">
           <button onClick={() => setLocation('/dashboard')} className="text-[#555] text-sm hover:text-white transition-colors">
