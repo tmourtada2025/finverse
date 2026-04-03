@@ -35,6 +35,28 @@ function NavLink({ href, label }: { href: string; label: string }) {
   );
 }
 
+function FooterLink({ href, label }: { href: string; label: string }) {
+  const [location] = useLocation();
+  const isCurrent = location === href;
+
+  function handleClick(e: React.MouseEvent) {
+    if (isCurrent) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  return (
+    <Link
+      href={href}
+      onClick={handleClick}
+      className="text-xs text-[#9EA7B3] hover:text-[#F4F4F2] transition-colors"
+    >
+      {label}
+    </Link>
+  );
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [location] = useLocation();
@@ -67,6 +89,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {FLAT_NAV_LINKS.map((link) => (
               <NavLink key={link.href} {...link} />
             ))}
+            <Link
+              href="/login"
+              className="text-xs font-medium tracking-wide text-[#F4F4F2]/40 hover:text-[#F4F4F2]/70 transition-colors duration-200 ml-2"
+            >
+              Login
+            </Link>
           </nav>
 
           <button
@@ -110,6 +138,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   {link.label}
                 </Link>
               ))}
+              <Link
+                href="/login"
+                onClick={() => setMobileOpen(false)}
+                className="text-xs font-medium text-[#F4F4F2]/40 hover:text-[#F4F4F2]/70 transition-colors"
+              >
+                Login
+              </Link>
             </div>
           </nav>
         )}
@@ -135,9 +170,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </p>
                 <div className="flex flex-col gap-2">
                   {FLAT_NAV_LINKS.filter(l => ["/framework", "/blog"].includes(l.href)).map((link) => (
-                    <Link key={link.href} href={link.href} className="text-xs text-[#9EA7B3] hover:text-[#F4F4F2] transition-colors">
-                      {link.label}
-                    </Link>
+                    <FooterLink key={link.href} href={link.href} label={link.label} />
                   ))}
                 </div>
               </div>
@@ -146,15 +179,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   Education
                 </p>
                 <div className="flex flex-col gap-2">
-                  <Link href="/education" className="text-xs text-[#9EA7B3] hover:text-[#F4F4F2] transition-colors">
-                    All Courses
-                  </Link>
-                  <a href={UDEMY_URL} target="_blank" rel="noopener noreferrer" className="text-xs text-[#9EA7B3] hover:text-[#F4F4F2] transition-colors">
+                  <FooterLink href="/education" label="All Courses" />
+                  <a
+                    href={UDEMY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-[#9EA7B3] hover:text-[#F4F4F2] transition-colors"
+                  >
                     SMC: The Complete Guide
                   </a>
-                  <Link href="/blueprint" className="text-xs text-[#9EA7B3] hover:text-[#F4F4F2] transition-colors">
-                    Financial Blueprint
-                  </Link>
+                  <FooterLink href="/blueprint" label="Financial Blueprint" />
                 </div>
               </div>
               <div>
@@ -163,10 +197,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </p>
                 <div className="flex flex-col gap-2">
                   {FLAT_NAV_LINKS.filter(l => ["/about", "/resources"].includes(l.href)).map((link) => (
-                    <Link key={link.href} href={link.href} className="text-xs text-[#9EA7B3] hover:text-[#F4F4F2] transition-colors">
-                      {link.label}
-                    </Link>
+                    <FooterLink key={link.href} href={link.href} label={link.label} />
                   ))}
+                  <Link
+                    href="/dashboard"
+                    className="text-xs text-[#9EA7B3] hover:text-[#F4F4F2] transition-colors"
+                  >
+                    My Courses
+                  </Link>
                 </div>
               </div>
             </div>
