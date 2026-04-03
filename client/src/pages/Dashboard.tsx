@@ -53,9 +53,14 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Nav */}
       <nav className="border-b border-[#1a1a1a] px-8 py-4 flex items-center justify-between sticky top-0 bg-[#0a0a0a]/95 backdrop-blur z-50">
-        <a href="/" className="text-white font-bold text-xl tracking-tight">
-          Fin<span className="font-light">Verse</span>
-        </a>
+        <div className="flex items-center gap-6">
+          <a href="/" className="text-white font-bold text-xl tracking-tight">
+            Fin<span className="font-light">Verse</span>
+          </a>
+          <a href="/" className="text-[#555] text-sm hover:text-white transition-colors">
+            ← Back to site
+          </a>
+        </div>
         <div className="flex items-center gap-4">
           {isAdmin && (
             <Link href="/admin">
@@ -84,9 +89,10 @@ export default function Dashboard() {
         {/* No enrollments */}
         {enrollments.length === 0 && (
           <div className="border border-[#1a1a1a] rounded-lg p-12 text-center">
-            <p className="text-[#555] mb-6">You haven't enrolled in any courses yet.</p>
+            <p className="text-[#555] mb-2">You haven't enrolled in any courses yet.</p>
+            <p className="text-[#444] text-sm mb-6">Once you purchase a course, it will appear here automatically.</p>
             <a
-              href="/blueprint"
+              href="/education"
               className="inline-block bg-white text-black text-sm font-medium px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors"
             >
               Explore courses →
@@ -147,7 +153,6 @@ function CourseCard({
   }, [])
 
   async function fetchProgress() {
-    // Total lessons in course
     const { count: total } = await supabase
       .from('lessons')
       .select('id', { count: 'exact', head: true })
@@ -161,7 +166,6 @@ function CourseCard({
         ).data?.map(m => m.id) || []
       )
 
-    // Completed lessons
     const { count: done } = await supabase
       .from('lesson_progress')
       .select('id', { count: 'exact', head: true })
