@@ -86,14 +86,8 @@ export default function Dashboard() {
         {/* No enrollments */}
         {enrollments.length === 0 && (
           <div className="border border-[#1a1a1a] rounded-lg p-12 text-center">
-            <p className="text-[#555] mb-2">You haven't enrolled in any courses yet.</p>
-            <p className="text-[#444] text-sm mb-6">Once you purchase a course, it will appear here automatically.</p>
-            <a
-              href="/education"
-              className="inline-block bg-white text-black text-sm font-medium px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              View courses →
-            </a>
+            <p className="text-[#555] mb-2">No courses yet.</p>
+            <p className="text-[#444] text-sm">Once you purchase a course, it will appear here automatically.</p>
           </div>
         )}
 
