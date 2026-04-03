@@ -2,12 +2,17 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth'
 import { useLocation } from 'wouter'
 
+type Mode = 'signin' | 'signup' | 'reset'
+
 export default function Login() {
-  const { signInWithGoogle, signInWithMagicLink, isAuthenticated, loading } = useAuth()
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, isAuthenticated, loading } = useAuth()
   const [, setLocation] = useLocation()
+  const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
+  const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -16,17 +21,37 @@ export default function Login() {
     }
   }, [isAuthenticated, loading, setLocation])
 
-  async function handleMagicLink(e: React.FormEvent) {
+  function resetForm() {
+    setError(null)
+    setMessage(null)
+    setPassword('')
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
-    const { error } = await signInWithMagicLink(email)
-    setSubmitting(false)
-    if (error) {
-      setError(error)
-    } else {
-      setSent(true)
+    setMessage(null)
+
+    if (mode === 'signin') {
+      const { error } = await signInWithEmail(email, password)
+      if (error) setError(error)
+    } else if (mode === 'signup') {
+      if (!fullName.trim()) {
+        setError('Please enter your full name.')
+        setSubmitting(false)
+        return
+      }
+      const { error } = await signUpWithEmail(email, password, fullName)
+      if (error) setError(error)
+      else setMessage('Check your inbox to confirm your email, then sign in.')
+    } else if (mode === 'reset') {
+      const { error } = await resetPassword(email)
+      if (error) setError(error)
+      else setMessage('Password reset link sent — check your inbox.')
     }
+
+    setSubmitting(false)
   }
 
   if (loading) {
@@ -49,30 +74,17 @@ export default function Login() {
 
       <div className="flex-1 flex items-center justify-center px-4">
         <div className="w-full max-w-sm">
-          <div className="mb-10">
-            <h1 className="text-white text-3xl font-bold mb-2">Access your courses</h1>
-            <p className="text-[#888] text-sm">Sign in to continue your learning.</p>
+
+          <div className="mb-8">
+            <h1 className="text-white text-3xl font-bold mb-2">
+              {mode === 'signin' ? 'Access your courses' : mode === 'signup' ? 'Create your account' : 'Reset password'}
+            </h1>
+            <p className="text-[#888] text-sm">
+              {mode === 'signin' ? 'Sign in to continue your learning.' : mode === 'signup' ? 'Set up your FinVerse account.' : "Enter your email and we'll send a reset link."}
+            </p>
           </div>
 
-          {sent ? (
-            <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-[#1a3a2a] flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <p className="text-white font-medium mb-1">Check your inbox</p>
-              <p className="text-[#888] text-sm">
-                We sent a sign-in link to <span className="text-white">{email}</span>
-              </p>
-              <p className="text-[#555] text-xs mt-4">
-                No email? Check your spam folder or{' '}
-                <button onClick={() => setSent(false)} className="text-[#888] underline hover:text-white">
-                  try again
-                </button>
-              </p>
-            </div>
-          ) : (
+          {mode !== 'reset' && (
             <>
               <button
                 onClick={signInWithGoogle}
@@ -92,34 +104,85 @@ export default function Login() {
                 <span className="text-[#555] text-xs">or</span>
                 <div className="flex-1 h-px bg-[#222]" />
               </div>
-
-              <form onSubmit={handleMagicLink} className="space-y-3">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  required
-                  className="w-full bg-[#111] border border-[#333] text-white placeholder-[#555] rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[#555] transition-colors"
-                />
-                {error && <p className="text-red-400 text-xs">{error}</p>}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full bg-[#1a1a1a] border border-[#333] text-white font-medium py-3 px-4 rounded-lg hover:bg-[#222] hover:border-[#444] transition-colors disabled:opacity-50"
-                >
-                  {submitting ? 'Sending…' : 'Send sign-in link'}
-                </button>
-              </form>
-
-              <p className="text-[#444] text-xs text-center mt-6">
-                Access is granted after course purchase.{' '}
-                <a href="/blueprint" className="text-[#666] hover:text-white transition-colors">
-                  Enrol here →
-                </a>
-              </p>
             </>
           )}
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {mode === 'signup' && (
+              <input
+                type="text"
+                value={fullName}
+                onChange={e => setFullName(e.target.value)}
+                placeholder="Full name"
+                required
+                className="w-full bg-[#111] border border-[#333] text-white placeholder-[#555] rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[#555] transition-colors"
+              />
+            )}
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              required
+              className="w-full bg-[#111] border border-[#333] text-white placeholder-[#555] rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[#555] transition-colors"
+            />
+            {mode !== 'reset' && (
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Password"
+                required
+                minLength={8}
+                className="w-full bg-[#111] border border-[#333] text-white placeholder-[#555] rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[#555] transition-colors"
+              />
+            )}
+
+            {error && <p className="text-red-400 text-xs">{error}</p>}
+            {message && <p className="text-emerald-400 text-xs">{message}</p>}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-white text-black font-medium py-3 px-4 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+            >
+              {submitting ? 'Please wait…' : mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
+            </button>
+          </form>
+
+          <div className="mt-6 space-y-2 text-center">
+            {mode === 'signin' && (
+              <>
+                <p className="text-[#555] text-xs">
+                  No account?{' '}
+                  <button onClick={() => { setMode('signup'); resetForm() }} className="text-[#888] hover:text-white transition-colors">
+                    Create one
+                  </button>
+                </p>
+                <p className="text-[#555] text-xs">
+                  <button onClick={() => { setMode('reset'); resetForm() }} className="text-[#888] hover:text-white transition-colors">
+                    Forgot password?
+                  </button>
+                </p>
+              </>
+            )}
+            {mode === 'signup' && (
+              <p className="text-[#555] text-xs">
+                Already have an account?{' '}
+                <button onClick={() => { setMode('signin'); resetForm() }} className="text-[#888] hover:text-white transition-colors">
+                  Sign in
+                </button>
+              </p>
+            )}
+            {mode === 'reset' && (
+              <p className="text-[#555] text-xs">
+                <button onClick={() => { setMode('signin'); resetForm() }} className="text-[#888] hover:text-white transition-colors">
+                  ← Back to sign in
+                </button>
+              </p>
+            )}
+          </div>
+
         </div>
       </div>
     </div>
