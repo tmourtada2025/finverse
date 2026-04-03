@@ -7,7 +7,6 @@
  */
 
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@/lib/auth";
 import { useState, useEffect } from "react";
 
 const UDEMY_URL = "https://www.udemy.com/course/smart-money-concepts-the-complete-guide-to-smart-trading/?referralCode=C4DBD99FE2D9012F18F5";
@@ -61,7 +60,6 @@ function FooterLink({ href, label }: { href: string; label: string }) {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [location] = useLocation();
-  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -92,10 +90,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <NavLink key={link.href} {...link} />
             ))}
             <Link
-              href={isAuthenticated ? "/dashboard" : "/login"}
+              href="/login"
               className="text-xs font-medium tracking-wide text-[#F4F4F2]/40 hover:text-[#F4F4F2]/70 transition-colors duration-200 ml-2"
             >
-              {isAuthenticated ? "Dashboard" : "Login"}
+              Login
             </Link>
           </nav>
 
@@ -141,11 +139,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </Link>
               ))}
               <Link
-                href={isAuthenticated ? "/dashboard" : "/login"}
+                href="/login"
                 onClick={() => setMobileOpen(false)}
                 className="text-xs font-medium text-[#F4F4F2]/40 hover:text-[#F4F4F2]/70 transition-colors"
               >
-                {isAuthenticated ? "Dashboard" : "Login"}
+                Login
               </Link>
             </div>
           </nav>
