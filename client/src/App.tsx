@@ -23,15 +23,12 @@ import Admin from "@/pages/Admin";
 function Router() {
   return (
     <Switch>
-      {/* ── LMS routes (no Layout wrapper) ── */}
       <Route path="/login" component={Login} />
       <Route path="/auth/callback" component={AuthCallback} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/learn/:courseId" component={CoursePlayer} />
       <Route path="/learn/:courseId/:lessonId" component={CoursePlayer} />
       <Route path="/admin" component={Admin} />
-
-      {/* ── Public site routes (with Layout) ── */}
       <Route>
         {() => (
           <Layout>
