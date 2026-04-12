@@ -16,6 +16,7 @@ import Layout from "./components/Layout";
 import { AuthProvider } from "@/lib/auth";
 import Login from "@/pages/Login";
 import AuthCallback from "@/pages/AuthCallback";
+import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
 import CoursePlayer from "@/pages/CoursePlayer";
 import Admin from "@/pages/Admin";
@@ -25,6 +26,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/auth/callback" component={AuthCallback} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/learn/:courseId" component={CoursePlayer} />
       <Route path="/learn/:courseId/:lessonId" component={CoursePlayer} />
