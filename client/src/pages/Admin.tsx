@@ -796,19 +796,17 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
 
   function insertList(ordered: boolean) {
     ref.current?.focus()
-    const sel = window.getSelection()
-    if (!sel || sel.rangeCount === 0) return
-    const range = sel.getRangeAt(0)
-    const selected = range.toString()
-    const tag = ordered ? 'ol' : 'ul'
-    if (selected) {
-      const lines = selected.split('\n').filter(l => l.trim())
-      const html = `<${tag} style="padding-left:1.5em;margin:0.5em 0">${lines.map(l => `<li>${l}</li>`).join('')}</${tag}>`
-      document.execCommand('insertHTML', false, html)
-    } else {
-      document.execCommand('insertHTML', false, `<${tag} style="padding-left:1.5em;margin:0.5em 0"><li><br></li></${tag}>`)
-    }
-    setTimeout(sync, 0)
+    document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false)
+    // Ensure list items have proper styling
+    setTimeout(() => {
+      if (ref.current) {
+        ref.current.querySelectorAll('ul, ol').forEach(el => {
+          (el as HTMLElement).style.paddingLeft = '1.5em'
+          ;(el as HTMLElement).style.margin = '0.5em 0'
+        })
+      }
+      sync()
+    }, 0)
   }
 
   function applyFont(fontFamily: string) {
@@ -858,6 +856,11 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
         <select value={font} onChange={e => applyFont(e.target.value)}
           style={{ fontSize: '0.72rem', padding: '3px 5px', border: `1px solid ${t.border}`, borderRadius: '4px', backgroundColor: t.bg, color: t.muted, cursor: 'pointer' }}>
           {fonts.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+        </select>
+        <select onChange={e => { ref.current?.focus(); document.execCommand('fontSize', false, e.target.value); setTimeout(sync, 0) }} defaultValue=""
+          style={{ fontSize: '0.72rem', padding: '3px 5px', border: `1px solid ${t.border}`, borderRadius: '4px', backgroundColor: t.bg, color: t.muted, cursor: 'pointer' }}>
+          <option value="" disabled>Size</option>
+          {['1','2','3','4','5','6','7'].map((s, i) => <option key={s} value={s}>{[10,12,14,16,18,24,32][i]}px</option>)}
         </select>
       </div>
       <div ref={ref} contentEditable suppressContentEditableWarning onInput={sync} onBlur={sync}
