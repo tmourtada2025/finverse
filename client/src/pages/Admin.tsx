@@ -4,9 +4,17 @@ import { supabase, Course, Module, Lesson, Profile } from '@/lib/supabase'
 
 type Tab = 'courses' | 'users' | 'enrollments'
 
+function SunIcon() {
+  return <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>
+}
+function MoonIcon() {
+  return <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+}
+
 export default function Admin() {
   const { loading, isAuthenticated, isAdmin } = useAuth()
   const [tab, setTab] = useState<Tab>('courses')
+  const [dark, setDark] = useState(true)
 
   useEffect(() => {
     if (loading) return
@@ -14,70 +22,57 @@ export default function Admin() {
     if (!isAdmin) { window.location.href = '/dashboard' }
   }, [loading, isAuthenticated, isAdmin])
 
-  // Show spinner only while loading AND no existing session hint
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
 
-  // Don't render admin UI if not admin (redirect is firing)
   if (!isAdmin) return null
 
+  const t = dark
+    ? { bg: '#0a0a0a', surface: '#111', border: '#1a1a1a', text: '#fff', muted: '#888', dim: '#444' }
+    : { bg: '#f5f5f0', surface: '#fff', border: '#e5e5e0', text: '#111', muted: '#666', dim: '#bbb' }
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
-      <nav className="border-b border-[#1a1a1a] px-8 py-4 flex items-center justify-between sticky top-0 bg-[#0a0a0a]/95 backdrop-blur z-50">
-        <div className="flex items-center gap-6">
-          <span className="text-white font-bold text-xl tracking-tight">
-            Fin<span className="font-light">Verse</span>
-          </span>
-          <span className="text-[#333]">/</span>
-          <span className="text-[#888] text-sm">Admin</span>
+    <div style={{ minHeight: '100vh', backgroundColor: t.bg, color: t.text, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+      <nav style={{ borderBottom: `1px solid ${t.border}`, padding: '0 2rem', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, backgroundColor: t.bg, zIndex: 50 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>Fin<span style={{ fontWeight: 300 }}>Verse</span></span>
+          <span style={{ color: t.dim }}>/</span>
+          <span style={{ color: t.muted, fontSize: '0.875rem' }}>Admin</span>
         </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => { window.location.href = '/dashboard' }}
-            className="text-[#555] text-sm hover:text-white transition-colors"
-          >
-            Student view
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button onClick={() => setDark(d => !d)} style={{ background: 'none', border: `1px solid ${t.border}`, color: t.muted, borderRadius: '6px', padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+            {dark ? <SunIcon /> : <MoonIcon />}
           </button>
-          <button
-            onClick={() => supabase.auth.signOut().then(() => { window.location.href = '/' })}
-            className="text-[#555] text-sm hover:text-white transition-colors"
-          >
-            Sign out
-          </button>
+          <button onClick={() => { window.location.href = '/dashboard' }} style={{ fontSize: '0.8rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '6px', padding: '6px 12px', cursor: 'pointer' }}>Student view</button>
+          <button onClick={() => supabase.auth.signOut().then(() => { window.location.href = '/' })} style={{ fontSize: '0.8rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>Sign out</button>
         </div>
       </nav>
 
-      <div className="border-b border-[#1a1a1a] px-8">
-        <div className="flex gap-6">
-          {(['courses', 'users', 'enrollments'] as Tab[]).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`py-3 text-sm capitalize transition-colors border-b-2 -mb-px ${
-                tab === t ? 'text-white border-white' : 'text-[#555] border-transparent hover:text-white'
-              }`}
-            >
-              {t}
+      <div style={{ borderBottom: `1px solid ${t.border}`, padding: '0 2rem' }}>
+        <div style={{ display: 'flex', gap: '1.5rem' }}>
+          {(['courses', 'users', 'enrollments'] as Tab[]).map(t2 => (
+            <button key={t2} onClick={() => setTab(t2)} style={{ padding: '12px 0', fontSize: '0.875rem', textTransform: 'capitalize', background: 'none', border: 'none', borderBottom: `2px solid ${tab === t2 ? t.text : 'transparent'}`, color: tab === t2 ? t.text : t.muted, cursor: 'pointer', transition: 'all 0.15s' }}>
+              {t2}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-8 py-10">
-        {tab === 'courses' && <CoursesTab />}
-        {tab === 'users' && <UsersTab />}
-        {tab === 'enrollments' && <EnrollmentsTab />}
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem' }}>
+        {tab === 'courses' && <CoursesTab t={t} />}
+        {tab === 'users' && <UsersTab t={t} />}
+        {tab === 'enrollments' && <EnrollmentsTab t={t} />}
       </div>
     </div>
   )
 }
 
-function CoursesTab() {
+// ─── Courses tab ──────────────────────────────────────────────────────────────
+
+function CoursesTab({ t }: { t: any }) {
   const [courses, setCourses] = useState<Course[]>([])
   const [selected, setSelected] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
@@ -95,39 +90,36 @@ function CoursesTab() {
     fetchCourses()
   }
 
-  if (selected) return <CourseEditor course={selected} onBack={() => { setSelected(null); fetchCourses() }} />
+  if (selected) return <CourseEditor course={selected} onBack={() => { setSelected(null); fetchCourses() }} t={t} />
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-xl font-bold">Courses</h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Courses</h2>
         <button
           onClick={() => setSelected({ id: '', title: '', slug: '', subtitle: null, description: '', thumbnail_url: null, price: 0, stripe_price_id: null, stripe_product_id: null, is_published: false, position: 0, created_at: '', updated_at: '' })}
-          className="bg-white text-black text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          + New course
-        </button>
+          style={{ backgroundColor: t.text, color: t.bg, border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer' }}
+        >+ New course</button>
       </div>
-      {loading ? <p className="text-[#555]">Loading…</p> : courses.length === 0 ? <p className="text-[#555]">No courses yet.</p> : (
-        <div className="space-y-3">
+
+      {loading ? <p style={{ color: t.muted }}>Loading…</p> : courses.length === 0 ? <p style={{ color: t.muted }}>No courses yet.</p> : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {courses.map(course => (
-            <div key={course.id} className="border border-[#1a1a1a] rounded-lg p-5 flex items-center justify-between hover:border-[#333] transition-colors">
+            <div key={course.id} style={{ border: `1px solid ${t.border}`, borderRadius: '10px', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: t.surface }}>
               <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h3 className="font-medium">{course.title}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded border ${course.is_published ? 'text-emerald-400 border-emerald-400/30' : 'text-[#555] border-[#333]'}`}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                  <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{course.title}</span>
+                  <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', border: `1px solid ${course.is_published ? '#10b98150' : t.border}`, color: course.is_published ? '#10b981' : t.muted }}>
                     {course.is_published ? 'Published' : 'Draft'}
                   </span>
                 </div>
-                <p className="text-[#555] text-sm">${course.price} · /{course.slug}</p>
+                <p style={{ fontSize: '0.75rem', color: t.muted }}>${course.price} · /{course.slug}</p>
               </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => togglePublish(course)} className="text-[#555] text-sm hover:text-white transition-colors">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button onClick={() => togglePublish(course)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>
                   {course.is_published ? 'Unpublish' : 'Publish'}
                 </button>
-                <button onClick={() => setSelected(course)} className="text-sm bg-[#1a1a1a] border border-[#333] px-3 py-1.5 rounded-lg hover:bg-[#222] transition-colors">
-                  Edit →
-                </button>
+                <button onClick={() => setSelected(course)} style={{ fontSize: '0.75rem', border: `1px solid ${t.border}`, background: 'none', color: t.text, borderRadius: '6px', padding: '6px 14px', cursor: 'pointer' }}>Edit →</button>
               </div>
             </div>
           ))}
@@ -137,12 +129,18 @@ function CoursesTab() {
   )
 }
 
-function CourseEditor({ course, onBack }: { course: Course; onBack: () => void }) {
+// ─── Course Editor ────────────────────────────────────────────────────────────
+
+type LessonWithEdit = Lesson & { editing?: boolean }
+type ModuleWithLessons = Module & { lessons: LessonWithEdit[] }
+
+function CourseEditor({ course, onBack, t }: { course: Course; onBack: () => void; t: any }) {
   const isNew = !course.id
   const [form, setForm] = useState({ title: course.title, slug: course.slug, description: course.description || '', price: course.price })
-  const [modules, setModules] = useState<(Module & { lessons: Lesson[] })[]>([])
+  const [modules, setModules] = useState<ModuleWithLessons[]>([])
   const [saving, setSaving] = useState(false)
   const [courseId, setCourseId] = useState(course.id)
+  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null)
 
   useEffect(() => { if (courseId) fetchModules() }, [courseId])
 
@@ -182,9 +180,12 @@ function CourseEditor({ course, onBack }: { course: Course; onBack: () => void }
   async function addLesson(moduleId: string, moduleIndex: number) {
     const title = prompt('Lesson title:')
     if (!title) return
-    const type = prompt('Content type (text / video / audio / quiz):') as Lesson['content_type'] || 'text'
-    await supabase.from('lessons').insert({ module_id: moduleId, title, content_type: type, position: modules[moduleIndex].lessons.length + 1, is_published: true })
+    const { data } = await supabase.from('lessons').insert({
+      module_id: moduleId, course_id: courseId, title,
+      content_type: 'text', position: modules[moduleIndex].lessons.length + 1, is_published: true,
+    }).select().single()
     fetchModules()
+    if (data) setEditingLesson(data)
   }
 
   async function deleteLesson(lessonId: string) {
@@ -193,68 +194,76 @@ function CourseEditor({ course, onBack }: { course: Course; onBack: () => void }
     fetchModules()
   }
 
-  async function editLesson(lesson: Lesson) {
-    const title = prompt('Lesson title:', lesson.title)
-    if (!title) return
-    const content = prompt('Content text (or URL for video/audio):', lesson.content_text || lesson.content_url || '')
-    const isUrl = content?.startsWith('http')
-    await supabase.from('lessons').update({ title, content_text: isUrl ? null : content, content_url: isUrl ? content : null }).eq('id', lesson.id)
-    fetchModules()
-  }
-
   return (
     <div>
-      <button onClick={onBack} className="text-[#555] text-sm hover:text-white transition-colors mb-8 flex items-center gap-2">← Back to courses</button>
-      <h2 className="text-xl font-bold mb-8">{isNew ? 'New course' : `Edit: ${course.title}`}</h2>
-      <div className="border border-[#1a1a1a] rounded-lg p-6 mb-8 space-y-4">
-        <div>
-          <label className="text-[#555] text-xs uppercase tracking-widest block mb-2">Title</label>
-          <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} className="w-full bg-[#111] border border-[#333] text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#555]" />
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: t.muted, cursor: 'pointer', fontSize: '0.8rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>← Back to courses</button>
+      <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1.5rem' }}>{isNew ? 'New course' : `Edit: ${course.title}`}</h2>
+
+      {/* Course meta form */}
+      <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem', backgroundColor: t.surface, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <Label t={t}>Title</Label>
+          <Input value={form.title} onChange={v => setForm(p => ({ ...p, title: v }))} t={t} />
         </div>
         <div>
-          <label className="text-[#555] text-xs uppercase tracking-widest block mb-2">Slug</label>
-          <input value={form.slug} onChange={e => setForm(p => ({ ...p, slug: e.target.value }))} className="w-full bg-[#111] border border-[#333] text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#555]" />
+          <Label t={t}>Slug</Label>
+          <Input value={form.slug} onChange={v => setForm(p => ({ ...p, slug: v }))} t={t} placeholder="url-slug" />
         </div>
         <div>
-          <label className="text-[#555] text-xs uppercase tracking-widest block mb-2">Description</label>
-          <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} className="w-full bg-[#111] border border-[#333] text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#555] resize-none" />
+          <Label t={t}>Price (USD)</Label>
+          <Input value={String(form.price)} onChange={v => setForm(p => ({ ...p, price: Number(v) }))} t={t} type="number" />
+        </div>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <Label t={t}>Description</Label>
+          <textarea
+            value={form.description}
+            onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+            rows={3}
+            style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+          />
         </div>
         <div>
-          <label className="text-[#555] text-xs uppercase tracking-widest block mb-2">Price (USD)</label>
-          <input type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: Number(e.target.value) }))} className="w-full bg-[#111] border border-[#333] text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#555]" />
+          <button onClick={saveCourse} disabled={saving} style={{ backgroundColor: t.text, color: t.bg, border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+            {saving ? 'Saving…' : isNew ? 'Create course' : 'Save changes'}
+          </button>
         </div>
-        <button onClick={saveCourse} disabled={saving} className="bg-white text-black text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50">
-          {saving ? 'Saving…' : 'Save course'}
-        </button>
       </div>
+
+      {/* Modules & Lessons */}
       {courseId && (
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-medium text-[#888] text-xs uppercase tracking-widest">Modules & Lessons</h3>
-            <button onClick={addModule} className="text-sm text-[#888] hover:text-white border border-[#333] px-3 py-1.5 rounded-lg hover:border-[#555] transition-colors">+ Add module</button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: t.muted }}>Modules & Lessons</h3>
+            <button onClick={addModule} style={{ fontSize: '0.75rem', color: t.muted, border: `1px solid ${t.border}`, background: 'none', borderRadius: '6px', padding: '5px 12px', cursor: 'pointer' }}>+ Add module</button>
           </div>
-          <div className="space-y-4">
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {modules.map((mod, mIdx) => (
-              <div key={mod.id} className="border border-[#1a1a1a] rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3 bg-[#111]">
-                  <div><span className="text-[#555] text-xs mr-2">M{mIdx + 1}</span><span className="font-medium text-sm">{mod.title}</span></div>
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => addLesson(mod.id, mIdx)} className="text-xs text-[#555] hover:text-white transition-colors">+ lesson</button>
-                    <button onClick={() => deleteModule(mod.id)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">delete</button>
+              <div key={mod.id} style={{ border: `1px solid ${t.border}`, borderRadius: '10px', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: t.surface }}>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', color: t.dim, marginRight: '8px' }}>M{mIdx + 1}</span>
+                    <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>{mod.title}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={() => addLesson(mod.id, mIdx)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>+ lesson</button>
+                    <button onClick={() => deleteModule(mod.id)} style={{ fontSize: '0.75rem', color: '#ef444460', background: 'none', border: 'none', cursor: 'pointer' }}>delete</button>
                   </div>
                 </div>
+
                 {mod.lessons.length > 0 && (
-                  <div className="divide-y divide-[#111]">
+                  <div>
                     {mod.lessons.map((lesson, lIdx) => (
-                      <div key={lesson.id} className="flex items-center justify-between px-5 py-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[#333] text-xs w-6">{lIdx + 1}</span>
-                          <span className="text-[#888] text-sm">{lesson.title}</span>
-                          <span className="text-[#444] text-xs border border-[#222] rounded px-1.5 py-0.5">{lesson.content_type}</span>
+                      <div key={lesson.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderTop: `1px solid ${t.border}` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '0.7rem', color: t.dim, width: '20px' }}>{lIdx + 1}</span>
+                          <span style={{ fontSize: '0.875rem', color: t.muted }}>{lesson.title}</span>
+                          <span style={{ fontSize: '0.65rem', border: `1px solid ${t.border}`, borderRadius: '4px', padding: '1px 6px', color: t.dim }}>{lesson.content_type}</span>
+                          {!lesson.is_published && <span style={{ fontSize: '0.65rem', color: '#f59e0b' }}>draft</span>}
                         </div>
-                        <div className="flex items-center gap-3">
-                          <button onClick={() => editLesson(lesson)} className="text-xs text-[#555] hover:text-white transition-colors">edit</button>
-                          <button onClick={() => deleteLesson(lesson.id)} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">delete</button>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          <button onClick={() => setEditingLesson(lesson)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>edit</button>
+                          <button onClick={() => deleteLesson(lesson.id)} style={{ fontSize: '0.75rem', color: '#ef444460', background: 'none', border: 'none', cursor: 'pointer' }}>delete</button>
                         </div>
                       </div>
                     ))}
@@ -265,11 +274,155 @@ function CourseEditor({ course, onBack }: { course: Course; onBack: () => void }
           </div>
         </div>
       )}
+
+      {/* Lesson Editor Modal */}
+      {editingLesson && (
+        <LessonEditor
+          lesson={editingLesson}
+          t={t}
+          onClose={() => { setEditingLesson(null); fetchModules() }}
+        />
+      )}
     </div>
   )
 }
 
-function UsersTab() {
+// ─── Lesson Editor (proper rich editor) ──────────────────────────────────────
+
+function LessonEditor({ lesson, t, onClose }: { lesson: Lesson; t: any; onClose: () => void }) {
+  const [form, setForm] = useState({
+    title: lesson.title,
+    content_type: lesson.content_type,
+    content_text: lesson.content_text || '',
+    content_url: lesson.content_url || '',
+    duration_minutes: lesson.duration_minutes || 0,
+    is_published: lesson.is_published,
+  })
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  async function save() {
+    setSaving(true)
+    await supabase.from('lessons').update({
+      title: form.title,
+      content_type: form.content_type,
+      content_text: form.content_text || null,
+      content_url: form.content_url || null,
+      duration_minutes: form.duration_minutes || null,
+      is_published: form.is_published,
+    }).eq('id', lesson.id)
+    setSaving(false); setSaved(true)
+    setTimeout(() => setSaved(false), 1500)
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <div style={{ backgroundColor: t.bg, border: `1px solid ${t.border}`, borderRadius: '16px', width: '100%', maxWidth: '720px', maxHeight: '90vh', overflow: 'auto', padding: '2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Edit lesson</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: t.muted, cursor: 'pointer', fontSize: '1.25rem' }}>×</button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <Label t={t}>Title</Label>
+            <Input value={form.title} onChange={v => setForm(p => ({ ...p, title: v }))} t={t} />
+          </div>
+
+          <div>
+            <Label t={t}>Content type</Label>
+            <select
+              value={form.content_type}
+              onChange={e => setForm(p => ({ ...p, content_type: e.target.value as any }))}
+              style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none' }}
+            >
+              <option value="text">Text / Reading</option>
+              <option value="video">Video</option>
+              <option value="audio">Audio</option>
+              <option value="quiz">Quiz</option>
+            </select>
+          </div>
+
+          <div>
+            <Label t={t}>Duration (minutes)</Label>
+            <Input value={String(form.duration_minutes)} onChange={v => setForm(p => ({ ...p, duration_minutes: Number(v) }))} t={t} type="number" />
+          </div>
+
+          {(form.content_type === 'video' || form.content_type === 'audio') && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <Label t={t}>{form.content_type === 'video' ? 'Video URL (YouTube embed or direct)' : 'Audio URL'}</Label>
+              <Input value={form.content_url} onChange={v => setForm(p => ({ ...p, content_url: v }))} t={t} placeholder="https://..." />
+              {form.content_type === 'video' && form.content_url && (
+                <p style={{ fontSize: '0.7rem', color: t.muted, marginTop: '4px' }}>
+                  For YouTube: use embed URL like https://www.youtube.com/embed/VIDEO_ID
+                </p>
+              )}
+            </div>
+          )}
+
+          <div style={{ gridColumn: '1 / -1' }}>
+            <Label t={t}>
+              {form.content_type === 'text' ? 'Content (supports **bold**, # Heading, - lists)' :
+               form.content_type === 'quiz' ? 'Quiz JSON (array of questions)' :
+               'Notes / transcript (optional)'}
+            </Label>
+            <textarea
+              value={form.content_text}
+              onChange={e => setForm(p => ({ ...p, content_text: e.target.value }))}
+              rows={form.content_type === 'quiz' ? 10 : 8}
+              placeholder={
+                form.content_type === 'text' ? 'Write your lesson content here...\n\n# Heading\n\nParagraph text. **Bold text.**\n\n- List item' :
+                form.content_type === 'quiz' ? '[{"question":"What is...","options":["A","B","C","D"],"correct_index":0,"explanation":"Because..."}]' :
+                'Optional notes or transcript...'
+              }
+              style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'monospace', lineHeight: 1.6 }}
+            />
+          </div>
+
+          <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <input
+              type="checkbox"
+              id="published"
+              checked={form.is_published}
+              onChange={e => setForm(p => ({ ...p, is_published: e.target.checked }))}
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+            />
+            <label htmlFor="published" style={{ fontSize: '0.875rem', color: t.muted, cursor: 'pointer' }}>Published (visible to enrolled students)</label>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ fontSize: '0.875rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '10px 20px', cursor: 'pointer' }}>Cancel</button>
+          <button onClick={save} disabled={saving} style={{ backgroundColor: t.text, color: t.bg, border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1, minWidth: '100px' }}>
+            {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save lesson'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Shared components ────────────────────────────────────────────────────────
+
+function Label({ children, t }: { children: React.ReactNode; t: any }) {
+  return <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }}>{children}</label>
+}
+
+function Input({ value, onChange, t, placeholder = '', type = 'text' }: { value: string; onChange: (v: string) => void; t: any; placeholder?: string; type?: string }) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' }}
+    />
+  )
+}
+
+// ─── Users tab ────────────────────────────────────────────────────────────────
+
+function UsersTab({ t }: { t: any }) {
   const [users, setUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -278,37 +431,38 @@ function UsersTab() {
       .then(({ data }) => { setUsers(data || []); setLoading(false) })
   }, [])
 
-  async function setAdmin(userId: string, makeAdmin: boolean) {
-    await supabase.from('profiles').update({ role: makeAdmin ? 'admin' : 'student' }).eq('id', userId)
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: makeAdmin ? 'admin' : 'student' } : u))
+  async function toggleAdmin(u: Profile) {
+    const newRole = u.role === 'admin' ? 'student' : 'admin'
+    await supabase.from('profiles').update({ role: newRole }).eq('id', u.id)
+    setUsers(prev => prev.map(p => p.id === u.id ? { ...p, role: newRole } : p))
   }
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-8">Users ({users.length})</h2>
-      {loading ? <p className="text-[#555]">Loading…</p> : (
-        <div className="border border-[#1a1a1a] rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="border-b border-[#1a1a1a] bg-[#111]">
+      <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1.5rem' }}>Users ({users.length})</h2>
+      {loading ? <p style={{ color: t.muted }}>Loading…</p> : (
+        <div style={{ border: `1px solid ${t.border}`, borderRadius: '10px', overflow: 'hidden' }}>
+          <table style={{ width: '100%', fontSize: '0.875rem', borderCollapse: 'collapse' }}>
+            <thead style={{ borderBottom: `1px solid ${t.border}`, backgroundColor: t.surface }}>
               <tr>
-                <th className="text-left text-[#555] text-xs uppercase tracking-widest px-5 py-3">Email</th>
-                <th className="text-left text-[#555] text-xs uppercase tracking-widest px-5 py-3">Name</th>
-                <th className="text-left text-[#555] text-xs uppercase tracking-widest px-5 py-3">Role</th>
-                <th className="text-left text-[#555] text-xs uppercase tracking-widest px-5 py-3">Joined</th>
-                <th className="px-5 py-3" />
+                {['Email', 'Name', 'Role', 'Joined', ''].map(h => (
+                  <th key={h} style={{ textAlign: 'left', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: t.muted, padding: '10px 16px', fontWeight: 400 }}>{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1a1a1a]">
+            <tbody>
               {users.map(u => (
-                <tr key={u.id} className="hover:bg-[#0f0f0f]">
-                  <td className="px-5 py-3 text-white">{u.email}</td>
-                  <td className="px-5 py-3 text-[#888]">{u.full_name || '—'}</td>
-                  <td className="px-5 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded border ${u.role === 'admin' ? 'text-amber-400 border-amber-400/30' : 'text-[#555] border-[#333]'}`}>{u.role}</span>
+                <tr key={u.id} style={{ borderTop: `1px solid ${t.border}` }}>
+                  <td style={{ padding: '12px 16px', color: t.text }}>{u.email}</td>
+                  <td style={{ padding: '12px 16px', color: t.muted }}>{u.full_name || '—'}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', border: `1px solid ${u.role === 'admin' ? '#f59e0b50' : t.border}`, color: u.role === 'admin' ? '#f59e0b' : t.muted }}>
+                      {u.role}
+                    </span>
                   </td>
-                  <td className="px-5 py-3 text-[#555]">{new Date(u.created_at).toLocaleDateString()}</td>
-                  <td className="px-5 py-3 text-right">
-                    <button onClick={() => setAdmin(u.id, u.role !== 'admin')} className="text-xs text-[#555] hover:text-white transition-colors">
+                  <td style={{ padding: '12px 16px', color: t.muted, fontSize: '0.8rem' }}>{new Date(u.created_at).toLocaleDateString()}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                    <button onClick={() => toggleAdmin(u)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>
                       {u.role === 'admin' ? 'Remove admin' : 'Make admin'}
                     </button>
                   </td>
@@ -322,13 +476,16 @@ function UsersTab() {
   )
 }
 
-function EnrollmentsTab() {
+// ─── Enrollments tab ──────────────────────────────────────────────────────────
+
+function EnrollmentsTab({ t }: { t: any }) {
   const [enrollments, setEnrollments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState('')
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedCourse, setSelectedCourse] = useState('')
   const [granting, setGranting] = useState(false)
+  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
 
   useEffect(() => { fetchData() }, [])
 
@@ -344,50 +501,58 @@ function EnrollmentsTab() {
 
   async function grantAccess() {
     if (!email || !selectedCourse) return
-    setGranting(true)
+    setGranting(true); setMessage(null)
     const { data: profile } = await supabase.from('profiles').select('id').eq('email', email.toLowerCase()).single()
-    if (!profile) { alert('No user found with that email. They need to sign in once first.'); setGranting(false); return }
+    if (!profile) {
+      setMessage({ text: 'No user found with that email. They need to sign in once first.', ok: false })
+      setGranting(false); return
+    }
     await supabase.from('enrollments').upsert({ user_id: profile.id, course_id: selectedCourse, enrolled_at: new Date().toISOString() }, { onConflict: 'user_id,course_id' })
+    setMessage({ text: 'Access granted successfully.', ok: true })
     setEmail(''); setSelectedCourse(''); setGranting(false); fetchData()
   }
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-8 gap-8">
-        <h2 className="text-xl font-bold">Enrollments</h2>
-        <div className="border border-[#1a1a1a] rounded-lg p-5 w-80 shrink-0">
-          <p className="text-[#888] text-xs uppercase tracking-widest mb-4">Grant access manually</p>
-          <div className="space-y-3">
-            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="student@email.com" className="w-full bg-[#111] border border-[#333] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#555]" />
-            <select value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)} className="w-full bg-[#111] border border-[#333] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#555]">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.5rem', gap: '2rem' }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Enrollments</h2>
+        <div style={{ border: `1px solid ${t.border}`, borderRadius: '10px', padding: '1.25rem', width: '300px', flexShrink: 0, backgroundColor: t.surface }}>
+          <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: t.muted, marginBottom: '1rem' }}>Grant access manually</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="student@email.com"
+              style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '9px 12px', fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box' }} />
+            <select value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)}
+              style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '9px 12px', fontSize: '0.8rem', outline: 'none' }}>
               <option value="">Select course…</option>
               {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
-            <button onClick={grantAccess} disabled={granting || !email || !selectedCourse} className="w-full bg-white text-black text-sm font-medium py-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50">
+            {message && <p style={{ fontSize: '0.75rem', color: message.ok ? '#10b981' : '#ef4444' }}>{message.text}</p>}
+            <button onClick={grantAccess} disabled={granting || !email || !selectedCourse}
+              style={{ backgroundColor: t.text, color: t.bg, border: 'none', borderRadius: '8px', padding: '9px', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', opacity: (granting || !email || !selectedCourse) ? 0.5 : 1 }}>
               {granting ? 'Granting…' : 'Grant access'}
             </button>
           </div>
         </div>
       </div>
-      {loading ? <p className="text-[#555]">Loading…</p> : (
-        <div className="border border-[#1a1a1a] rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="border-b border-[#1a1a1a] bg-[#111]">
+
+      {loading ? <p style={{ color: t.muted }}>Loading…</p> : (
+        <div style={{ border: `1px solid ${t.border}`, borderRadius: '10px', overflow: 'hidden' }}>
+          <table style={{ width: '100%', fontSize: '0.875rem', borderCollapse: 'collapse' }}>
+            <thead style={{ borderBottom: `1px solid ${t.border}`, backgroundColor: t.surface }}>
               <tr>
-                <th className="text-left text-[#555] text-xs uppercase tracking-widest px-5 py-3">Student</th>
-                <th className="text-left text-[#555] text-xs uppercase tracking-widest px-5 py-3">Course</th>
-                <th className="text-left text-[#555] text-xs uppercase tracking-widest px-5 py-3">Enrolled</th>
-                <th className="text-left text-[#555] text-xs uppercase tracking-widest px-5 py-3">Status</th>
+                {['Student', 'Course', 'Enrolled', 'Status'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: t.muted, padding: '10px 16px', fontWeight: 400 }}>{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1a1a1a]">
+            <tbody>
               {enrollments.map((e: any) => (
-                <tr key={e.id} className="hover:bg-[#0f0f0f]">
-                  <td className="px-5 py-3 text-white">{e.profiles?.email || e.user_id}</td>
-                  <td className="px-5 py-3 text-[#888]">{e.courses?.title || e.course_id}</td>
-                  <td className="px-5 py-3 text-[#555]">{new Date(e.enrolled_at).toLocaleDateString()}</td>
-                  <td className="px-5 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded border ${e.completed_at ? 'text-emerald-400 border-emerald-400/30' : 'text-[#555] border-[#333]'}`}>
+                <tr key={e.id} style={{ borderTop: `1px solid ${t.border}` }}>
+                  <td style={{ padding: '12px 16px', color: t.text }}>{e.profiles?.email || e.user_id}</td>
+                  <td style={{ padding: '12px 16px', color: t.muted }}>{e.courses?.title || e.course_id}</td>
+                  <td style={{ padding: '12px 16px', color: t.muted, fontSize: '0.8rem' }}>{new Date(e.enrolled_at).toLocaleDateString()}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', border: `1px solid ${e.completed_at ? '#10b98150' : t.border}`, color: e.completed_at ? '#10b981' : t.muted }}>
                       {e.completed_at ? 'Complete' : 'Active'}
                     </span>
                   </td>
