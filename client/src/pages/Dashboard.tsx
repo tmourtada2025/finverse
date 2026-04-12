@@ -198,10 +198,16 @@ export default function Dashboard() {
                         <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>{course.title}</h3>
                         {course.description && <p style={{ fontSize: '0.75rem', color: t.muted, marginBottom: '1rem', lineHeight: 1.5 }}>{course.description.slice(0, 80)}…</p>}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>${course.price}</span>
+                          {enrolled ? (
+                            <EnrolledBadge enrollment={enrollments.find(e => e.course_id === course.id)!} t={t} />
+                          ) : (
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>${course.price}</span>
+                          )}
                           {enrolled ? (
                             <Link href={`/learn/${course.id}`}>
-                              <span style={{ fontSize: '0.75rem', padding: '5px 12px', borderRadius: '6px', border: `1px solid ${t.border}`, cursor: 'pointer', color: t.muted }}>Continue →</span>
+                              <span style={{ fontSize: '0.75rem', padding: '5px 12px', borderRadius: '6px', border: `1px solid ${t.border}`, cursor: 'pointer', color: t.text }}>
+                                Open →
+                              </span>
                             </Link>
                           ) : (
                             <a href="/blueprint" style={{ fontSize: '0.75rem', padding: '5px 12px', borderRadius: '6px', backgroundColor: t.accent, color: t.accentText, textDecoration: 'none' }}>Enrol →</a>
@@ -237,13 +243,20 @@ export default function Dashboard() {
                   />
                   <p style={{ fontSize: '0.7rem', color: t.dim, marginTop: '4px' }}>Email cannot be changed</p>
                 </div>
-                <button
-                  onClick={saveProfile}
-                  disabled={saving}
-                  style={{ backgroundColor: t.accent, color: t.accentText, border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
-                >
-                  {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save changes'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button
+                    onClick={saveProfile}
+                    disabled={saving || saved}
+                    style={{ backgroundColor: saved ? '#10b981' : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '0.875rem', fontWeight: 500, cursor: saved ? 'default' : 'pointer', opacity: saving ? 0.6 : 1, transition: 'all 0.2s' }}
+                  >
+                    {saved ? '✓ Changes saved' : saving ? 'Saving…' : 'Save changes'}
+                  </button>
+                  {saved && (
+                    <button onClick={() => setSaved(false)} style={{ fontSize: '0.8rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                      Edit again
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -251,6 +264,18 @@ export default function Dashboard() {
         </main>
       </div>
     </div>
+  )
+}
+
+
+function EnrolledBadge({ enrollment, t }: { enrollment: EnrollmentWithCourse; t: any }) {
+  const pct = 0 // simplified - just show enrolled status
+  const status = enrollment.completed_at ? 'Completed' : 'Enrolled'
+  const color = enrollment.completed_at ? '#10b981' : '#3b82f6'
+  return (
+    <span style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px', border: `1px solid ${color}50`, color, fontWeight: 500 }}>
+      {status}
+    </span>
   )
 }
 
