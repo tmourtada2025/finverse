@@ -101,7 +101,7 @@ export default function Dashboard() {
           {/* Theme toggle */}
           <button
             onClick={() => setDark(d => !d)}
-            style={{ background: 'none', border: `1px solid ${t.border}`, color: t.muted, borderRadius: '6px', padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            style={{ background: 'none', border: `1px solid ${dark ? '#f59e0b40' : '#6366f140'}`, color: dark ? '#f59e0b' : '#6366f1', borderRadius: '6px', padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           >
             {dark ? <SunIcon /> : <MoonIcon />}
           </button>
