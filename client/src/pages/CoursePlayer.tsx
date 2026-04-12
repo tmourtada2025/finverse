@@ -22,7 +22,7 @@ export default function CoursePlayer() {
   const [lessonCompleted, setLessonCompleted] = useState(false)
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) setLocation('/login')
+    if (!loading && !isAuthenticated) window.location.href = '/login'
   }, [loading, isAuthenticated])
 
   useEffect(() => {
@@ -164,11 +164,19 @@ export default function CoursePlayer() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <Link href="/dashboard">
-            <span className="text-white font-bold text-lg tracking-tight cursor-pointer">
-              Fin<span className="font-light">Verse</span>
-            </span>
-          </Link>
+          <button
+            onClick={() => { window.location.href = '/dashboard' }}
+            className="text-[#555] hover:text-white transition-colors text-sm flex items-center gap-1"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
+            </svg>
+            Dashboard
+          </button>
+          <span className="text-[#333]">|</span>
+          <span className="text-white font-bold text-lg tracking-tight">
+            Fin<span className="font-light">Verse</span>
+          </span>
           {course && (
             <>
               <span className="text-[#333]">/</span>
