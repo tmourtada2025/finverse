@@ -13,9 +13,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      setLocation('/login')
+      window.location.href = '/login'
     }
-  }, [loading, isAuthenticated, setLocation])
+  }, [loading, isAuthenticated])
 
   useEffect(() => {
     if (!user) return
@@ -35,7 +35,6 @@ export default function Dashboard() {
 
   async function handleSignOut() {
     await signOut()
-    setLocation('/')
   }
 
   if (loading) {
