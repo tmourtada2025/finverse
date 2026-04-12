@@ -11,8 +11,10 @@ export default function Admin() {
   const [tab, setTab] = useState<Tab>('courses')
 
   useEffect(() => {
-    if (!loading && (!isAuthenticated || !isAdmin)) {
-      setLocation('/')
+    if (!loading && !isAuthenticated) {
+      window.location.href = '/login'
+    } else if (!loading && isAuthenticated && !isAdmin) {
+      window.location.href = '/dashboard'
     }
   }, [loading, isAuthenticated, isAdmin])
 
@@ -39,7 +41,7 @@ export default function Admin() {
           <button onClick={() => setLocation('/dashboard')} className="text-[#555] text-sm hover:text-white transition-colors">
             Student view
           </button>
-          <button onClick={async () => { await signOut(); setLocation('/') }} className="text-[#555] text-sm hover:text-white transition-colors">
+          <button onClick={signOut} className="text-[#555] text-sm hover:text-white transition-colors">
             Sign out
           </button>
         </div>
