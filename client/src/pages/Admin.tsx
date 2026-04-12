@@ -728,9 +728,17 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
           )}
           {contentType === 'slides' && (
             <div>
-              <input value={contentUrl} onChange={e => setContentUrl(e.target.value)} placeholder="https://docs.google.com/presentation/d/ID/embed"
-                style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const, marginBottom: '8px' }} />
-              {contentUrl && <iframe src={contentUrl} style={{ width: '100%', height: '360px', border: `1px solid ${t.border}`, borderRadius: '8px' }} allowFullScreen />}
+              <AdminFileUploader bucket="lesson-pdfs" accept=".pptx,.ppt,.odp" icon="🖥️" label="PowerPoint" maxMB={50} value={contentUrl} onChange={setContentUrl} t={t} />
+              {contentUrl && contentUrl.startsWith('http') && (
+                <iframe
+                  src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(contentUrl)}`}
+                  style={{ width: '100%', height: '400px', border: `1px solid ${t.border}`, borderRadius: '8px', marginTop: '10px' }}
+                  allowFullScreen
+                />
+              )}
+              <p style={{ fontSize: '0.7rem', color: t.muted, marginTop: '6px' }}>
+                Tip: For best results, upload to OneDrive and paste the embed URL, or use Google Slides embed URL.
+              </p>
             </div>
           )}
           {contentType === 'excel' && (
