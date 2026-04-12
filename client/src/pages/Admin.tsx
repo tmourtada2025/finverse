@@ -269,6 +269,8 @@ function CourseList({ t, onSelect }: { t: any; onSelect: (c: Course) => void }) 
               <button onClick={(e) => togglePublish(e, course)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>
                 {course.is_published ? 'Unpublish' : 'Publish'}
               </button>
+              <button onClick={async e => { e.stopPropagation(); if (!confirm(`Delete this course? This cannot be undone.`)) return; await supabase.from('courses').delete().eq('id', course.id); setCourses(p => p.filter(c => c.id !== course.id)) }}
+                style={{ fontSize: '0.75rem', color: '#ef444490', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
               <span style={{ fontSize: '0.78rem', color: t.muted }}>Edit →</span>
             </div>
           </div>
@@ -592,6 +594,7 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
 function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: any }) {
   const ref = useRef<HTMLDivElement>(null)
   const [dir, setDir] = useState<'ltr' | 'rtl'>('ltr')
+  const [font, setFont] = useState('inherit')
 
   useEffect(() => {
     if (!document.getElementById('arabic-font')) {
@@ -605,40 +608,91 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
     if (ref.current && !ref.current.innerHTML) ref.current.innerHTML = value || ''
   }, [])
 
-  useEffect(() => {
-    if (ref.current) ref.current.dir = dir
-  }, [dir])
-
-  function exec(cmd: string, val?: string) { ref.current?.focus(); document.execCommand(cmd, false, val); sync() }
+  function exec(cmd: string, val?: string) {
+    ref.current?.focus()
+    document.execCommand(cmd, false, val ?? undefined)
+    setTimeout(sync, 0)
+  }
   function sync() { if (ref.current) onChange(ref.current.innerHTML) }
 
-  const btn = { padding: '3px 7px', fontSize: '0.72rem', border: `1px solid ${t.border}`, borderRadius: '4px', cursor: 'pointer', background: 'transparent', color: t.muted, lineHeight: 1.2 }
+  function toggleDir() {
+    const newDir = dir === 'ltr' ? 'rtl' : 'ltr'
+    setDir(newDir)
+    if (ref.current) {
+      ref.current.dir = newDir
+      ref.current.style.direction = newDir
+      ref.current.style.textAlign = newDir === 'rtl' ? 'right' : 'left'
+    }
+  }
+
+  function insertList(ordered: boolean) {
+    ref.current?.focus()
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return
+    const range = sel.getRangeAt(0)
+    const selected = range.toString()
+    const tag = ordered ? 'ol' : 'ul'
+    if (selected) {
+      const lines = selected.split('\n').filter(l => l.trim())
+      const html = `<${tag} style="padding-left:1.5em;margin:0.5em 0">${lines.map(l => `<li>${l}</li>`).join('')}</${tag}>`
+      document.execCommand('insertHTML', false, html)
+    } else {
+      document.execCommand('insertHTML', false, `<${tag} style="padding-left:1.5em;margin:0.5em 0"><li><br></li></${tag}>`)
+    }
+    setTimeout(sync, 0)
+  }
+
+  function applyFont(fontFamily: string) {
+    setFont(fontFamily)
+    if (ref.current) ref.current.style.fontFamily = fontFamily
+    sync()
+  }
+
+  const btn = (extra?: any) => ({ padding: '3px 7px', fontSize: '0.72rem', border: `1px solid ${t.border}`, borderRadius: '4px', cursor: 'pointer', background: 'transparent', color: t.muted, lineHeight: 1.2, ...extra })
+  const sep = { width: 1, background: t.border, alignSelf: 'stretch' as const, margin: '0 2px' }
+
+  const fonts = [
+    { label: 'Default', value: 'inherit' },
+    { label: 'Serif', value: 'Georgia, serif' },
+    { label: 'Sans', value: 'Arial, sans-serif' },
+    { label: 'Cairo (AR)', value: 'Cairo, sans-serif' },
+    { label: 'Amiri (AR)', value: 'Amiri, serif' },
+  ]
 
   return (
     <div style={{ border: `1px solid ${t.border}`, borderRadius: '8px', overflow: 'hidden' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '3px', padding: '7px 10px', borderBottom: `1px solid ${t.border}`, backgroundColor: t.surface, alignItems: 'center' }}>
-        <button type="button" onClick={() => exec('undo')} style={btn}>↩</button>
-        <button type="button" onClick={() => exec('redo')} style={btn}>↪</button>
-        <span style={{ width: 1, background: t.border, alignSelf: 'stretch', margin: '0 2px' }} />
-        <button type="button" onClick={() => exec('bold')} style={btn}><b>B</b></button>
-        <button type="button" onClick={() => exec('italic')} style={btn}><i>I</i></button>
-        <button type="button" onClick={() => exec('underline')} style={btn}><u>U</u></button>
-        <button type="button" onClick={() => exec('strikeThrough')} style={btn}><s>S</s></button>
-        <span style={{ width: 1, background: t.border, alignSelf: 'stretch', margin: '0 2px' }} />
-        <button type="button" onClick={() => exec('formatBlock', 'h2')} style={btn}>H2</button>
-        <button type="button" onClick={() => exec('formatBlock', 'h3')} style={btn}>H3</button>
-        <button type="button" onClick={() => exec('formatBlock', 'p')} style={btn}>¶</button>
-        <span style={{ width: 1, background: t.border, alignSelf: 'stretch', margin: '0 2px' }} />
-        <button type="button" onClick={() => exec('justifyLeft')} style={btn}>⬅</button>
-        <button type="button" onClick={() => exec('justifyCenter')} style={btn}>☰</button>
-        <button type="button" onClick={() => exec('justifyRight')} style={btn}>➡</button>
-        <span style={{ width: 1, background: t.border, alignSelf: 'stretch', margin: '0 2px' }} />
-        <button type="button" onClick={() => exec('insertUnorderedList')} style={btn}>• List</button>
-        <button type="button" onClick={() => exec('insertOrderedList')} style={btn}>1.</button>
-        <button type="button" onClick={() => setDir(d => d === 'ltr' ? 'rtl' : 'ltr')} style={{ ...btn, color: dir === 'rtl' ? t.amber : t.muted, borderColor: dir === 'rtl' ? t.amber + '60' : t.border }}>{dir.toUpperCase()}</button>
+        <button type="button" onClick={() => exec('undo')} style={btn()}>↩</button>
+        <button type="button" onClick={() => exec('redo')} style={btn()}>↪</button>
+        <span style={sep} />
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('bold') }} style={btn()}><b>B</b></button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('italic') }} style={btn()}><i>I</i></button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('underline') }} style={btn()}><u>U</u></button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('strikeThrough') }} style={btn()}><s>S</s></button>
+        <span style={sep} />
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'h2') }} style={btn()}>H2</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'h3') }} style={btn()}>H3</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'p') }} style={btn()}>¶</button>
+        <span style={sep} />
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('justifyLeft') }} style={btn()}>⬅</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('justifyCenter') }} style={btn()}>☰</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('justifyRight') }} style={btn()}>➡</button>
+        <span style={sep} />
+        <button type="button" onMouseDown={e => { e.preventDefault(); insertList(false) }} style={btn()}>• List</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); insertList(true) }} style={btn()}>1.</button>
+        <span style={sep} />
+        <button type="button" onMouseDown={e => { e.preventDefault(); toggleDir() }}
+          style={btn({ color: dir === 'rtl' ? t.amber : t.muted, borderColor: dir === 'rtl' ? t.amber + '60' : t.border })}>
+          {dir.toUpperCase()}
+        </button>
+        <span style={sep} />
+        <select value={font} onChange={e => applyFont(e.target.value)}
+          style={{ fontSize: '0.72rem', padding: '3px 5px', border: `1px solid ${t.border}`, borderRadius: '4px', backgroundColor: t.bg, color: t.muted, cursor: 'pointer' }}>
+          {fonts.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+        </select>
       </div>
-      <div ref={ref} contentEditable suppressContentEditableWarning onInput={sync} onBlur={sync} dir={dir}
-        style={{ minHeight: '160px', padding: '12px', outline: 'none', backgroundColor: t.bg, color: t.text, fontSize: '0.875rem', lineHeight: 1.7, direction: dir }} />
+      <div ref={ref} contentEditable suppressContentEditableWarning onInput={sync} onBlur={sync}
+        style={{ minHeight: '160px', padding: '12px', outline: 'none', backgroundColor: t.bg, color: t.text, fontSize: '0.875rem', lineHeight: 1.7, fontFamily: font, direction: dir, textAlign: dir === 'rtl' ? 'right' : 'left' }} />
     </div>
   )
 }
