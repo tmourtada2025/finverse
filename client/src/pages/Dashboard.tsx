@@ -1,320 +1,463 @@
-import { useEffect, useState } from 'react'
-import { useAuth } from '@/lib/auth'
-import { supabase, Course, Enrollment } from '@/lib/supabase'
-import { Link } from 'wouter'
+import { useState, useRef, useCallback } from 'react'
+import { supabase, Lesson } from '@/lib/supabase'
 
-type EnrollmentWithCourse = Enrollment & { course: Course }
-type Section = 'courses' | 'catalogue' | 'profile'
+type ContentType = 'text' | 'video' | 'audio' | 'quiz'
 
-function SunIcon() {
+interface QuizQuestion {
+  question: string
+  options: string[]
+  correct_index: number
+  explanation: string
+}
+
+interface LessonEditorProps {
+  lesson: Lesson
+  t: any
+  onClose: () => void
+}
+
+// ─── Toolbar button ───────────────────────────────────────────────────────────
+function ToolBtn({ label, onClick, active = false, t }: { label: string; onClick: () => void; active?: boolean; t: any }) {
   return (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-    </svg>
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      style={{
+        padding: '4px 8px', fontSize: '0.75rem', fontWeight: active ? 700 : 400,
+        border: `1px solid ${active ? t.text : t.border}`,
+        borderRadius: '4px', cursor: 'pointer', background: active ? t.text : 'transparent',
+        color: active ? t.bg : t.muted, minWidth: '28px', lineHeight: 1.2,
+      }}
+    >
+      {label}
+    </button>
   )
 }
 
-function MoonIcon() {
+// ─── Rich text editor ─────────────────────────────────────────────────────────
+function RichEditor({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: any }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  function wrap(before: string, after: string) {
+    const el = ref.current
+    if (!el) return
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const selected = value.slice(start, end)
+    const newVal = value.slice(0, start) + before + selected + after + value.slice(end)
+    onChange(newVal)
+    setTimeout(() => {
+      el.focus()
+      el.setSelectionRange(start + before.length, end + before.length)
+    }, 0)
+  }
+
+  function insertLine(prefix: string) {
+    const el = ref.current
+    if (!el) return
+    const start = el.selectionStart
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1
+    const newVal = value.slice(0, lineStart) + prefix + value.slice(lineStart)
+    onChange(newVal)
+    setTimeout(() => { el.focus(); el.setSelectionRange(start + prefix.length, start + prefix.length) }, 0)
+  }
+
   return (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-    </svg>
-  )
-}
-
-function BellIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-    </svg>
-  )
-}
-
-export default function Dashboard() {
-  const { user, profile, isAuthenticated, isAdmin, loading } = useAuth()
-  const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([])
-  const [catalogue, setCatalogue] = useState<Course[]>([])
-  const [section, setSection] = useState<Section>('courses')
-  const [dark, setDark] = useState(true)
-  const [profileForm, setProfileForm] = useState({ full_name: '', email: '' })
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    if (!loading && !isAuthenticated) window.location.href = '/login'
-  }, [loading, isAuthenticated])
-
-  useEffect(() => {
-    if (user) { fetchEnrollments(); fetchCatalogue() }
-  }, [user])
-
-  useEffect(() => {
-    if (profile) setProfileForm({ full_name: profile.full_name || '', email: profile.email || '' })
-  }, [profile])
-
-  async function fetchEnrollments() {
-    const { data } = await supabase
-      .from('enrollments').select('*, course:courses(*)')
-      .eq('user_id', user!.id).order('enrolled_at', { ascending: false })
-    setEnrollments((data as EnrollmentWithCourse[]) || [])
-  }
-
-  async function fetchCatalogue() {
-    const { data } = await supabase.from('courses').select('*').eq('is_published', true).order('position')
-    setCatalogue(data || [])
-  }
-
-  async function saveProfile() {
-    setSaving(true)
-    await supabase.from('profiles').update({ full_name: profileForm.full_name }).eq('id', user!.id)
-    setSaving(false); setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  if (loading && !user) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center ${dark ? 'bg-[#0a0a0a]' : 'bg-[#f5f5f0]'}`}>
-        <div className="w-8 h-8 border-2 border-current border-t-transparent rounded-full animate-spin opacity-40" />
+    <div style={{ border: `1px solid ${t.border}`, borderRadius: '8px', overflow: 'hidden' }}>
+      {/* Toolbar */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', padding: '8px 10px', borderBottom: `1px solid ${t.border}`, backgroundColor: t.surface }}>
+        <ToolBtn label="B" onClick={() => wrap('**', '**')} t={t} />
+        <ToolBtn label="I" onClick={() => wrap('_', '_')} t={t} />
+        <ToolBtn label="H1" onClick={() => insertLine('# ')} t={t} />
+        <ToolBtn label="H2" onClick={() => insertLine('## ')} t={t} />
+        <ToolBtn label="H3" onClick={() => insertLine('### ')} t={t} />
+        <span style={{ width: '1px', backgroundColor: t.border, margin: '0 4px' }} />
+        <ToolBtn label="• List" onClick={() => insertLine('- ')} t={t} />
+        <ToolBtn label="1. List" onClick={() => insertLine('1. ')} t={t} />
+        <ToolBtn label="Quote" onClick={() => insertLine('> ')} t={t} />
+        <span style={{ width: '1px', backgroundColor: t.border, margin: '0 4px' }} />
+        <ToolBtn label="Link" onClick={() => wrap('[', '](url)')} t={t} />
+        <ToolBtn label="---" onClick={() => { const el = ref.current; if (!el) return; const pos = el.selectionStart; onChange(value.slice(0, pos) + '\n\n---\n\n' + value.slice(pos)) }} t={t} />
       </div>
-    )
+      {/* Editor */}
+      <textarea
+        ref={ref}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        rows={14}
+        placeholder="Write your lesson content here...&#10;&#10;# Heading&#10;&#10;Paragraph text. **Bold** and _italic_ supported.&#10;&#10;- List item&#10;- Another item"
+        style={{
+          width: '100%', backgroundColor: t.bg, border: 'none', color: t.text,
+          padding: '14px', fontSize: '0.875rem', outline: 'none', resize: 'vertical',
+          boxSizing: 'border-box', fontFamily: 'monospace', lineHeight: 1.7, minHeight: '280px',
+        }}
+      />
+    </div>
+  )
+}
+
+// ─── Quiz builder ─────────────────────────────────────────────────────────────
+function QuizBuilder({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: any }) {
+  let questions: QuizQuestion[] = []
+  try { questions = JSON.parse(value || '[]') } catch { questions = [] }
+
+  function update(qs: QuizQuestion[]) {
+    onChange(JSON.stringify(qs, null, 2))
   }
 
-  const t = dark
-    ? { bg: '#0a0a0a', surface: '#111', border: '#1a1a1a', borderHover: '#2a2a2a', text: '#fff', muted: '#888', dim: '#444', accent: '#fff', accentText: '#000' }
-    : { bg: '#f5f5f0', surface: '#fff', border: '#e5e5e0', borderHover: '#d0d0c8', text: '#111', muted: '#666', dim: '#aaa', accent: '#111', accentText: '#fff' }
+  function addQuestion() {
+    update([...questions, { question: '', options: ['', '', '', ''], correct_index: 0, explanation: '' }])
+  }
 
-  const navItems: { id: Section; label: string; icon: string }[] = [
-    { id: 'courses', label: 'My Courses', icon: '📘' },
-    { id: 'catalogue', label: 'Catalogue', icon: '🧭' },
-    { id: 'profile', label: 'Profile', icon: '👤' },
-  ]
+  function removeQuestion(qi: number) {
+    update(questions.filter((_, i) => i !== qi))
+  }
+
+  function updateQuestion(qi: number, field: keyof QuizQuestion, val: any) {
+    const qs = [...questions]
+    qs[qi] = { ...qs[qi], [field]: val }
+    update(qs)
+  }
+
+  function updateOption(qi: number, oi: number, val: string) {
+    const qs = [...questions]
+    const opts = [...qs[qi].options]
+    opts[oi] = val
+    qs[qi] = { ...qs[qi], options: opts }
+    update(qs)
+  }
+
+  function addOption(qi: number) {
+    const qs = [...questions]
+    qs[qi] = { ...qs[qi], options: [...qs[qi].options, ''] }
+    update(qs)
+  }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: t.bg, color: t.text, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-
-      {/* Top nav */}
-      <nav style={{ borderBottom: `1px solid ${t.border}`, padding: '0 2rem', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, backgroundColor: t.bg, zIndex: 50 }}>
-        <span style={{ fontWeight: 700, fontSize: '1.1rem', letterSpacing: '-0.02em' }}>
-          Fin<span style={{ fontWeight: 300 }}>Verse</span>
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {/* Theme toggle */}
-          <button
-            onClick={() => setDark(d => !d)}
-            style={{ background: 'none', border: `1px solid ${t.border}`, color: t.muted, borderRadius: '6px', padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-          >
-            {dark ? <SunIcon /> : <MoonIcon />}
-          </button>
-
-          {/* Bell */}
-          <button style={{ background: 'none', border: 'none', color: t.muted, cursor: 'pointer', position: 'relative', padding: '4px' }}>
-            <BellIcon />
-            <span style={{ position: 'absolute', top: 2, right: 2, width: 6, height: 6, borderRadius: '50%', backgroundColor: '#ef4444' }} />
-          </button>
-
-          {/* User */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>{profile?.full_name || 'Student'}</span>
-            <span style={{ fontSize: '0.7rem', color: t.muted }}>{profile?.email || user?.email}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {questions.map((q, qi) => (
+        <div key={qi} style={{ border: `1px solid ${t.border}`, borderRadius: '10px', padding: '1rem', backgroundColor: t.surface }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+            <span style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Question {qi + 1}</span>
+            <button onClick={() => removeQuestion(qi)} style={{ fontSize: '0.75rem', color: '#ef444470', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
           </div>
 
-          {isAdmin && (
-            <Link href="/admin">
-              <span style={{ fontSize: '0.75rem', color: t.muted, cursor: 'pointer', padding: '4px 10px', border: `1px solid ${t.border}`, borderRadius: '6px' }}>
-                Admin
-              </span>
-            </Link>
-          )}
+          <textarea
+            value={q.question}
+            onChange={e => updateQuestion(qi, 'question', e.target.value)}
+            placeholder="Enter question..."
+            rows={2}
+            style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '6px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box', marginBottom: '10px', fontFamily: 'inherit' }}
+          />
 
-          <button
-            onClick={() => supabase.auth.signOut().then(() => { window.location.href = '/' })}
-            style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}
-          >
-            Sign out
-          </button>
-        </div>
-      </nav>
-
-      <div style={{ display: 'flex', maxWidth: '1200px', margin: '0 auto', padding: '2rem', gap: '1.5rem' }}>
-
-        {/* Sidebar */}
-        <aside style={{ width: '200px', flexShrink: 0 }}>
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {navItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setSection(item.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '10px 14px', borderRadius: '8px', border: 'none',
-                  cursor: 'pointer', textAlign: 'left', fontSize: '0.875rem',
-                  fontWeight: section === item.id ? 500 : 400,
-                  backgroundColor: section === item.id ? t.surface : 'transparent',
-                  color: section === item.id ? t.text : t.muted,
-                  transition: 'all 0.15s',
-                }}
-              >
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </nav>
-        </aside>
-
-        {/* Main content */}
-        <main style={{ flex: 1, minWidth: 0 }}>
-
-          {/* MY COURSES */}
-          {section === 'courses' && (
-            <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>My Courses</h2>
-              {enrollments.length === 0 ? (
-                <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '3rem', textAlign: 'center' }}>
-                  <p style={{ color: t.muted, marginBottom: '0.5rem' }}>No courses yet.</p>
-                  <p style={{ color: t.dim, fontSize: '0.8rem' }}>Once you purchase a course, it will appear here.</p>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
-                  {enrollments.map(e => (
-                    <CourseCard key={e.id} enrollment={e} dark={dark} t={t} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* CATALOGUE */}
-          {section === 'catalogue' && (
-            <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>Course Catalogue</h2>
-              {catalogue.length === 0 ? (
-                <p style={{ color: t.muted }}>No courses available yet.</p>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
-                  {catalogue.map(course => {
-                    const enrolled = enrollments.some(e => e.course_id === course.id)
-                    return (
-                      <div key={course.id} style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '1.25rem', backgroundColor: t.surface }}>
-                        <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>{course.title}</h3>
-                        {course.description && <p style={{ fontSize: '0.75rem', color: t.muted, marginBottom: '1rem', lineHeight: 1.5 }}>{course.description.slice(0, 80)}…</p>}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          {enrolled ? (
-                            <EnrolledBadge enrollment={enrollments.find(e => e.course_id === course.id)!} t={t} />
-                          ) : (
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>${course.price}</span>
-                          )}
-                          {enrolled ? (
-                            <Link href={`/learn/${course.id}`}>
-                              <span style={{ fontSize: '0.75rem', padding: '5px 12px', borderRadius: '6px', border: `1px solid ${t.border}`, cursor: 'pointer', color: t.text }}>
-                                Open →
-                              </span>
-                            </Link>
-                          ) : (
-                            <a href="/blueprint" style={{ fontSize: '0.75rem', padding: '5px 12px', borderRadius: '6px', backgroundColor: t.accent, color: t.accentText, textDecoration: 'none' }}>Enrol →</a>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* PROFILE */}
-          {section === 'profile' && (
-            <div style={{ maxWidth: '480px' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>Profile</h2>
-              <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '1.5rem', backgroundColor: t.surface }}>
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ fontSize: '0.75rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }}>Full name</label>
-                  <input
-                    value={profileForm.full_name}
-                    onChange={e => setProfileForm(p => ({ ...p, full_name: e.target.value }))}
-                    style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' }}
-                  />
-                </div>
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{ fontSize: '0.75rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }}>Email</label>
-                  <input
-                    value={profileForm.email}
-                    disabled
-                    style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.dim, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box', cursor: 'not-allowed' }}
-                  />
-                  <p style={{ fontSize: '0.7rem', color: t.dim, marginTop: '4px' }}>Email cannot be changed</p>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <button
-                    onClick={saveProfile}
-                    disabled={saving || saved}
-                    style={{ backgroundColor: saved ? '#10b981' : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '0.875rem', fontWeight: 500, cursor: saved ? 'default' : 'pointer', opacity: saving ? 0.6 : 1, transition: 'all 0.2s' }}
-                  >
-                    {saved ? '✓ Changes saved' : saving ? 'Saving…' : 'Save changes'}
-                  </button>
-                  {saved && (
-                    <button onClick={() => setSaved(false)} style={{ fontSize: '0.8rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                      Edit again
-                    </button>
-                  )}
-                </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+            {q.options.map((opt, oi) => (
+              <div key={oi} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="radio"
+                  name={`correct-${qi}`}
+                  checked={q.correct_index === oi}
+                  onChange={() => updateQuestion(qi, 'correct_index', oi)}
+                  style={{ cursor: 'pointer', accentColor: '#10b981' }}
+                />
+                <input
+                  value={opt}
+                  onChange={e => updateOption(qi, oi, e.target.value)}
+                  placeholder={`Option ${oi + 1}`}
+                  style={{ flex: 1, backgroundColor: t.bg, border: `1px solid ${q.correct_index === oi ? '#10b98150' : t.border}`, color: t.text, borderRadius: '6px', padding: '7px 10px', fontSize: '0.8rem', outline: 'none' }}
+                />
               </div>
+            ))}
+            <button onClick={() => addOption(qi)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: '4px 0' }}>+ Add option</button>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '0.7rem', color: t.muted, display: 'block', marginBottom: '4px' }}>Explanation (shown after answering)</label>
+            <input
+              value={q.explanation}
+              onChange={e => updateQuestion(qi, 'explanation', e.target.value)}
+              placeholder="Why is this the correct answer?"
+              style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '6px', padding: '7px 10px', fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+        </div>
+      ))}
+
+      <button
+        onClick={addQuestion}
+        style={{ border: `1px dashed ${t.border}`, borderRadius: '10px', padding: '12px', fontSize: '0.8rem', color: t.muted, background: 'none', cursor: 'pointer', width: '100%' }}
+      >
+        + Add question
+      </button>
+    </div>
+  )
+}
+
+// ─── Audio uploader ───────────────────────────────────────────────────────────
+function AudioUploader({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: any }) {
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('audio/')) { alert('Please select an audio file.'); return }
+    if (file.size > 100 * 1024 * 1024) { alert('File must be under 100MB.'); return }
+
+    setUploading(true)
+    setProgress(10)
+
+    const filename = `${Date.now()}-${file.name.replace(/[^a-z0-9.-]/gi, '_')}`
+    const { data, error } = await supabase.storage
+      .from('lesson-audio')
+      .upload(filename, file, { contentType: file.type, upsert: false })
+
+    setProgress(90)
+
+    if (error) {
+      alert('Upload failed: ' + error.message)
+      setUploading(false)
+      setProgress(0)
+      return
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('lesson-audio').getPublicUrl(filename)
+    onChange(publicUrl)
+    setUploading(false)
+    setProgress(100)
+  }
+
+  return (
+    <div>
+      {value ? (
+        <div style={{ border: `1px solid ${t.border}`, borderRadius: '8px', padding: '1rem', backgroundColor: t.surface }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <span style={{ fontSize: '0.8rem', color: t.muted }}>Audio uploaded</span>
+            <button onClick={() => onChange('')} style={{ fontSize: '0.75rem', color: '#ef444470', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+          </div>
+          <audio controls style={{ width: '100%' }}>
+            <source src={value} />
+          </audio>
+        </div>
+      ) : (
+        <div
+          onClick={() => fileRef.current?.click()}
+          style={{ border: `2px dashed ${t.border}`, borderRadius: '8px', padding: '2rem', textAlign: 'center', cursor: 'pointer', transition: 'all 0.15s' }}
+        >
+          <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🎵</div>
+          <p style={{ fontSize: '0.875rem', color: t.text, marginBottom: '4px' }}>Click to upload audio</p>
+          <p style={{ fontSize: '0.75rem', color: t.muted }}>MP3, WAV, M4A — max 100MB</p>
+          {uploading && (
+            <div style={{ marginTop: '12px' }}>
+              <div style={{ height: '4px', backgroundColor: t.border, borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${progress}%`, backgroundColor: '#3b82f6', transition: 'width 0.3s' }} />
+              </div>
+              <p style={{ fontSize: '0.75rem', color: t.muted, marginTop: '6px' }}>Uploading…</p>
             </div>
           )}
+        </div>
+      )}
+      <input ref={fileRef} type="file" accept="audio/*" onChange={handleFile} style={{ display: 'none' }} />
 
-        </main>
+      {/* Also allow URL */}
+      <div style={{ marginTop: '10px' }}>
+        <label style={{ fontSize: '0.7rem', color: t.muted, display: 'block', marginBottom: '4px' }}>Or paste audio URL</label>
+        <input
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder="https://..."
+          style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '9px 12px', fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box' }}
+        />
       </div>
     </div>
   )
 }
 
+// ─── Main LessonEditor ────────────────────────────────────────────────────────
+export default function LessonEditor({ lesson, t, onClose }: LessonEditorProps) {
+  const [title, setTitle] = useState(lesson.title)
+  const [contentType, setContentType] = useState<ContentType>(lesson.content_type as ContentType)
+  const [contentText, setContentText] = useState(lesson.content_text || '')
+  const [contentUrl, setContentUrl] = useState(lesson.content_url || '')
+  const [durationMinutes, setDurationMinutes] = useState(lesson.duration_minutes || 0)
+  const [isPublished, setIsPublished] = useState(lesson.is_published)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
-function EnrolledBadge({ enrollment, t }: { enrollment: EnrollmentWithCourse; t: any }) {
-  const pct = 0 // simplified - just show enrolled status
-  const status = enrollment.completed_at ? 'Completed' : 'Enrolled'
-  const color = enrollment.completed_at ? '#10b981' : '#3b82f6'
-  return (
-    <span style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px', border: `1px solid ${color}50`, color, fontWeight: 500 }}>
-      {status}
-    </span>
-  )
-}
-
-function CourseCard({ enrollment, dark, t }: { enrollment: EnrollmentWithCourse; dark: boolean; t: any }) {
-  const [progress, setProgress] = useState<number | null>(null)
-
-  useEffect(() => { fetchProgress() }, [])
-
-  async function fetchProgress() {
-    const { data: mods } = await supabase.from('modules').select('id').eq('course_id', enrollment.course_id)
-    const modIds = mods?.map(m => m.id) || []
-    if (!modIds.length) { setProgress(0); return }
-    const { count: total } = await supabase.from('lessons').select('id', { count: 'exact', head: true }).in('module_id', modIds)
-    const { count: done } = await supabase.from('lesson_progress').select('id', { count: 'exact', head: true }).eq('enrollment_id', enrollment.id).eq('completed', true)
-    setProgress(total && total > 0 ? Math.round(((done || 0) / total) * 100) : 0)
+  async function save() {
+    setSaving(true)
+    await supabase.from('lessons').update({
+      title,
+      content_type: contentType,
+      content_text: contentText || null,
+      content_url: contentUrl || null,
+      duration_minutes: durationMinutes || null,
+      is_published: isPublished,
+    }).eq('id', lesson.id)
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
-  const pct = progress ?? 0
+  const tabs: { id: ContentType; label: string; icon: string }[] = [
+    { id: 'text', label: 'Text', icon: '📝' },
+    { id: 'video', label: 'Video', icon: '🎬' },
+    { id: 'audio', label: 'Audio', icon: '🎵' },
+    { id: 'quiz', label: 'Quiz', icon: '❓' },
+  ]
 
   return (
-    <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '1.25rem', backgroundColor: t.surface, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-      <h3 style={{ fontSize: '0.875rem', fontWeight: 600, lineHeight: 1.4 }}>{enrollment.course.title}</h3>
-      <p style={{ fontSize: '0.7rem', color: t.muted }}>
-        Started {new Date(enrollment.enrolled_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-      </p>
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <div style={{ backgroundColor: t.bg, border: `1px solid ${t.border}`, borderRadius: '16px', width: '100%', maxWidth: '860px', maxHeight: '92vh', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Progress bar */}
-      <div>
-        <div style={{ height: '4px', backgroundColor: dark ? '#1a1a1a' : '#e5e5e0', borderRadius: '2px', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : t.accent, borderRadius: '2px', transition: 'width 0.3s' }} />
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: `1px solid ${t.border}`, flexShrink: 0 }}>
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Edit lesson</h3>
+            <p style={{ fontSize: '0.75rem', color: t.muted, margin: '2px 0 0' }}>{lesson.title}</p>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: t.muted, cursor: 'pointer', fontSize: '1.5rem', lineHeight: 1, padding: '4px 8px' }}>×</button>
         </div>
-        <p style={{ fontSize: '0.7rem', color: t.muted, marginTop: '4px' }}>{pct}% complete</p>
-      </div>
 
-      <Link href={`/learn/${enrollment.course_id}`}>
-        <span style={{ display: 'block', textAlign: 'center', padding: '8px', borderRadius: '7px', border: `1px solid ${t.border}`, fontSize: '0.75rem', cursor: 'pointer', color: t.text, transition: 'all 0.15s' }}>
-          {pct === 0 ? 'Start' : pct === 100 ? 'Review' : 'Continue'} →
-        </span>
-      </Link>
+        {/* Body */}
+        <div style={{ padding: '1.5rem', overflow: 'auto', flex: 1 }}>
+
+          {/* Title + Duration row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div>
+              <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }}>Title</label>
+              <input
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }}>Duration (min)</label>
+              <input
+                type="number"
+                value={durationMinutes}
+                onChange={e => setDurationMinutes(Number(e.target.value))}
+                min={0}
+                style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+          </div>
+
+          {/* Content type tabs */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '8px' }}>Content type</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setContentType(tab.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '8px 16px', borderRadius: '8px', border: `1px solid ${contentType === tab.id ? t.text : t.border}`,
+                    backgroundColor: contentType === tab.id ? t.text : 'transparent',
+                    color: contentType === tab.id ? t.bg : t.muted,
+                    fontSize: '0.8rem', fontWeight: contentType === tab.id ? 500 : 400,
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Content area by type */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            {contentType === 'text' && (
+              <RichEditor value={contentText} onChange={setContentText} t={t} />
+            )}
+
+            {contentType === 'video' && (
+              <div>
+                <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }}>YouTube / Vimeo embed URL</label>
+                <input
+                  value={contentUrl}
+                  onChange={e => setContentUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/embed/VIDEO_ID"
+                  style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box', marginBottom: '8px' }}
+                />
+                <p style={{ fontSize: '0.72rem', color: t.muted, lineHeight: 1.5 }}>
+                  YouTube: use <code style={{ backgroundColor: t.surface, padding: '1px 5px', borderRadius: '3px' }}>youtube.com/embed/VIDEO_ID</code> · 
+                  Vimeo: use <code style={{ backgroundColor: t.surface, padding: '1px 5px', borderRadius: '3px' }}>player.vimeo.com/video/VIDEO_ID</code>
+                </p>
+                {contentUrl && contentUrl.includes('embed') && (
+                  <div style={{ marginTop: '12px', aspectRatio: '16/9', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${t.border}` }}>
+                    <iframe src={contentUrl} style={{ width: '100%', height: '100%', border: 'none' }} allowFullScreen />
+                  </div>
+                )}
+                <div style={{ marginTop: '12px' }}>
+                  <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }}>Transcript / Notes (optional)</label>
+                  <textarea
+                    value={contentText}
+                    onChange={e => setContentText(e.target.value)}
+                    rows={4}
+                    placeholder="Optional transcript or lesson notes..."
+                    style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {contentType === 'audio' && (
+              <div>
+                <AudioUploader value={contentUrl} onChange={setContentUrl} t={t} />
+                <div style={{ marginTop: '12px' }}>
+                  <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }}>Transcript / Notes (optional)</label>
+                  <textarea
+                    value={contentText}
+                    onChange={e => setContentText(e.target.value)}
+                    rows={4}
+                    placeholder="Optional transcript or lesson notes..."
+                    style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {contentType === 'quiz' && (
+              <QuizBuilder value={contentText} onChange={setContentText} t={t} />
+            )}
+          </div>
+
+          {/* Published toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <input
+              type="checkbox"
+              id="lesson-published"
+              checked={isPublished}
+              onChange={e => setIsPublished(e.target.checked)}
+              style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#10b981' }}
+            />
+            <label htmlFor="lesson-published" style={{ fontSize: '0.875rem', color: t.muted, cursor: 'pointer' }}>
+              Published — visible to enrolled students
+            </label>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', padding: '1rem 1.5rem', borderTop: `1px solid ${t.border}`, flexShrink: 0 }}>
+          <button onClick={onClose} style={{ fontSize: '0.875rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '10px 20px', cursor: 'pointer' }}>
+            Close
+          </button>
+          <button
+            onClick={save}
+            disabled={saving}
+            style={{ backgroundColor: saved ? '#10b981' : t.text, color: saved ? '#fff' : t.bg, border: 'none', borderRadius: '8px', padding: '10px 24px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1, minWidth: '120px', transition: 'background-color 0.2s' }}
+          >
+            {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save lesson'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
