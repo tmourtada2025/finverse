@@ -239,12 +239,18 @@ function RichEditor({ value, onChange, t }: { value: string; onChange: (v: strin
           {fontSizes.map(s => <option key={s} value={s}>{s}px</option>)}
         </select>
       </div>
-      <div
+      <style>{`
+          .fv-editor ul { list-style-type: disc !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
+          .fv-editor ol { list-style-type: decimal !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
+          .fv-editor li { display: list-item !important; }
+        `}</style>
+        <div
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
         onInput={sync}
         onBlur={sync}
+        className="fv-editor"
         style={{
           minHeight: '220px', padding: '14px', outline: 'none',
           backgroundColor: t.bg, color: t.text, fontSize: '0.9rem',

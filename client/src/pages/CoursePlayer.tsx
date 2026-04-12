@@ -352,8 +352,20 @@ function HtmlContent({ html }: { html: string }) {
   const isHtml = html.trim().startsWith('<')
   if (isHtml) {
     return (
-      <div className="text-[#ccc] leading-relaxed" style={{ lineHeight: 1.8 }}
-        dangerouslySetInnerHTML={{ __html: html }} />
+      <>
+        <style>{`
+          .fv-content ul { list-style-type: disc !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
+          .fv-content ol { list-style-type: decimal !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
+          .fv-content li { display: list-item !important; }
+          .fv-content h1 { font-size: 1.5em; font-weight: 700; margin: 0.8em 0 0.4em; }
+          .fv-content h2 { font-size: 1.25em; font-weight: 600; margin: 0.8em 0 0.4em; }
+          .fv-content h3 { font-size: 1.1em; font-weight: 600; margin: 0.6em 0 0.3em; }
+          .fv-content p { margin: 0.5em 0; }
+          .fv-content blockquote { border-left: 3px solid #444; padding-left: 1em; color: #888; margin: 0.5em 0; }
+        `}</style>
+        <div className="text-[#ccc] leading-relaxed fv-content" style={{ lineHeight: 1.8 }}
+          dangerouslySetInnerHTML={{ __html: html }} />
+      </>
     )
   }
   return (

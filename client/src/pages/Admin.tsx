@@ -863,7 +863,12 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
           {['1','2','3','4','5','6','7'].map((s, i) => <option key={s} value={s}>{[10,12,14,16,18,24,32][i]}px</option>)}
         </select>
       </div>
-      <div ref={ref} contentEditable suppressContentEditableWarning onInput={sync} onBlur={sync}
+      <style>{`
+          .fv-editor ul { list-style-type: disc !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
+          .fv-editor ol { list-style-type: decimal !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
+          .fv-editor li { display: list-item !important; }
+        `}</style>
+        <div ref={ref} contentEditable suppressContentEditableWarning onInput={sync} onBlur={sync} className="fv-editor"
         style={{ minHeight: '160px', padding: '12px', outline: 'none', backgroundColor: t.bg, color: t.text, fontSize: '0.875rem', lineHeight: 1.7, fontFamily: font, direction: dir, textAlign: dir === 'rtl' ? 'right' : 'left' }} />
     </div>
   )
