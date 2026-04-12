@@ -34,10 +34,12 @@ export default function Dashboard() {
   }
 
   async function handleSignOut() {
-    await signOut()
+    await supabase.auth.signOut()
+    window.location.href = '/'
   }
 
-  if (loading) {
+  // Only block render on auth loading, not data loading
+  if (loading && !user) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
