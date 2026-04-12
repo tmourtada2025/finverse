@@ -3,25 +3,16 @@ import { supabase } from '@/lib/supabase'
 
 export default function AuthCallback() {
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        subscription.unsubscribe()
-        window.location.href = '/dashboard'
-      } else if (event === 'SIGNED_OUT') {
-        subscription.unsubscribe()
-        window.location.href = '/login'
-      }
-    })
-
-    // Fallback: if already signed in when callback loads
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        subscription.unsubscribe()
-        window.location.href = '/dashboard'
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    supabase.auth.exchangeCodeForSession(window.location.search)
+      .then(() => {
+        window.location.replace('/dashboard')
+      })
+      .catch(() => {
+        // Try hash-based flow (older OAuth)
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          window.location.replace(session ? '/dashboard' : '/login')
+        })
+      })
   }, [])
 
   return (
