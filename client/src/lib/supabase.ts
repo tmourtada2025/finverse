@@ -16,8 +16,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-// ─── Types matching finverse-lms Supabase schema (post-alignment) ────────────
-
 export type Profile = {
   id: string
   email: string
@@ -59,7 +57,7 @@ export type Lesson = {
   course_id: string
   title: string
   description: string | null
-  content_type: 'text' | 'video' | 'audio' | 'quiz' | 'pdf' | 'slides'
+  content_type: 'text' | 'video' | 'audio' | 'quiz' | 'pdf' | 'slides' | 'excel'
   content_url: string | null
   content_text: string | null
   pdf_url: string | null
@@ -70,6 +68,17 @@ export type Lesson = {
   is_published: boolean
   created_at: string
   updated_at: string
+}
+
+export type Section = {
+  id: string
+  lesson_id: string
+  title: string
+  content_type: 'text' | 'video' | 'audio' | 'quiz' | 'pdf' | 'slides' | 'excel'
+  content_text: string | null
+  content_url: string | null
+  position: number
+  created_at: string
 }
 
 export type Enrollment = {
@@ -89,6 +98,7 @@ export type LessonProgress = {
   user_id: string
   lesson_id: string
   enrollment_id: string
+  section_id: string | null
   completed: boolean
   progress_seconds: number
   completed_at: string | null
@@ -104,9 +114,12 @@ export type Certificate = {
 }
 
 export type QuizQuestion = {
-  id: string
+  type: 'multiple_choice' | 'fill_blank' | 'matching'
   question: string
-  options: string[]
-  correct_index: number
-  explanation: string | null
+  image_url?: string
+  options?: string[]
+  correct_index?: number
+  correct_answer?: string
+  pairs?: { left: string; right: string }[]
+  explanation: string
 }
