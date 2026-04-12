@@ -55,43 +55,126 @@ function ImageUploader({ onInsert, t }: { onInsert: (url: string) => void; t: an
   )
 }
 
-// ─── Rich HTML Editor ─────────────────────────────────────────────────────────
-function RichEditor({ value, onChange, t, direction = 'ltr' }: {
-  value: string; onChange: (v: string) => void; t: any; direction?: Direction
-}) {
+// ─── Rich HTML Editor (fixed for Chrome execCommand deprecations) ─────────────
+function RichEditor({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: any }) {
   const editorRef = useRef<HTMLDivElement>(null)
+  const [dir, setDir] = useState<'ltr' | 'rtl'>('ltr')
   const [font, setFont] = useState('inherit')
-  const [dir, setDir] = useState<Direction>(direction)
+  const [fontSize, setFontSize] = useState('14')
 
   useEffect(() => { loadArabicFont() }, [])
 
   useEffect(() => {
-    if (editorRef.current && !editorRef.current.innerHTML) {
+    if (editorRef.current && editorRef.current.innerHTML !== value) {
       editorRef.current.innerHTML = value || ''
     }
   }, [])
-
-  useEffect(() => {
-    if (editorRef.current) editorRef.current.dir = dir
-  }, [dir])
-
-  function exec(cmd: string, val?: string) {
-    editorRef.current?.focus()
-    document.execCommand(cmd, false, val)
-    sync()
-  }
 
   function sync() {
     if (editorRef.current) onChange(editorRef.current.innerHTML)
   }
 
-  function insertImage(url: string) {
+  function exec(cmd: string, val?: string) {
     editorRef.current?.focus()
-    document.execCommand('insertHTML', false, `<img src="${url}" style="max-width:100%;border-radius:6px;margin:8px 0;" />`)
+    document.execCommand(cmd, false, val ?? undefined)
+    setTimeout(sync, 0)
+  }
+
+  function toggleDir() {
+    const newDir = dir === 'ltr' ? 'rtl' : 'ltr'
+    setDir(newDir)
+    if (editorRef.current) {
+      editorRef.current.dir = newDir
+      editorRef.current.style.direction = newDir
+      editorRef.current.style.textAlign = newDir === 'rtl' ? 'right' : 'left'
+    }
+  }
+
+  function applyFont(fontFamily: string) {
+    setFont(fontFamily)
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+      // Apply to selection
+      document.execCommand('fontName', false, fontFamily)
+      // execCommand fontName uses <font> tags - convert to span
+      const fonts = editorRef.current?.querySelectorAll('font[face]')
+      fonts?.forEach(f => {
+        const span = document.createElement('span')
+        span.style.fontFamily = f.getAttribute('face') || fontFamily
+        span.innerHTML = f.innerHTML
+        f.parentNode?.replaceChild(span, f)
+      })
+    } else {
+      // Apply to whole editor
+      if (editorRef.current) editorRef.current.style.fontFamily = fontFamily
+    }
     sync()
   }
 
-  const fonts = [
+  function applyFontSize(size: string) {
+    setFontSize(size)
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+      const range = sel.getRangeAt(0)
+      const span = document.createElement('span')
+      span.style.fontSize = size + 'px'
+      try {
+        range.surroundContents(span)
+        sel.removeAllRanges()
+        const newRange = document.createRange()
+        newRange.selectNodeContents(span)
+        sel.addRange(newRange)
+      } catch {
+        document.execCommand('insertHTML', false, `<span style="font-size:${size}px">${range.toString()}</span>`)
+      }
+    } else {
+      if (editorRef.current) editorRef.current.style.fontSize = size + 'px'
+    }
+    sync()
+  }
+
+  function insertList(ordered: boolean) {
+    editorRef.current?.focus()
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return
+    
+    const range = sel.getRangeAt(0)
+    const selectedText = range.toString()
+    
+    // Check if already in a list
+    let node: Node | null = range.commonAncestorContainer
+    while (node && node !== editorRef.current) {
+      if (node.nodeName === 'UL' || node.nodeName === 'OL') {
+        // Already in list - unwrap
+        document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false)
+        setTimeout(sync, 0)
+        return
+      }
+      node = node.parentNode
+    }
+
+    if (selectedText) {
+      // Convert selected text lines to list items
+      const lines = selectedText.split('\n').filter(l => l.trim())
+      const tag = ordered ? 'ol' : 'ul'
+      const html = `<${tag} style="padding-left:1.5em;margin:0.5em 0">${lines.map(l => `<li>${l}</li>`).join('')}</${tag}>`
+      document.execCommand('insertHTML', false, html)
+    } else {
+      // Insert empty list item
+      const tag = ordered ? 'ol' : 'ul'
+      const html = `<${tag} style="padding-left:1.5em;margin:0.5em 0"><li><br></li></${tag}>`
+      document.execCommand('insertHTML', false, html)
+    }
+    setTimeout(sync, 0)
+  }
+
+  function insertImage(url: string) {
+    editorRef.current?.focus()
+    document.execCommand('insertHTML', false, `<img src="${url}" style="max-width:100%;border-radius:6px;margin:8px 0;display:block;" />`)
+    sync()
+  }
+
+  const fontOptions = [
     { label: 'Default', value: 'inherit' },
     { label: 'Serif', value: 'Georgia, serif' },
     { label: 'Mono', value: 'monospace' },
@@ -99,6 +182,8 @@ function RichEditor({ value, onChange, t, direction = 'ltr' }: {
     { label: 'Cairo (AR)', value: 'Cairo, sans-serif' },
     { label: 'Amiri (AR)', value: 'Amiri, serif' },
   ]
+
+  const fontSizes = ['10', '12', '14', '16', '18', '20', '24', '28', '32', '36']
 
   const btn = (extra?: any) => ({
     padding: '4px 8px', fontSize: '0.75rem', border: `1px solid ${t.border}`,
@@ -109,49 +194,52 @@ function RichEditor({ value, onChange, t, direction = 'ltr' }: {
 
   return (
     <div style={{ border: `1px solid ${t.border}`, borderRadius: '8px', overflow: 'hidden' }}>
-      {/* Toolbar */}
       <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '4px', padding: '8px 10px', borderBottom: `1px solid ${t.border}`, backgroundColor: t.surface, alignItems: 'center' }}>
         <button type="button" onClick={() => exec('undo')} style={btn()} title="Undo">↩</button>
         <button type="button" onClick={() => exec('redo')} style={btn()} title="Redo">↪</button>
         <span style={sep} />
-        <button type="button" onClick={() => exec('bold')} style={btn()}><b>B</b></button>
-        <button type="button" onClick={() => exec('italic')} style={btn()}><i>I</i></button>
-        <button type="button" onClick={() => exec('underline')} style={btn()}><u>U</u></button>
-        <button type="button" onClick={() => exec('insertHTML', '<span style="border-bottom:3px double currentColor">text</span>')} style={btn()} title="Double underline">Ü</button>
-        <button type="button" onClick={() => exec('strikeThrough')} style={btn()}><s>S</s></button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('bold') }} style={btn()}><b>B</b></button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('italic') }} style={btn()}><i>I</i></button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('underline') }} style={btn()}><u>U</u></button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('insertHTML', '<span style="border-bottom:3px double currentColor">text</span>') }} style={btn()} title="Double underline">Ü</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('strikeThrough') }} style={btn()}><s>S</s></button>
         <span style={sep} />
-        <button type="button" onClick={() => exec('formatBlock', 'h1')} style={btn()}>H1</button>
-        <button type="button" onClick={() => exec('formatBlock', 'h2')} style={btn()}>H2</button>
-        <button type="button" onClick={() => exec('formatBlock', 'h3')} style={btn()}>H3</button>
-        <button type="button" onClick={() => exec('formatBlock', 'p')} style={btn()}>¶</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'h1') }} style={btn()}>H1</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'h2') }} style={btn()}>H2</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'h3') }} style={btn()}>H3</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'p') }} style={btn()}>¶</button>
         <span style={sep} />
-        <button type="button" onClick={() => exec('justifyLeft')} style={btn()} title="Align left">⬅</button>
-        <button type="button" onClick={() => exec('justifyCenter')} style={btn()} title="Align center">☰</button>
-        <button type="button" onClick={() => exec('justifyRight')} style={btn()} title="Align right">➡</button>
-        <button type="button" onClick={() => exec('justifyFull')} style={btn()} title="Justify">≡</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('justifyLeft') }} style={btn()} title="Align left">⬅</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('justifyCenter') }} style={btn()} title="Center">☰</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('justifyRight') }} style={btn()} title="Align right">➡</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('justifyFull') }} style={btn()} title="Justify">≡</button>
         <span style={sep} />
-        <button type="button" onClick={() => exec('insertUnorderedList')} style={btn()}>• List</button>
-        <button type="button" onClick={() => exec('insertOrderedList')} style={btn()}>1. List</button>
-        <button type="button" onClick={() => exec('formatBlock', 'blockquote')} style={btn()}>❝</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); insertList(false) }} style={btn()}>• List</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); insertList(true) }} style={btn()}>1. List</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'blockquote') }} style={btn()}>❝</button>
         <span style={sep} />
         <button type="button" onClick={() => { const url = prompt('URL:'); if (url) exec('createLink', url) }} style={btn()}>🔗</button>
         <ImageUploader onInsert={insertImage} t={t} />
         <span style={sep} />
-        {/* RTL/LTR toggle */}
-        <button type="button" onClick={() => setDir(d => d === 'ltr' ? 'rtl' : 'ltr')}
+        <button
+          type="button"
+          onMouseDown={e => { e.preventDefault(); toggleDir() }}
           style={btn({ backgroundColor: dir === 'rtl' ? '#f59e0b20' : 'transparent', color: dir === 'rtl' ? '#f59e0b' : t.muted, border: `1px solid ${dir === 'rtl' ? '#f59e0b50' : t.border}` })}
           title="Toggle RTL/LTR">
           {dir === 'rtl' ? 'RTL' : 'LTR'}
         </button>
         <span style={sep} />
-        <select value={font} onChange={e => { setFont(e.target.value); exec('fontName', e.target.value) }}
+        <select
+          value={font}
+          onChange={e => applyFont(e.target.value)}
           style={{ fontSize: '0.75rem', padding: '4px 6px', border: `1px solid ${t.border}`, borderRadius: '4px', backgroundColor: t.bg, color: t.muted, cursor: 'pointer' }}>
-          {fonts.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+          {fontOptions.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
         </select>
-        <select onChange={e => exec('fontSize', e.target.value)} defaultValue=""
+        <select
+          value={fontSize}
+          onChange={e => applyFontSize(e.target.value)}
           style={{ fontSize: '0.75rem', padding: '4px 6px', border: `1px solid ${t.border}`, borderRadius: '4px', backgroundColor: t.bg, color: t.muted, cursor: 'pointer' }}>
-          <option value="" disabled>Size</option>
-          {['1','2','3','4','5','6','7'].map((s, i) => <option key={s} value={s}>{[8,10,12,14,18,24,36][i]}px</option>)}
+          {fontSizes.map(s => <option key={s} value={s}>{s}px</option>)}
         </select>
       </div>
       <div
@@ -160,12 +248,17 @@ function RichEditor({ value, onChange, t, direction = 'ltr' }: {
         suppressContentEditableWarning
         onInput={sync}
         onBlur={sync}
-        dir={dir}
-        style={{ minHeight: '220px', padding: '14px', outline: 'none', backgroundColor: t.bg, color: t.text, fontSize: '0.9rem', lineHeight: 1.7, fontFamily: font, direction: dir }}
+        style={{
+          minHeight: '220px', padding: '14px', outline: 'none',
+          backgroundColor: t.bg, color: t.text, fontSize: '0.9rem',
+          lineHeight: 1.7, fontFamily: font,
+          direction: dir, textAlign: dir === 'rtl' ? 'right' : 'left',
+        }}
       />
     </div>
   )
 }
+
 
 // ─── File uploaders ───────────────────────────────────────────────────────────
 function FileUploader({ bucket, accept, icon, label, maxMB, value, onChange, t }: {
