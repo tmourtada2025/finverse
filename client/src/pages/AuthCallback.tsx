@@ -1,24 +1,28 @@
 import { useEffect } from 'react'
-import { useLocation } from 'wouter'
 import { supabase } from '@/lib/supabase'
 
 export default function AuthCallback() {
-  const [, setLocation] = useLocation()
-
   useEffect(() => {
-    // Supabase handles the token exchange automatically from the URL hash/params
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setLocation('/dashboard')
-      } else {
-        // Give it a moment for the hash exchange to complete
-        setTimeout(async () => {
-          const { data: { session } } = await supabase.auth.getSession()
-          setLocation(session ? '/dashboard' : '/login')
-        }, 1500)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        subscription.unsubscribe()
+        window.location.href = '/dashboard'
+      } else if (event === 'SIGNED_OUT') {
+        subscription.unsubscribe()
+        window.location.href = '/login'
       }
     })
-  }, [setLocation])
+
+    // Fallback: if already signed in when callback loads
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        subscription.unsubscribe()
+        window.location.href = '/dashboard'
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
