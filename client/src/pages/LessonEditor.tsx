@@ -1,3 +1,4 @@
+// LessonEditor v2.1 - Full rebuild with sections, RTL, quiz types, file uploads
 import { useState, useRef, useEffect } from 'react'
 import { supabase, Lesson, Section } from '@/lib/supabase'
 
