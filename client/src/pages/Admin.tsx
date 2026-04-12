@@ -514,6 +514,153 @@ function LessonEditorPage({ lesson, t, onBack }: { lesson: Lesson; t: any; onBac
   )
 }
 
+
+// ─── File uploader (for Admin SectionBlock) ───────────────────────────────────
+function AdminFileUploader({ bucket, accept, icon, label, maxMB, value, onChange, t }: {
+  bucket: string; accept: string; icon: string; label: string; maxMB: number
+  value: string; onChange: (v: string) => void; t: any
+}) {
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return
+    if (file.size > maxMB * 1024 * 1024) { alert(`File must be under ${maxMB}MB.`); return }
+    setUploading(true); setProgress(20)
+    const filename = `${Date.now()}-${file.name.replace(/[^a-z0-9.-]/gi, '_')}`
+    const { error } = await supabase.storage.from(bucket).upload(filename, file, { contentType: file.type })
+    setProgress(90)
+    if (error) { alert('Upload failed: ' + error.message); setUploading(false); setProgress(0); return }
+    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(filename)
+    onChange(publicUrl); setUploading(false); setProgress(100)
+  }
+
+  return (
+    <div>
+      {value ? (
+        <div style={{ border: `1px solid ${t.border}`, borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: t.surface }}>
+          <span style={{ fontSize: '0.8rem', color: t.muted }}>{icon} File uploaded</span>
+          <button onClick={() => onChange('')} style={{ fontSize: '0.75rem', color: '#ef444470', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+        </div>
+      ) : (
+        <div onClick={() => fileRef.current?.click()} style={{ border: `2px dashed ${t.border}`, borderRadius: '8px', padding: '1.5rem', textAlign: 'center' as const, cursor: 'pointer' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '6px' }}>{icon}</div>
+          <p style={{ fontSize: '0.875rem', color: t.text, marginBottom: '4px' }}>{uploading ? `Uploading… ${progress}%` : `Click to upload ${label}`}</p>
+          <p style={{ fontSize: '0.75rem', color: t.muted }}>Max {maxMB}MB</p>
+          {uploading && <div style={{ marginTop: '10px', height: '4px', backgroundColor: t.border, borderRadius: '2px', overflow: 'hidden' }}><div style={{ height: '100%', width: `${progress}%`, backgroundColor: '#3b82f6', transition: 'width 0.3s' }} /></div>}
+        </div>
+      )}
+      <input ref={fileRef} type="file" accept={accept} onChange={handleFile} style={{ display: 'none' }} />
+      <div style={{ marginTop: '8px' }}>
+        <label style={{ fontSize: '0.7rem', color: t.muted, display: 'block', marginBottom: '4px' }}>Or paste URL</label>
+        <input value={value} onChange={e => onChange(e.target.value)} placeholder="https://..."
+          style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '8px 12px', fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box' as const }} />
+      </div>
+    </div>
+  )
+}
+
+// ─── Quiz builder (for Admin SectionBlock) ────────────────────────────────────
+function AdminQuizBuilder({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: any }) {
+  let questions: QuizQuestion[] = []
+  try { questions = JSON.parse(value || '[]') } catch { questions = [] }
+
+  function update(qs: QuizQuestion[]) { onChange(JSON.stringify(qs, null, 2)) }
+
+  function addQ(type: QuizType) {
+    const base = { type, question: '', explanation: '', image_url: '' }
+    if (type === 'multiple_choice') update([...questions, { ...base, options: ['', '', '', ''], correct_index: 0 }])
+    else if (type === 'fill_blank') update([...questions, { ...base, correct_answer: '' }])
+    else update([...questions, { ...base, pairs: [{ left: '', right: '' }, { left: '', right: '' }] }])
+  }
+
+  function removeQ(qi: number) { update(questions.filter((_, i) => i !== qi)) }
+
+  function updateQ(qi: number, field: string, val: any) {
+    const qs = [...questions]; qs[qi] = { ...qs[qi], [field]: val }; update(qs)
+  }
+
+  function updateOption(qi: number, oi: number, val: string) {
+    const qs = [...questions]; const opts = [...(qs[qi].options || [])]; opts[oi] = val
+    qs[qi] = { ...qs[qi], options: opts }; update(qs)
+  }
+
+  function updatePair(qi: number, pi: number, side: 'left' | 'right', val: string) {
+    const qs = [...questions]; const pairs = [...(qs[qi].pairs || [])]; pairs[pi] = { ...pairs[pi], [side]: val }
+    qs[qi] = { ...qs[qi], pairs }; update(qs)
+  }
+
+  const typeColors: Record<QuizType, string> = { multiple_choice: '#3b82f6', fill_blank: '#10b981', matching: '#f59e0b' }
+  const typeLabels: Record<QuizType, string> = { multiple_choice: 'Multiple choice', fill_blank: 'Fill in the blank', matching: 'Matching' }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' as const }}>
+        {(['multiple_choice', 'fill_blank', 'matching'] as QuizType[]).map(type => (
+          <button key={type} onClick={() => addQ(type)}
+            style={{ fontSize: '0.75rem', padding: '6px 12px', borderRadius: '7px', border: `1px solid ${typeColors[type]}50`, color: typeColors[type], background: `${typeColors[type]}10`, cursor: 'pointer' }}>
+            + {typeLabels[type]}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '12px' }}>
+        {questions.map((q, qi) => (
+          <div key={qi} style={{ border: `1px solid ${typeColors[q.type]}30`, borderRadius: '9px', padding: '12px', backgroundColor: t.surface }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.7rem', padding: '2px 7px', borderRadius: '4px', backgroundColor: `${typeColors[q.type]}15`, color: typeColors[q.type] }}>{typeLabels[q.type]}</span>
+              <button onClick={() => removeQ(qi)} style={{ fontSize: '0.72rem', color: '#ef444470', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+            </div>
+            <textarea value={q.question} onChange={e => updateQ(qi, 'question', e.target.value)}
+              placeholder={q.type === 'fill_blank' ? 'Use ___ to mark the blank.' : 'Enter question...'}
+              rows={2} style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '6px', padding: '7px 10px', fontSize: '0.855rem', outline: 'none', resize: 'vertical' as const, boxSizing: 'border-box' as const, marginBottom: '8px', fontFamily: 'inherit' }} />
+            {q.type === 'multiple_choice' && (
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '5px' }}>
+                {(q.options || []).map((opt, oi) => (
+                  <div key={oi} style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    <input type="radio" name={`aq-${qi}`} checked={q.correct_index === oi} onChange={() => updateQ(qi, 'correct_index', oi)} style={{ cursor: 'pointer', accentColor: '#10b981' }} />
+                    <input value={opt} onChange={e => updateOption(qi, oi, e.target.value)} placeholder={`Option ${oi + 1}`}
+                      style={{ flex: 1, backgroundColor: t.bg, border: `1px solid ${q.correct_index === oi ? '#10b98150' : t.border}`, color: t.text, borderRadius: '5px', padding: '5px 8px', fontSize: '0.8rem', outline: 'none' }} />
+                  </div>
+                ))}
+                <button onClick={() => { const qs = [...questions]; qs[qi].options = [...(qs[qi].options || []), '']; update(qs) }}
+                  style={{ fontSize: '0.72rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const, padding: '2px 0' }}>+ Add option</button>
+              </div>
+            )}
+            {q.type === 'fill_blank' && (
+              <input value={q.correct_answer || ''} onChange={e => updateQ(qi, 'correct_answer', e.target.value)} placeholder="Correct answer..."
+                style={{ width: '100%', backgroundColor: t.bg, border: `1px solid #10b98150`, color: t.text, borderRadius: '5px', padding: '7px 10px', fontSize: '0.855rem', outline: 'none', boxSizing: 'border-box' as const }} />
+            )}
+            {q.type === 'matching' && (
+              <div>
+                {(q.pairs || []).map((pair, pi) => (
+                  <div key={pi} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', marginBottom: '5px' }}>
+                    <input value={pair.left} onChange={e => updatePair(qi, pi, 'left', e.target.value)} placeholder={`Left ${pi + 1}`}
+                      style={{ backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '5px', padding: '5px 8px', fontSize: '0.8rem', outline: 'none' }} />
+                    <input value={pair.right} onChange={e => updatePair(qi, pi, 'right', e.target.value)} placeholder={`Right ${pi + 1}`}
+                      style={{ backgroundColor: t.bg, border: `1px solid #f59e0b50`, color: t.text, borderRadius: '5px', padding: '5px 8px', fontSize: '0.8rem', outline: 'none' }} />
+                  </div>
+                ))}
+                <button onClick={() => { const qs = [...questions]; qs[qi].pairs = [...(qs[qi].pairs || []), { left: '', right: '' }]; update(qs) }}
+                  style={{ fontSize: '0.72rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>+ Add pair</button>
+              </div>
+            )}
+            <div style={{ marginTop: '7px' }}>
+              <input value={q.explanation} onChange={e => updateQ(qi, 'explanation', e.target.value)} placeholder="Explanation..."
+                style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '5px', padding: '5px 8px', fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box' as const }} />
+            </div>
+          </div>
+        ))}
+        {questions.length === 0 && (
+          <div style={{ border: `1px dashed ${t.border}`, borderRadius: '8px', padding: '1.5rem', textAlign: 'center' as const, color: t.muted, fontSize: '0.855rem' }}>
+            Add a question type above
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Section block (inline, collapsible) ─────────────────────────────────────
 function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: any; onSave: (u: Partial<Section>) => void; onDelete: () => void }) {
   const [open, setOpen] = useState(section.title === 'New section')
@@ -570,13 +717,27 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
             <input value={contentUrl} onChange={e => setContentUrl(e.target.value)} placeholder="https://www.youtube.com/embed/VIDEO_ID"
               style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }} />
           )}
-          {(contentType === 'audio' || contentType === 'pdf' || contentType === 'slides' || contentType === 'excel') && (
-            <input value={contentUrl} onChange={e => setContentUrl(e.target.value)} placeholder="Paste URL or upload via file picker…"
-              style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }} />
+          {contentType === 'audio' && (
+            <AdminFileUploader bucket="lesson-audio" accept="audio/*" icon="🎵" label="audio" maxMB={100} value={contentUrl} onChange={setContentUrl} t={t} />
+          )}
+          {contentType === 'pdf' && (
+            <div>
+              <AdminFileUploader bucket="lesson-pdfs" accept="application/pdf" icon="📄" label="PDF" maxMB={50} value={contentUrl} onChange={setContentUrl} t={t} />
+              {contentUrl && <iframe src={contentUrl} style={{ width: '100%', height: '360px', border: `1px solid ${t.border}`, borderRadius: '8px', marginTop: '10px' }} />}
+            </div>
+          )}
+          {contentType === 'slides' && (
+            <div>
+              <input value={contentUrl} onChange={e => setContentUrl(e.target.value)} placeholder="https://docs.google.com/presentation/d/ID/embed"
+                style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const, marginBottom: '8px' }} />
+              {contentUrl && <iframe src={contentUrl} style={{ width: '100%', height: '360px', border: `1px solid ${t.border}`, borderRadius: '8px' }} allowFullScreen />}
+            </div>
+          )}
+          {contentType === 'excel' && (
+            <AdminFileUploader bucket="lesson-excel" accept=".xlsx,.xls,.csv" icon="📊" label="Excel" maxMB={20} value={contentUrl} onChange={setContentUrl} t={t} />
           )}
           {contentType === 'quiz' && (
-            <textarea value={contentText} onChange={e => setContentText(e.target.value)} rows={6} placeholder='[{"type":"multiple_choice","question":"...","options":["A","B"],"correct_index":0,"explanation":"..."}]'
-              style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.8rem', outline: 'none', resize: 'vertical' as const, boxSizing: 'border-box' as const, fontFamily: 'monospace' }} />
+            <AdminQuizBuilder value={contentText} onChange={setContentText} t={t} />
           )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
