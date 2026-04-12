@@ -46,16 +46,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function fetchProfile(userId: string) {
+    // Hard timeout — never block the app for more than 3 seconds
+    const timeout = setTimeout(() => {
+      setProfile(null)
+      setLoading(false)
+    }, 3000)
+
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
-      setProfile(data)
+      clearTimeout(timeout)
+      setProfile(error ? null : data)
     } catch {
+      clearTimeout(timeout)
       setProfile(null)
     } finally {
+      clearTimeout(timeout)
       setLoading(false)
     }
   }
