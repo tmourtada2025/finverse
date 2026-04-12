@@ -59,7 +59,7 @@ export type Lesson = {
   course_id: string
   title: string
   description: string | null
-  content_type: 'text' | 'video' | 'audio' | 'quiz'
+  content_type: 'text' | 'video' | 'audio' | 'quiz' | 'pdf' | 'slides'
   content_url: string | null
   content_text: string | null
   pdf_url: string | null
