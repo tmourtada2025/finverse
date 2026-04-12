@@ -388,7 +388,18 @@ function LessonContent({ lesson }: { lesson: Lesson }) {
 }
 
 function TextContent({ text }: { text: string }) {
-  // Render markdown-style text with basic formatting
+  // Renders both HTML (from new editor) and legacy markdown
+  const isHtml = text.trim().startsWith('<')
+  if (isHtml) {
+    return (
+      <div
+        className="text-[#ccc] leading-relaxed"
+        style={{ lineHeight: 1.8 }}
+        dangerouslySetInnerHTML={{ __html: text }}
+      />
+    )
+  }
+  // Legacy markdown fallback
   return (
     <div
       className="text-[#ccc] leading-relaxed space-y-4"
@@ -408,64 +419,127 @@ function QuizContent({ jsonContent }: { jsonContent: string }) {
   let questions: any[] = []
   try { questions = JSON.parse(jsonContent) } catch { return <p className="text-[#555]">Quiz format error</p> }
 
-  const [answers, setAnswers] = useState<Record<number, number>>({})
+  const [mcAnswers, setMcAnswers] = useState<Record<number, number>>({})
+  const [fillAnswers, setFillAnswers] = useState<Record<number, string>>({})
+  const [matchAnswers, setMatchAnswers] = useState<Record<number, Record<number, number>>>({})
   const [submitted, setSubmitted] = useState(false)
 
-  const score = submitted
-    ? questions.filter((q, i) => answers[i] === q.correct_index).length
-    : 0
+  function checkAnswer(q: any, qi: number): boolean {
+    if (!q.type || q.type === 'multiple_choice') return mcAnswers[qi] === q.correct_index
+    if (q.type === 'fill_blank') return (fillAnswers[qi] || '').trim().toLowerCase() === (q.correct_answer || '').trim().toLowerCase()
+    if (q.type === 'matching') {
+      const ma = matchAnswers[qi] || {}
+      return (q.pairs || []).every((_: any, pi: number) => ma[pi] === pi)
+    }
+    return false
+  }
+
+  const score = submitted ? questions.filter((q, i) => checkAnswer(q, i)).length : 0
 
   return (
     <div className="space-y-8">
-      {questions.map((q, qi) => (
-        <div key={qi} className="border border-[#1a1a1a] rounded-lg p-6">
-          <p className="text-white font-medium mb-4">{q.question}</p>
-          <div className="space-y-2">
-            {q.options.map((opt: string, oi: number) => {
-              const isSelected = answers[qi] === oi
-              const isCorrect = submitted && oi === q.correct_index
-              const isWrong = submitted && isSelected && oi !== q.correct_index
-              return (
-                <button
-                  key={oi}
-                  onClick={() => !submitted && setAnswers(prev => ({ ...prev, [qi]: oi }))}
-                  className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-colors border ${
-                    isCorrect
-                      ? 'border-emerald-400/50 bg-emerald-400/10 text-emerald-300'
-                      : isWrong
-                      ? 'border-red-400/50 bg-red-400/10 text-red-300'
-                      : isSelected
-                      ? 'border-white/30 bg-white/10 text-white'
-                      : 'border-[#222] text-[#888] hover:border-[#333] hover:text-white'
-                  }`}
-                >
-                  {opt}
-                </button>
-              )
-            })}
+      {questions.map((q, qi) => {
+        const correct = submitted && checkAnswer(q, qi)
+        const wrong = submitted && !checkAnswer(q, qi)
+        const type = q.type || 'multiple_choice'
+
+        return (
+          <div key={qi} className="border border-[#1a1a1a] rounded-lg p-6">
+            {q.image_url && <img src={q.image_url} className="w-full max-h-48 object-cover rounded-lg mb-4" />}
+            <p className="text-white font-medium mb-4">{q.question}</p>
+
+            {type === 'multiple_choice' && (
+              <div className="space-y-2">
+                {(q.options || []).map((opt: string, oi: number) => {
+                  const isSelected = mcAnswers[qi] === oi
+                  const isCorrect = submitted && oi === q.correct_index
+                  const isWrong = submitted && isSelected && oi !== q.correct_index
+                  return (
+                    <button key={oi} onClick={() => !submitted && setMcAnswers(p => ({ ...p, [qi]: oi }))}
+                      className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-colors border ${isCorrect ? 'border-emerald-400/50 bg-emerald-400/10 text-emerald-300' : isWrong ? 'border-red-400/50 bg-red-400/10 text-red-300' : isSelected ? 'border-white/30 bg-white/10 text-white' : 'border-[#222] text-[#888] hover:border-[#333] hover:text-white'}`}>
+                      {opt}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {type === 'fill_blank' && (
+              <div>
+                <input value={fillAnswers[qi] || ''} onChange={e => !submitted && setFillAnswers(p => ({ ...p, [qi]: e.target.value }))}
+                  placeholder="Type your answer..."
+                  className={`w-full px-4 py-3 rounded-lg text-sm border bg-transparent outline-none ${submitted ? correct ? 'border-emerald-400/50 text-emerald-300' : 'border-red-400/50 text-red-300' : 'border-[#333] text-white'}`} />
+                {submitted && !correct && <p className="text-emerald-400 text-xs mt-2">Correct answer: {q.correct_answer}</p>}
+              </div>
+            )}
+
+            {type === 'matching' && (
+              <div className="space-y-2">
+                <p className="text-[#555] text-xs mb-3">Click a left item, then click its match on the right.</p>
+                <MatchingQuestion q={q} qi={qi} answers={matchAnswers[qi] || {}} submitted={submitted}
+                  onAnswer={ma => setMatchAnswers(p => ({ ...p, [qi]: ma }))} />
+              </div>
+            )}
+
+            {submitted && q.explanation && (
+              <p className="text-[#666] text-xs mt-4 border-t border-[#1a1a1a] pt-4">{q.explanation}</p>
+            )}
+            {submitted && <p className={`text-xs mt-2 font-medium ${correct ? 'text-emerald-400' : 'text-red-400'}`}>{correct ? '✓ Correct' : '✗ Incorrect'}</p>}
           </div>
-          {submitted && q.explanation && (
-            <p className="text-[#666] text-xs mt-4 border-t border-[#1a1a1a] pt-4">{q.explanation}</p>
-          )}
-        </div>
-      ))}
+        )
+      })}
 
       {!submitted ? (
-        <button
-          onClick={() => setSubmitted(true)}
-          disabled={Object.keys(answers).length < questions.length}
-          className="bg-white text-black font-medium px-6 py-3 rounded-lg text-sm hover:bg-gray-100 transition-colors disabled:opacity-40"
-        >
+        <button onClick={() => setSubmitted(true)}
+          className="bg-white text-black font-medium px-6 py-3 rounded-lg text-sm hover:bg-gray-100 transition-colors">
           Submit answers
         </button>
       ) : (
         <div className="bg-[#111] border border-[#1a1a1a] rounded-lg p-6 text-center">
           <p className="text-2xl font-bold mb-1">{score}/{questions.length}</p>
-          <p className="text-[#888] text-sm">
-            {score === questions.length ? 'Perfect score!' : score >= questions.length * 0.7 ? 'Well done.' : 'Review the material and try again.'}
-          </p>
+          <p className="text-[#888] text-sm">{score === questions.length ? 'Perfect score!' : score >= questions.length * 0.7 ? 'Well done.' : 'Review the material and try again.'}</p>
         </div>
       )}
+    </div>
+  )
+}
+
+function MatchingQuestion({ q, qi, answers, submitted, onAnswer }: any) {
+  const [selected, setSelected] = useState<number | null>(null)
+  const pairs = q.pairs || []
+  const rightOrder = [...pairs].map((_, i) => i).sort(() => 0.5 - Math.random())
+  const [shuffled] = useState(rightOrder)
+
+  function clickLeft(i: number) {
+    if (submitted) return
+    setSelected(i)
+  }
+
+  function clickRight(ri: number) {
+    if (submitted || selected === null) return
+    const newAnswers = { ...answers, [selected]: ri }
+    onAnswer(newAnswers)
+    setSelected(null)
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-2">
+        {pairs.map((p: any, i: number) => (
+          <button key={i} onClick={() => clickLeft(i)}
+            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm border transition-colors ${selected === i ? 'border-white/50 bg-white/10 text-white' : answers[i] !== undefined ? 'border-emerald-400/40 text-emerald-300' : 'border-[#222] text-[#888] hover:border-[#333]'}`}>
+            {p.left}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-2">
+        {shuffled.map((ri: number) => (
+          <button key={ri} onClick={() => clickRight(ri)}
+            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm border transition-colors ${Object.values(answers).includes(ri) ? 'border-blue-400/40 text-blue-300' : 'border-[#222] text-[#888] hover:border-[#333]'}`}>
+            {pairs[ri].right}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
