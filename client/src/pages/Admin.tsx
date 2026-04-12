@@ -49,7 +49,13 @@ function StatCard({ label, value, sub, color, t }: any) {
 export default function Admin() {
   const { loading, isAuthenticated, isAdmin, profile } = useAuth()
   const [section, setSection] = useState<AdminSection>('overview')
-  const [dark, setDark] = useState(true)
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem('fv-theme') !== 'light' } catch { return true }
+  })
+
+  useEffect(() => {
+    try { localStorage.setItem('fv-theme', dark ? 'dark' : 'light') } catch {}
+  }, [dark])
   const t = mkTheme(dark)
 
   useEffect(() => {
