@@ -351,6 +351,37 @@ function LessonContent({ lesson }: { lesson: Lesson }) {
         <p className="text-[#555]">Quiz coming soon</p>
       )
 
+    case 'pdf':
+      return (
+        <div className="mb-6">
+          {lesson.content_url ? (
+            <iframe
+              src={lesson.content_url}
+              className="w-full rounded-lg border border-[#1a1a1a]"
+              style={{ height: '600px' }}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-48 bg-[#111] rounded-lg text-[#555]">PDF coming soon</div>
+          )}
+        </div>
+      )
+
+    case 'slides':
+      return (
+        <div className="mb-6">
+          {lesson.content_url ? (
+            <iframe
+              src={lesson.content_url}
+              className="w-full rounded-lg border border-[#1a1a1a]"
+              style={{ height: '480px' }}
+              allowFullScreen
+            />
+          ) : (
+            <div className="flex items-center justify-center h-48 bg-[#111] rounded-lg text-[#555]">Slides coming soon</div>
+          )}
+        </div>
+      )
+
     default:
       return null
   }
@@ -450,6 +481,10 @@ function ContentIcon({ type }: { type: string }) {
       return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" /></svg>
     case 'quiz':
       return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+    case 'pdf':
+      return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+    case 'slides':
+      return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
     default:
       return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
   }
@@ -461,6 +496,8 @@ function ContentTypeLabel({ type }: { type: string }) {
     audio: 'Audio lesson',
     text: 'Reading',
     quiz: 'Quiz',
+    pdf: 'PDF document',
+    slides: 'Presentation',
   }
   return <>{labels[type] || 'Lesson'}</>
 }
