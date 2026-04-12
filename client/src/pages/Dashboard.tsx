@@ -22,7 +22,13 @@ export default function Dashboard() {
   const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([])
   const [catalogue, setCatalogue] = useState<Course[]>([])
   const [section, setSection] = useState<Section>('courses')
-  const [dark, setDark] = useState(true)
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem('fv-theme') !== 'light' } catch { return true }
+  })
+
+  useEffect(() => {
+    try { localStorage.setItem('fv-theme', dark ? 'dark' : 'light') } catch {}
+  }, [dark])
 
   useEffect(() => {
     if (!loading && !isAuthenticated) window.location.href = '/login'
