@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import LessonEditor from '@/pages/LessonEditor'
 import { useAuth } from '@/lib/auth'
 import { supabase, Course, Module, Lesson, Profile } from '@/lib/supabase'
 
@@ -287,120 +288,6 @@ function CourseEditor({ course, onBack, t }: { course: Course; onBack: () => voi
   )
 }
 
-// ─── Lesson Editor (proper rich editor) ──────────────────────────────────────
-
-function LessonEditor({ lesson, t, onClose }: { lesson: Lesson; t: any; onClose: () => void }) {
-  const [form, setForm] = useState({
-    title: lesson.title,
-    content_type: lesson.content_type,
-    content_text: lesson.content_text || '',
-    content_url: lesson.content_url || '',
-    duration_minutes: lesson.duration_minutes || 0,
-    is_published: lesson.is_published,
-  })
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-
-  async function save() {
-    setSaving(true)
-    await supabase.from('lessons').update({
-      title: form.title,
-      content_type: form.content_type,
-      content_text: form.content_text || null,
-      content_url: form.content_url || null,
-      duration_minutes: form.duration_minutes || null,
-      is_published: form.is_published,
-    }).eq('id', lesson.id)
-    setSaving(false); setSaved(true)
-    setTimeout(() => setSaved(false), 1500)
-  }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div style={{ backgroundColor: t.bg, border: `1px solid ${t.border}`, borderRadius: '16px', width: '100%', maxWidth: '720px', maxHeight: '90vh', overflow: 'auto', padding: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Edit lesson</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: t.muted, cursor: 'pointer', fontSize: '1.25rem' }}>×</button>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <Label t={t}>Title</Label>
-            <Input value={form.title} onChange={v => setForm(p => ({ ...p, title: v }))} t={t} />
-          </div>
-
-          <div>
-            <Label t={t}>Content type</Label>
-            <select
-              value={form.content_type}
-              onChange={e => setForm(p => ({ ...p, content_type: e.target.value as any }))}
-              style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none' }}
-            >
-              <option value="text">Text / Reading</option>
-              <option value="video">Video</option>
-              <option value="audio">Audio</option>
-              <option value="quiz">Quiz</option>
-            </select>
-          </div>
-
-          <div>
-            <Label t={t}>Duration (minutes)</Label>
-            <Input value={String(form.duration_minutes)} onChange={v => setForm(p => ({ ...p, duration_minutes: Number(v) }))} t={t} type="number" />
-          </div>
-
-          {(form.content_type === 'video' || form.content_type === 'audio') && (
-            <div style={{ gridColumn: '1 / -1' }}>
-              <Label t={t}>{form.content_type === 'video' ? 'Video URL (YouTube embed or direct)' : 'Audio URL'}</Label>
-              <Input value={form.content_url} onChange={v => setForm(p => ({ ...p, content_url: v }))} t={t} placeholder="https://..." />
-              {form.content_type === 'video' && form.content_url && (
-                <p style={{ fontSize: '0.7rem', color: t.muted, marginTop: '4px' }}>
-                  For YouTube: use embed URL like https://www.youtube.com/embed/VIDEO_ID
-                </p>
-              )}
-            </div>
-          )}
-
-          <div style={{ gridColumn: '1 / -1' }}>
-            <Label t={t}>
-              {form.content_type === 'text' ? 'Content (supports **bold**, # Heading, - lists)' :
-               form.content_type === 'quiz' ? 'Quiz JSON (array of questions)' :
-               'Notes / transcript (optional)'}
-            </Label>
-            <textarea
-              value={form.content_text}
-              onChange={e => setForm(p => ({ ...p, content_text: e.target.value }))}
-              rows={form.content_type === 'quiz' ? 10 : 8}
-              placeholder={
-                form.content_type === 'text' ? 'Write your lesson content here...\n\n# Heading\n\nParagraph text. **Bold text.**\n\n- List item' :
-                form.content_type === 'quiz' ? '[{"question":"What is...","options":["A","B","C","D"],"correct_index":0,"explanation":"Because..."}]' :
-                'Optional notes or transcript...'
-              }
-              style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'monospace', lineHeight: 1.6 }}
-            />
-          </div>
-
-          <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <input
-              type="checkbox"
-              id="published"
-              checked={form.is_published}
-              onChange={e => setForm(p => ({ ...p, is_published: e.target.checked }))}
-              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-            />
-            <label htmlFor="published" style={{ fontSize: '0.875rem', color: t.muted, cursor: 'pointer' }}>Published (visible to enrolled students)</label>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ fontSize: '0.875rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '10px 20px', cursor: 'pointer' }}>Cancel</button>
-          <button onClick={save} disabled={saving} style={{ backgroundColor: t.text, color: t.bg, border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1, minWidth: '100px' }}>
-            {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save lesson'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ─── Shared components ────────────────────────────────────────────────────────
 
