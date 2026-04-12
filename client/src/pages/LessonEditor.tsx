@@ -136,21 +136,17 @@ function RichEditor({ value, onChange, t }: { value: string; onChange: (v: strin
 
   function insertList(ordered: boolean) {
     editorRef.current?.focus()
-    const sel = window.getSelection()
-    if (!sel || sel.rangeCount === 0) return
-    
-    const range = sel.getRangeAt(0)
-    const selectedText = range.toString()
-    
-    // Check if already in a list
-    let node: Node | null = range.commonAncestorContainer
-    while (node && node !== editorRef.current) {
-      if (node.nodeName === 'UL' || node.nodeName === 'OL') {
-        // Already in list - unwrap
-        document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false)
-        setTimeout(sync, 0)
-        return
+    document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false)
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.querySelectorAll('ul, ol').forEach(el => {
+          (el as HTMLElement).style.paddingLeft = '1.5em'
+          ;(el as HTMLElement).style.margin = '0.5em 0'
+        })
       }
+      sync()
+    }, 0)
+  }
       node = node.parentNode
     }
 
