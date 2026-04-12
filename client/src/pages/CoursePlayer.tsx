@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth'
-import { supabase, Module, Lesson, LessonProgress, Course } from '@/lib/supabase'
+import { supabase, Module, Lesson, LessonProgress, Course, Section } from '@/lib/supabase'
 import { useLocation, useParams, Link } from 'wouter'
 
 type LessonWithProgress = Lesson & { progress?: LessonProgress }
@@ -60,6 +60,15 @@ export default function CoursePlayer() {
       .eq('id', courseId)
       .single()
     setCourse(courseData)
+
+    // Load Arabic font
+    if (!document.getElementById('arabic-font')) {
+      const link = document.createElement('link')
+      link.id = 'arabic-font'
+      link.rel = 'stylesheet'
+      link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap'
+      document.head.appendChild(link)
+    }
 
     // Fetch modules + lessons + progress
     const { data: modulesData } = await supabase
@@ -257,7 +266,7 @@ export default function CoursePlayer() {
               </div>
 
               {/* Content */}
-              <LessonContent lesson={activeLesson} />
+              <LessonSections lesson={activeLesson} enrollmentId={enrollmentId || ''} userId={user?.id || ''} />
 
               {/* Actions */}
               <div className="mt-10 flex items-center justify-between border-t border-[#1a1a1a] pt-6">
@@ -297,6 +306,98 @@ export default function CoursePlayer() {
 }
 
 // ─── Content renderer ────────────────────────────────────────────────────────
+
+function SectionContent({ section }: { section: Section }) {
+  switch (section.content_type) {
+    case 'video':
+      return (
+        <div className="aspect-video bg-[#111] rounded-lg overflow-hidden mb-6">
+          {section.content_url ? (
+            <iframe src={section.content_url} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+          ) : <div className="flex items-center justify-center h-full text-[#555]">Video coming soon</div>}
+        </div>
+      )
+    case 'audio':
+      return (
+        <div className="bg-[#111] border border-[#1a1a1a] rounded-lg p-6 mb-6">
+          {section.content_url ? (
+            <audio controls className="w-full"><source src={section.content_url} /></audio>
+          ) : <p className="text-[#555] text-center">Audio coming soon</p>}
+          {section.content_text && <div className="mt-6"><HtmlContent html={section.content_text} /></div>}
+        </div>
+      )
+    case 'pdf':
+      return section.content_url ? (
+        <iframe src={section.content_url} className="w-full rounded-lg border border-[#1a1a1a] mb-6" style={{ height: '600px' }} />
+      ) : null
+    case 'slides':
+      return section.content_url ? (
+        <iframe src={section.content_url} className="w-full rounded-lg border border-[#1a1a1a] mb-6" style={{ height: '480px' }} allowFullScreen />
+      ) : null
+    case 'excel':
+      return section.content_url ? (
+        <iframe
+          src={section.content_url.includes('supabase') ? section.content_url : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(section.content_url)}`}
+          className="w-full rounded-lg border border-[#1a1a1a] mb-6" style={{ height: '400px' }}
+        />
+      ) : null
+    case 'quiz':
+      return section.content_text ? <QuizContent jsonContent={section.content_text} /> : null
+    default:
+      return section.content_text ? <HtmlContent html={section.content_text} /> : null
+  }
+}
+
+function HtmlContent({ html }: { html: string }) {
+  const isHtml = html.trim().startsWith('<')
+  if (isHtml) {
+    return (
+      <div className="text-[#ccc] leading-relaxed" style={{ lineHeight: 1.8 }}
+        dangerouslySetInnerHTML={{ __html: html }} />
+    )
+  }
+  return (
+    <div className="text-[#ccc] leading-relaxed space-y-4"
+      dangerouslySetInnerHTML={{
+        __html: html
+          .replace(/\n\n/g, '</p><p class="mt-4">')
+          .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>')
+          .replace(/^# (.+)$/gm, '<h2 class="text-white text-xl font-bold mt-8 mb-4">$1</h2>')
+          .replace(/^## (.+)$/gm, '<h3 class="text-white text-lg font-semibold mt-6 mb-3">$1</h3>')
+          .replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>'),
+      }} />
+  )
+}
+
+function LessonSections({ lesson, enrollmentId, userId }: { lesson: Lesson; enrollmentId: string; userId: string }) {
+  const [sections, setSections] = useState<Section[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.from('sections').select('*').eq('lesson_id', lesson.id).order('position')
+      .then(({ data }) => { setSections(data || []); setLoading(false) })
+  }, [lesson.id])
+
+  if (loading) return <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" /></div>
+
+  // If no sections, fall back to legacy lesson content
+  if (sections.length === 0) return <LessonContent lesson={lesson} />
+
+  return (
+    <div className="space-y-8">
+      {sections.map((section, idx) => (
+        <div key={section.id}>
+          {section.title && section.title !== 'New section' && (
+            <h3 className="text-white font-semibold text-lg mb-4 pb-2 border-b border-[#1a1a1a]">
+              {idx + 1}. {section.title}
+            </h3>
+          )}
+          <SectionContent section={section} />
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function LessonContent({ lesson }: { lesson: Lesson }) {
   switch (lesson.content_type) {
