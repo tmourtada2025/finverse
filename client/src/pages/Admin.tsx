@@ -54,6 +54,108 @@ function StatCard({ label, value, sub, color, t }: any) {
   )
 }
 
+
+// ─── Notifications Section ────────────────────────────────────────────────────
+function NotificationsSection({ t }: { t: any }) {
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [type, setType] = useState('announcement')
+  const [courseId, setCourseId] = useState('')
+  const [courses, setCourses] = useState<any[]>([])
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [history, setHistory] = useState<any[]>([])
+
+  useEffect(() => {
+    supabase.from('courses').select('id, title').then(({ data }) => setCourses(data || []))
+    supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(20).then(({ data }) => setHistory(data || []))
+  }, [])
+
+  async function send() {
+    if (!title.trim() || !body.trim()) return
+    setSending(true)
+    const payload: any = { title: title.trim(), body: body.trim(), type }
+    if (courseId) payload.course_id = courseId
+    const { data, error } = await supabase.from('notifications').insert(payload).select().single()
+    if (!error && data) {
+      setHistory(h => [data, ...h])
+      setTitle(''); setBody(''); setCourseId(''); setType('announcement')
+      setSent(true); setTimeout(() => setSent(false), 2500)
+    }
+    setSending(false)
+  }
+
+  async function deleteNotif(id: string) {
+    if (!confirm('Delete this notification?')) return
+    await supabase.from('notifications').delete().eq('id', id)
+    setHistory(h => h.filter(n => n.id !== id))
+  }
+
+  const typeColors: Record<string, string> = { announcement: '#6366f1', new_course: '#10b981', event: '#f59e0b', offer: '#ec4899' }
+  const typeLabels: Record<string, string> = { announcement: '📢 Announcement', new_course: '🎓 New Course', event: '📅 Event', offer: '🎁 Offer' }
+
+  return (
+    <div style={{ maxWidth: '680px' }}>
+      <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 1.5rem', color: t.text }}>Push Notification</h2>
+
+      {/* Compose */}
+      <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '1.25rem', backgroundColor: t.surface, marginBottom: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+          <div>
+            <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '5px' }}>Type</label>
+            <select value={type} onChange={e => setType(e.target.value)}
+              style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none' }}>
+              {Object.entries(typeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '5px' }}>Target course (optional)</label>
+            <select value={courseId} onChange={e => setCourseId(e.target.value)}
+              style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none' }}>
+              <option value="">All enrolled students</option>
+              {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{ marginBottom: '12px' }}>
+          <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '5px' }}>Title</label>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Notification title..."
+            style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }} />
+        </div>
+        <div style={{ marginBottom: '14px' }}>
+          <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '5px' }}>Message</label>
+          <textarea value={body} onChange={e => setBody(e.target.value)} rows={3} placeholder="Notification message..."
+            style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', resize: 'vertical' as const, boxSizing: 'border-box' as const, fontFamily: 'inherit' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={send} disabled={sending || !title.trim() || !body.trim()}
+            style={{ backgroundColor: sent ? '#10b981' : t.text, color: sent ? '#fff' : t.bg, border: 'none', borderRadius: '8px', padding: '9px 24px', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', opacity: (sending || !title.trim() || !body.trim()) ? 0.5 : 1, transition: 'background-color 0.2s' }}>
+            {sent ? '✓ Sent' : sending ? 'Sending…' : 'Send notification'}
+          </button>
+        </div>
+      </div>
+
+      {/* History */}
+      <h3 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: t.muted, margin: '0 0 12px' }}>Sent notifications</h3>
+      {history.length === 0 ? (
+        <div style={{ border: `1px dashed ${t.border}`, borderRadius: '10px', padding: '2rem', textAlign: 'center', color: t.muted, fontSize: '0.875rem' }}>No notifications sent yet</div>
+      ) : history.map(n => (
+        <div key={n.id} style={{ border: `1px solid ${t.border}`, borderRadius: '10px', padding: '12px 16px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', backgroundColor: t.surface }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+              <span style={{ fontSize: '0.68rem', padding: '2px 7px', borderRadius: '4px', backgroundColor: `${typeColors[n.type]}15`, color: typeColors[n.type] }}>{typeLabels[n.type] || n.type}</span>
+              <span style={{ fontSize: '0.68rem', color: t.dim }}>{new Date(n.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+            <p style={{ fontSize: '0.855rem', fontWeight: 600, color: t.text, margin: '0 0 2px' }}>{n.title}</p>
+            <p style={{ fontSize: '0.8rem', color: t.muted, margin: 0 }}>{n.body}</p>
+          </div>
+          <button onClick={() => deleteNotif(n.id)} style={{ fontSize: '0.75rem', color: '#ef444460', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, marginLeft: '12px' }}>Delete</button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function Admin() {
   const { loading, isAuthenticated, isAdmin, profile } = useAuth()
   const [section, setSection] = useState<AdminSection>('overview')
@@ -107,7 +209,7 @@ export default function Admin() {
       if (editingCourse) crumbs.push(editingCourse.title)
       if (editingLesson) crumbs.push(editingLesson.title)
     } else {
-      crumbs.push({ overview: 'Overview', users: 'Users', enrollments: 'Enrollments', analytics: 'Analytics' }[section] || '')
+      crumbs.push({ overview: 'Overview', users: 'Users', enrollments: 'Enrollments', analytics: 'Analytics', notifications: 'Notifications' }[section] || '')
     }
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem' }}>
@@ -175,6 +277,7 @@ export default function Admin() {
           {navBtn('users', 'Users', I.users)}
           {navBtn('enrollments', 'Enrollments', I.enrollments)}
           {navBtn('analytics', 'Analytics', I.analytics)}
+          {navBtn('notifications', 'Notifications', () => <span>🔔</span>)}
         </nav>
 
         <div style={{ padding: '10px', borderTop: `1px solid ${t.sidebarBorder}` }}>
@@ -217,6 +320,7 @@ export default function Admin() {
           {section === 'users' && <UsersSection t={t} />}
           {section === 'enrollments' && <EnrollmentsSection t={t} />}
           {section === 'analytics' && <AnalyticsSection t={t} />}
+          {section === 'notifications' && <NotificationsSection t={t} />}
         </div>
       </main>
     </div>

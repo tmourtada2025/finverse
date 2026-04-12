@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth'
 import { supabase, Course, Enrollment } from '@/lib/supabase'
 import { Link } from 'wouter'
@@ -15,6 +15,139 @@ const Icons = {
   moon: () => <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>,
   logout: () => <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>,
   bell: () => <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>,
+}
+
+
+// ─── Notification Bell ────────────────────────────────────────────────────────
+interface Notification {
+  id: string
+  title: string
+  body: string
+  type: string
+  created_at: string
+  read?: boolean
+}
+
+function NotificationBell({ userId, t }: { userId: string; t: any }) {
+  const [open, setOpen] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { fetchNotifications() }, [userId])
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  async function fetchNotifications() {
+    const { data: notifs } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    const { data: reads } = await supabase
+      .from('notification_reads')
+      .select('notification_id')
+      .eq('user_id', userId)
+
+    const readSet = new Set((reads || []).map((r: any) => r.notification_id))
+    setReadIds(readSet)
+    setNotifications(notifs || [])
+  }
+
+  async function markRead(id: string) {
+    if (readIds.has(id)) return
+    await supabase.from('notification_reads').upsert({ notification_id: id, user_id: userId })
+    setReadIds(prev => new Set([...prev, id]))
+  }
+
+  async function markAllRead() {
+    const unread = notifications.filter(n => !readIds.has(n.id))
+    if (!unread.length) return
+    await supabase.from('notification_reads').upsert(
+      unread.map(n => ({ notification_id: n.id, user_id: userId }))
+    )
+    setReadIds(new Set(notifications.map(n => n.id)))
+  }
+
+  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length
+
+  const typeIcon: Record<string, string> = {
+    announcement: '📢',
+    new_course: '🎓',
+    event: '📅',
+    offer: '🎁',
+  }
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => { setOpen(o => !o); if (!open) notifications.forEach(n => markRead(n.id)) }}
+        style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: '6px', borderRadius: '8px', color: t.muted, display: 'flex', alignItems: 'center' }}
+        title="Notifications"
+      >
+        <span style={{ fontSize: '1.1rem' }}>🔔</span>
+        {unreadCount > 0 && (
+          <span style={{
+            position: 'absolute', top: 0, right: 0,
+            background: '#ef4444', color: '#fff',
+            fontSize: '0.6rem', fontWeight: 700,
+            borderRadius: '999px', minWidth: '16px', height: '16px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '0 3px', lineHeight: 1,
+          }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', right: 0, zIndex: 999,
+          width: '320px', backgroundColor: t.bg,
+          border: `1px solid ${t.border}`, borderRadius: '12px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.15)', overflow: 'hidden',
+          marginTop: '8px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: `1px solid ${t.border}` }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: t.text }}>Notifications</span>
+            {unreadCount === 0 ? null : (
+              <button onClick={markAllRead} style={{ fontSize: '0.72rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>Mark all read</button>
+            )}
+          </div>
+          <div style={{ maxHeight: '380px', overflowY: 'auto' }}>
+            {notifications.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: t.muted, fontSize: '0.855rem' }}>No notifications yet</div>
+            ) : notifications.map(n => (
+              <div key={n.id} onClick={() => markRead(n.id)} style={{
+                padding: '12px 16px', borderBottom: `1px solid ${t.border}`,
+                backgroundColor: readIds.has(n.id) ? 'transparent' : t.surface,
+                cursor: 'default',
+              }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1rem', flexShrink: 0 }}>{typeIcon[n.type] || '📢'}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: readIds.has(n.id) ? 400 : 600, color: t.text }}>{n.title}</span>
+                      {!readIds.has(n.id) && <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#3b82f6', flexShrink: 0 }} />}
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: t.muted, margin: '2px 0 0', lineHeight: 1.4 }}>{n.body}</p>
+                    <span style={{ fontSize: '0.68rem', color: t.dim, marginTop: '4px', display: 'block' }}>
+                      {new Date(n.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Dashboard() {
@@ -91,11 +224,12 @@ export default function Dashboard() {
       {/* Sidebar */}
       <aside style={{ width: 220, flexShrink: 0, backgroundColor: t.sidebar, borderRight: `1px solid ${t.sidebarBorder}`, display: 'flex', flexDirection: 'column', height: '100vh', position: 'sticky', top: 0 }}>
 
-        {/* Logo */}
-        <div style={{ padding: '22px 20px 18px', borderBottom: `1px solid ${t.sidebarBorder}` }}>
+        {/* Logo + Bell */}
+        <div style={{ padding: '22px 20px 18px', borderBottom: `1px solid ${t.sidebarBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.03em', color: t.text }}>
             Fin<span style={{ fontWeight: 300 }}>Verse</span>
           </span>
+          {user && <NotificationBell userId={user.id} t={t} />}
         </div>
 
         {/* User */}
