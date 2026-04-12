@@ -30,41 +30,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       else setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session)
-        if (session) {
-          await fetchProfile(session.user.id)
-        } else {
-          setProfile(null)
-          setLoading(false)
-        }
-      }
-    )
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      if (session) fetchProfile(session.user.id)
+      else { setProfile(null); setLoading(false) }
+    })
 
     return () => subscription.unsubscribe()
   }, [])
 
   async function fetchProfile(userId: string) {
-    // Hard timeout — never block the app for more than 3 seconds
-    const timeout = setTimeout(() => {
-      setProfile(null)
-      setLoading(false)
-    }, 3000)
-
+    const timer = setTimeout(() => setLoading(false), 5000)
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-      clearTimeout(timeout)
-      setProfile(error ? null : data)
-    } catch {
-      clearTimeout(timeout)
-      setProfile(null)
+      const { data } = await supabase
+        .from('profiles').select('*').eq('id', userId).single()
+      setProfile(data ?? null)
     } finally {
-      clearTimeout(timeout)
+      clearTimeout(timer)
       setLoading(false)
     }
   }
@@ -72,13 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signInWithGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
   }
 
@@ -89,12 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signUpWithEmail(email: string, password: string, fullName: string) {
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+      email, password,
+      options: { data: { full_name: fullName }, emailRedirectTo: `${window.location.origin}/auth/callback` },
     })
     return { error: error?.message ?? null }
   }
@@ -108,26 +80,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut()
-    setSession(null)
-    setProfile(null)
     window.location.href = '/'
   }
 
-  const value: AuthContextType = {
-    session,
-    user: session?.user ?? null,
-    profile,
-    loading,
-    isAuthenticated: !!session,
-    isAdmin: profile?.role === 'admin',
-    signInWithGoogle,
-    signInWithEmail,
-    signUpWithEmail,
-    resetPassword,
-    signOut,
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{
+      session, user: session?.user ?? null, profile, loading,
+      isAuthenticated: !!session,
+      isAdmin: profile?.role === 'admin',
+      signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, signOut,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
