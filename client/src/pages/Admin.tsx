@@ -1,35 +1,43 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth'
-import { supabase, Course, Module, Lesson, Profile } from '@/lib/supabase'
-import LessonEditor from '@/pages/LessonEditor'
+import { supabase, Course, Module, Lesson, Profile, Section } from '@/lib/supabase'
 
-type AdminSection = 'overview' | 'courses' | 'users' | 'enrollments' | 'analytics'
+type AdminSection = 'overview' | 'courses_new' | 'courses_edit' | 'users' | 'enrollments' | 'analytics'
+type CourseView = 'list' | 'editor'
+type LessonView = 'editor'
 
+// ─── Icons ────────────────────────────────────────────────────────────────────
 const I = {
   overview: () => <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>,
   courses: () => <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>,
   users: () => <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
   enrollments: () => <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>,
   analytics: () => <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
+  plus: () => <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>,
+  edit: () => <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+  chevron: (open: boolean) => <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>,
   sun: () => <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>,
   moon: () => <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>,
   logout: () => <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>,
   eye: () => <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>,
+  back: () => <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>,
 }
 
-function mkTheme(dark: boolean) {
+function mkT(dark: boolean) {
   return dark ? {
     bg: '#0d0d0f', sidebar: '#111115', sidebarBorder: '#1e1e24',
     surface: '#18181d', border: '#1e1e24', text: '#f0f0f5',
     muted: '#6b6b80', dim: '#2a2a35', accent: '#ffffff', accentText: '#000000',
     activeNavBg: '#1e1e28', activeNavText: '#ffffff', navText: '#6b6b80',
     amber: '#f59e0b', indigo: '#6366f1', green: '#10b981', blue: '#3b82f6', red: '#ef4444',
+    subNavBg: '#161620',
   } : {
     bg: '#f4f4f0', sidebar: '#ffffff', sidebarBorder: '#e8e8e2',
     surface: '#ffffff', border: '#e8e8e2', text: '#111118',
     muted: '#888890', dim: '#e0e0e8', accent: '#111118', accentText: '#ffffff',
     activeNavBg: '#111118', activeNavText: '#ffffff', navText: '#888890',
     amber: '#d97706', indigo: '#4f46e5', green: '#059669', blue: '#2563eb', red: '#dc2626',
+    subNavBg: '#f0f0ec',
   }
 }
 
@@ -49,14 +57,19 @@ function StatCard({ label, value, sub, color, t }: any) {
 export default function Admin() {
   const { loading, isAuthenticated, isAdmin, profile } = useAuth()
   const [section, setSection] = useState<AdminSection>('overview')
+  const [coursesOpen, setCoursesOpen] = useState(false)
   const [dark, setDark] = useState(() => {
     try { return localStorage.getItem('fv-theme') !== 'light' } catch { return true }
   })
+  const t = mkT(dark)
+
+  // Drill-down state
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null)
+  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null)
 
   useEffect(() => {
     try { localStorage.setItem('fv-theme', dark ? 'dark' : 'light') } catch {}
   }, [dark])
-  const t = mkTheme(dark)
 
   useEffect(() => {
     if (loading) return
@@ -71,16 +84,42 @@ export default function Admin() {
     </div>
   )
 
-  const navItems: { id: AdminSection; label: string; Icon: () => JSX.Element }[] = [
-    { id: 'overview', label: 'Overview', Icon: I.overview },
-    { id: 'courses', label: 'Courses', Icon: I.courses },
-    { id: 'users', label: 'Users', Icon: I.users },
-    { id: 'enrollments', label: 'Enrollments', Icon: I.enrollments },
-    { id: 'analytics', label: 'Analytics', Icon: I.analytics },
-  ]
-
-  const titles: Record<AdminSection, string> = { overview: 'Overview', courses: 'Courses', users: 'Users', enrollments: 'Enrollments', analytics: 'Analytics' }
+  const isCourseSection = section === 'courses_new' || section === 'courses_edit'
   const initials = profile?.full_name ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : 'A'
+
+  function navBtn(id: AdminSection, label: string, Icon: () => JSX.Element) {
+    const active = section === id && !isCourseSection
+    return (
+      <button onClick={() => { setSection(id); setCoursesOpen(false); setEditingCourse(null); setEditingLesson(null) }}
+        style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, marginBottom: '1px', transition: 'all 0.12s', backgroundColor: active ? t.activeNavBg : 'transparent', color: active ? t.activeNavText : t.navText, fontWeight: active ? 500 : 400, fontSize: '0.855rem' }}>
+        <span style={{ opacity: active ? 1 : 0.7, flexShrink: 0 }}><Icon /></span>
+        <span>{label}</span>
+      </button>
+    )
+  }
+
+  // Breadcrumb
+  function Breadcrumb() {
+    const crumbs: string[] = []
+    if (section === 'courses_new') crumbs.push('Courses', 'New course')
+    else if (section === 'courses_edit') {
+      crumbs.push('Courses', 'Edit')
+      if (editingCourse) crumbs.push(editingCourse.title)
+      if (editingLesson) crumbs.push(editingLesson.title)
+    } else {
+      crumbs.push({ overview: 'Overview', users: 'Users', enrollments: 'Enrollments', analytics: 'Analytics' }[section] || '')
+    }
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem' }}>
+        {crumbs.map((c, i) => (
+          <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {i > 0 && <span style={{ color: t.dim }}>/</span>}
+            <span style={{ color: i === crumbs.length - 1 ? t.text : t.muted, fontWeight: i === crumbs.length - 1 ? 600 : 400 }}>{c}</span>
+          </span>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: t.bg, color: t.text, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -95,9 +134,7 @@ export default function Admin() {
 
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${t.sidebarBorder}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: dark ? '#252530' : '#ebebf0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, color: t.muted, flexShrink: 0 }}>
-              {initials}
-            </div>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: dark ? '#252530' : '#ebebf0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, color: t.muted, flexShrink: 0 }}>{initials}</div>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: '0.82rem', fontWeight: 500, color: t.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile?.full_name || 'Admin'}</p>
               <p style={{ fontSize: '0.68rem', color: t.amber }}>Administrator</p>
@@ -107,15 +144,37 @@ export default function Admin() {
 
         <nav style={{ flex: 1, padding: '10px', overflowY: 'auto' }}>
           <p style={{ fontSize: '0.62rem', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.muted, padding: '8px 12px 6px', opacity: 0.6 }}>Management</p>
-          {navItems.map(({ id, label, Icon }) => {
-            const active = section === id
-            return (
-              <button key={id} onClick={() => setSection(id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, marginBottom: '1px', transition: 'all 0.12s', backgroundColor: active ? t.activeNavBg : 'transparent', color: active ? t.activeNavText : t.navText, fontWeight: active ? 500 : 400, fontSize: '0.855rem' }}>
-                <span style={{ opacity: active ? 1 : 0.7, flexShrink: 0 }}><Icon /></span>
-                <span>{label}</span>
+
+          {navBtn('overview', 'Overview', I.overview)}
+
+          {/* Courses expandable */}
+          <button
+            onClick={() => setCoursesOpen(o => !o)}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, marginBottom: '1px', transition: 'all 0.12s', backgroundColor: isCourseSection ? t.activeNavBg : 'transparent', color: isCourseSection ? t.activeNavText : t.navText, fontWeight: isCourseSection ? 500 : 400, fontSize: '0.855rem' }}>
+            <span style={{ opacity: isCourseSection ? 1 : 0.7, flexShrink: 0 }}><I.courses /></span>
+            <span style={{ flex: 1 }}>Courses</span>
+            <span style={{ opacity: 0.5 }}>{I.chevron(coursesOpen)}</span>
+          </button>
+
+          {/* Sub-items */}
+          {coursesOpen && (
+            <div style={{ marginLeft: '14px', marginBottom: '4px', borderLeft: `1px solid ${t.border}`, paddingLeft: '10px' }}>
+              <button
+                onClick={() => { setSection('courses_new'); setEditingCourse(null); setEditingLesson(null) }}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '7px 10px', borderRadius: '7px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, marginBottom: '1px', backgroundColor: section === 'courses_new' ? t.subNavBg : 'transparent', color: section === 'courses_new' ? t.text : t.muted, fontSize: '0.82rem', fontWeight: section === 'courses_new' ? 500 : 400 }}>
+                <I.plus /><span>New course</span>
               </button>
-            )
-          })}
+              <button
+                onClick={() => { setSection('courses_edit'); setEditingCourse(null); setEditingLesson(null) }}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '7px 10px', borderRadius: '7px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, backgroundColor: section === 'courses_edit' ? t.subNavBg : 'transparent', color: section === 'courses_edit' ? t.text : t.muted, fontSize: '0.82rem', fontWeight: section === 'courses_edit' ? 500 : 400 }}>
+                <I.edit /><span>Edit course</span>
+              </button>
+            </div>
+          )}
+
+          {navBtn('users', 'Users', I.users)}
+          {navBtn('enrollments', 'Enrollments', I.enrollments)}
+          {navBtn('analytics', 'Analytics', I.analytics)}
         </nav>
 
         <div style={{ padding: '10px', borderTop: `1px solid ${t.sidebarBorder}` }}>
@@ -133,17 +192,453 @@ export default function Admin() {
 
       {/* Main */}
       <main style={{ flex: 1, overflowY: 'auto', minHeight: '100vh' }}>
-        <div style={{ padding: '0 32px', height: 58, display: 'flex', alignItems: 'center', borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, backgroundColor: t.bg, zIndex: 10 }}>
-          <h1 style={{ fontSize: '0.95rem', fontWeight: 600, color: t.text }}>{titles[section]}</h1>
+        <div style={{ padding: '0 32px', height: 58, display: 'flex', alignItems: 'center', gap: '12px', borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, backgroundColor: t.bg, zIndex: 10 }}>
+          <Breadcrumb />
         </div>
         <div style={{ padding: '28px 32px' }}>
-          {section === 'overview' && <OverviewSection t={t} onNavigate={setSection} />}
-          {section === 'courses' && <CoursesSection t={t} />}
+          {section === 'overview' && <OverviewSection t={t} onNavigate={(s) => { setSection(s); if (s === 'courses_edit') setCoursesOpen(true) }} />}
+          {section === 'courses_new' && <CourseForm course={null} t={t} onSaved={(c) => { setSection('courses_edit'); setEditingCourse(c); setCoursesOpen(true) }} />}
+          {section === 'courses_edit' && !editingCourse && <CourseList t={t} onSelect={(c) => setEditingCourse(c)} />}
+          {section === 'courses_edit' && editingCourse && !editingLesson && (
+            <CourseEditor
+              course={editingCourse}
+              t={t}
+              onBack={() => setEditingCourse(null)}
+              onEditLesson={(l) => setEditingLesson(l)}
+            />
+          )}
+          {section === 'courses_edit' && editingCourse && editingLesson && (
+            <LessonEditorPage
+              lesson={editingLesson}
+              t={t}
+              onBack={() => setEditingLesson(null)}
+            />
+          )}
           {section === 'users' && <UsersSection t={t} />}
           {section === 'enrollments' && <EnrollmentsSection t={t} />}
           {section === 'analytics' && <AnalyticsSection t={t} />}
         </div>
       </main>
+    </div>
+  )
+}
+
+// ─── Course list ──────────────────────────────────────────────────────────────
+function CourseList({ t, onSelect }: { t: any; onSelect: (c: Course) => void }) {
+  const [courses, setCourses] = useState<Course[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.from('courses').select('*').order('created_at', { ascending: false })
+      .then(({ data }) => { setCourses(data || []); setLoading(false) })
+  }, [])
+
+  async function togglePublish(e: React.MouseEvent, course: Course) {
+    e.stopPropagation()
+    await supabase.from('courses').update({ is_published: !course.is_published }).eq('id', course.id)
+    setCourses(p => p.map(c => c.id === course.id ? { ...c, is_published: !c.is_published } : c))
+  }
+
+  if (loading) return <p style={{ color: t.muted }}>Loading…</p>
+
+  if (courses.length === 0) return (
+    <div style={{ border: `1px dashed ${t.border}`, borderRadius: '12px', padding: '48px', textAlign: 'center' as const, color: t.muted, fontSize: '0.875rem' }}>
+      No courses yet. Use "New course" to create one.
+    </div>
+  )
+
+  return (
+    <div>
+      <p style={{ fontSize: '0.855rem', color: t.muted, marginBottom: '16px' }}>{courses.length} course{courses.length !== 1 ? 's' : ''} — click to edit</p>
+      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '8px' }}>
+        {courses.map(course => (
+          <div key={course.id} onClick={() => onSelect(course)}
+            style={{ border: `1px solid ${t.border}`, borderRadius: '10px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: t.surface, cursor: 'pointer', transition: 'border-color 0.15s' }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = t.muted)}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = t.border)}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '3px' }}>
+                <span style={{ fontWeight: 500, fontSize: '0.9rem', color: t.text }}>{course.title}</span>
+                <span style={{ fontSize: '0.68rem', padding: '2px 7px', borderRadius: '4px', border: `1px solid ${course.is_published ? t.green + '50' : t.border}`, color: course.is_published ? t.green : t.muted }}>
+                  {course.is_published ? 'Published' : 'Draft'}
+                </span>
+              </div>
+              <p style={{ fontSize: '0.75rem', color: t.muted }}>${course.price} · /{course.slug}</p>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <button onClick={(e) => togglePublish(e, course)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>
+                {course.is_published ? 'Unpublish' : 'Publish'}
+              </button>
+              <span style={{ fontSize: '0.78rem', color: t.muted }}>Edit →</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Course form (new or edit meta) ──────────────────────────────────────────
+function CourseForm({ course, t, onSaved }: { course: Course | null; t: any; onSaved?: (c: Course) => void }) {
+  const [form, setForm] = useState({ title: course?.title || '', slug: course?.slug || '', description: course?.description || '', price: course?.price || 0 })
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const isNew = !course?.id
+
+  async function save() {
+    setSaving(true)
+    if (isNew) {
+      const { data } = await supabase.from('courses').insert({ ...form, is_published: false }).select().single()
+      setSaving(false)
+      if (data && onSaved) onSaved(data)
+    } else {
+      await supabase.from('courses').update(form).eq('id', course!.id)
+      setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
+    }
+  }
+
+  const inp = { width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }
+  const lbl = { fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }
+
+  return (
+    <div style={{ maxWidth: 640 }}>
+      <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '20px', color: t.text }}>{isNew ? 'Create new course' : 'Course details'}</h2>
+      <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '22px', backgroundColor: t.surface, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div style={{ gridColumn: '1/-1' }}><label style={lbl}>Title</label><input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Course title…" style={inp} /></div>
+        <div><label style={lbl}>Slug</label><input value={form.slug} onChange={e => setForm(p => ({ ...p, slug: e.target.value }))} placeholder="url-slug" style={inp} /></div>
+        <div><label style={lbl}>Price (USD)</label><input type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: Number(e.target.value) }))} style={inp} /></div>
+        <div style={{ gridColumn: '1/-1' }}><label style={lbl}>Description</label><textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} style={{ ...inp, resize: 'vertical' as const, fontFamily: 'inherit' }} /></div>
+        <div>
+          <button onClick={save} disabled={saving || !form.title} style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '10px 22px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', opacity: (saving || !form.title) ? 0.6 : 1, transition: 'background-color 0.2s' }}>
+            {saved ? '✓ Saved' : saving ? 'Saving…' : isNew ? 'Create course' : 'Save changes'}
+          </button>
+        </div>
+      </div>
+      {isNew && <p style={{ fontSize: '0.78rem', color: t.muted, marginTop: '12px' }}>After creating, you'll be taken to the course editor to add modules and lessons.</p>}
+    </div>
+  )
+}
+
+// ─── Course editor (full page) ────────────────────────────────────────────────
+type ModuleWithLessons = Module & { lessons: Lesson[] }
+
+function CourseEditor({ course, t, onBack, onEditLesson }: { course: Course; t: any; onBack: () => void; onEditLesson: (l: Lesson) => void }) {
+  const [modules, setModules] = useState<ModuleWithLessons[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => { fetchModules() }, [course.id])
+
+  async function fetchModules() {
+    const { data: mods } = await supabase.from('modules').select('*').eq('course_id', course.id).order('position')
+    const withLessons = await Promise.all((mods || []).map(async m => {
+      const { data: ls } = await supabase.from('lessons').select('*').eq('module_id', m.id).order('position')
+      return { ...m, lessons: ls || [] }
+    }))
+    setModules(withLessons); setLoading(false)
+  }
+
+  async function addModule() {
+    const title = prompt('Module title:'); if (!title) return
+    await supabase.from('modules').insert({ course_id: course.id, title, position: modules.length + 1 })
+    fetchModules()
+  }
+
+  async function deleteModule(modId: string) {
+    if (!confirm('Delete this module and all its lessons?')) return
+    await supabase.from('modules').delete().eq('id', modId)
+    fetchModules()
+  }
+
+  async function addLesson(moduleId: string, pos: number) {
+    const title = prompt('Lesson title:'); if (!title) return
+    const { data } = await supabase.from('lessons').insert({ module_id: moduleId, course_id: course.id, title, content_type: 'text', position: pos, is_published: true }).select().single()
+    fetchModules()
+    if (data) onEditLesson(data)
+  }
+
+  async function deleteLesson(lessonId: string) {
+    if (!confirm('Delete this lesson?')) return
+    await supabase.from('lessons').delete().eq('id', lessonId)
+    fetchModules()
+  }
+
+  return (
+    <div>
+      {/* Back + course meta edit */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+        <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: `1px solid ${t.border}`, color: t.muted, cursor: 'pointer', fontSize: '0.8rem', borderRadius: '7px', padding: '6px 12px' }}>
+          <I.back /> Back
+        </button>
+        <div>
+          <h2 style={{ fontSize: '1rem', fontWeight: 600, color: t.text, margin: 0 }}>{course.title}</h2>
+          <p style={{ fontSize: '0.75rem', color: t.muted, margin: 0 }}>${course.price} · /{course.slug}</p>
+        </div>
+      </div>
+
+      {/* Inline course meta form */}
+      <CourseForm course={course} t={t} />
+
+      <div style={{ height: '1px', backgroundColor: t.border, margin: '24px 0' }} />
+
+      {/* Modules & Lessons */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: t.text }}>Modules & Lessons</h3>
+        <button onClick={addModule} style={{ fontSize: '0.78rem', color: t.muted, border: `1px solid ${t.border}`, background: 'none', borderRadius: '7px', padding: '6px 14px', cursor: 'pointer' }}>+ Add module</button>
+      </div>
+
+      {loading ? <p style={{ color: t.muted }}>Loading…</p> : modules.length === 0 ? (
+        <div style={{ border: `1px dashed ${t.border}`, borderRadius: '10px', padding: '32px', textAlign: 'center' as const, color: t.muted, fontSize: '0.875rem' }}>No modules yet. Add one above.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '10px' }}>
+          {modules.map((mod, mIdx) => (
+            <div key={mod.id} style={{ border: `1px solid ${t.border}`, borderRadius: '10px', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', backgroundColor: t.surface }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '0.68rem', color: t.dim, fontWeight: 600 }}>M{mIdx + 1}</span>
+                  <span style={{ fontWeight: 500, fontSize: '0.875rem', color: t.text }}>{mod.title}</span>
+                  <span style={{ fontSize: '0.68rem', color: t.muted }}>{mod.lessons.length} lesson{mod.lessons.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => addLesson(mod.id, mod.lessons.length + 1)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>+ lesson</button>
+                  <button onClick={() => deleteModule(mod.id)} style={{ fontSize: '0.75rem', color: t.red + '80', background: 'none', border: 'none', cursor: 'pointer' }}>delete</button>
+                </div>
+              </div>
+              {mod.lessons.map((lesson, lIdx) => (
+                <div key={lesson.id}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderTop: `1px solid ${t.border}`, cursor: 'pointer', transition: 'background-color 0.12s' }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = t.dim + '20')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '0.68rem', color: t.dim, width: 18 }}>{lIdx + 1}</span>
+                    <span style={{ fontSize: '0.855rem', color: t.muted }}>{lesson.title}</span>
+                    <span style={{ fontSize: '0.65rem', border: `1px solid ${t.border}`, borderRadius: '4px', padding: '1px 5px', color: t.dim }}>{lesson.content_type}</span>
+                    {!lesson.is_published && <span style={{ fontSize: '0.65rem', color: t.amber }}>draft</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={() => onEditLesson(lesson)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}>Edit sections →</button>
+                    <button onClick={() => deleteLesson(lesson.id)} style={{ fontSize: '0.75rem', color: t.red + '80', background: 'none', border: 'none', cursor: 'pointer' }}>delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Lesson editor page (sections, full page, no modal) ───────────────────────
+function LessonEditorPage({ lesson, t, onBack }: { lesson: Lesson; t: any; onBack: () => void }) {
+  const [title, setTitle] = useState(lesson.title)
+  const [durationMinutes, setDurationMinutes] = useState(lesson.duration_minutes || 0)
+  const [isPublished, setIsPublished] = useState(lesson.is_published)
+  const [sections, setSections] = useState<Section[]>([])
+  const [loadingSections, setLoadingSections] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => { fetchSections() }, [lesson.id])
+
+  async function fetchSections() {
+    const { data } = await supabase.from('sections').select('*').eq('lesson_id', lesson.id).order('position')
+    setSections(data || []); setLoadingSections(false)
+  }
+
+  async function saveLesson() {
+    setSaving(true)
+    await supabase.from('lessons').update({ title, duration_minutes: durationMinutes || null, is_published: isPublished }).eq('id', lesson.id)
+    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
+  }
+
+  async function addSection() {
+    const { data } = await supabase.from('sections').insert({ lesson_id: lesson.id, title: 'New section', content_type: 'text', position: sections.length + 1 }).select().single()
+    if (data) setSections(s => [...s, data])
+  }
+
+  async function saveSection(sectionId: string, updates: Partial<Section>) {
+    await supabase.from('sections').update(updates).eq('id', sectionId)
+    setSections(s => s.map(sec => sec.id === sectionId ? { ...sec, ...updates } : sec))
+  }
+
+  async function deleteSection(sectionId: string) {
+    await supabase.from('sections').delete().eq('id', sectionId)
+    setSections(s => s.filter(sec => sec.id !== sectionId))
+  }
+
+  const inp = { width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }
+  const lbl = { fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }
+
+  return (
+    <div>
+      {/* Back */}
+      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: `1px solid ${t.border}`, color: t.muted, cursor: 'pointer', fontSize: '0.8rem', borderRadius: '7px', padding: '6px 12px', marginBottom: '24px' }}>
+        <I.back /> Back to course
+      </button>
+
+      {/* Lesson meta */}
+      <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '20px', backgroundColor: t.surface, marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: '14px', marginBottom: '14px' }}>
+          <div><label style={lbl}>Lesson title</label><input value={title} onChange={e => setTitle(e.target.value)} style={inp} /></div>
+          <div><label style={lbl}>Duration (min)</label><input type="number" value={durationMinutes} onChange={e => setDurationMinutes(Number(e.target.value))} min={0} style={inp} /></div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input type="checkbox" id="pub" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: t.green }} />
+            <label htmlFor="pub" style={{ fontSize: '0.8rem', color: t.muted, cursor: 'pointer' }}>Published</label>
+          </div>
+          <button onClick={saveLesson} disabled={saving} style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '0.855rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1, transition: 'background-color 0.2s' }}>
+            {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save lesson'}
+          </button>
+        </div>
+      </div>
+
+      {/* Sections */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+        <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: t.text }}>Sections ({sections.length})</h3>
+        <button onClick={addSection} style={{ fontSize: '0.78rem', color: t.muted, border: `1px solid ${t.border}`, background: 'none', borderRadius: '7px', padding: '6px 14px', cursor: 'pointer' }}>+ Add section</button>
+      </div>
+
+      {loadingSections ? <p style={{ color: t.muted }}>Loading sections…</p> : sections.length === 0 ? (
+        <div style={{ border: `1px dashed ${t.border}`, borderRadius: '10px', padding: '32px', textAlign: 'center' as const, color: t.muted, fontSize: '0.875rem' }}>
+          No sections yet. Add one to start building this lesson.
+        </div>
+      ) : (
+        sections.map(section => (
+          <SectionBlock key={section.id} section={section} t={t} onSave={u => saveSection(section.id, u)} onDelete={() => deleteSection(section.id)} />
+        ))
+      )}
+    </div>
+  )
+}
+
+// ─── Section block (inline, collapsible) ─────────────────────────────────────
+function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: any; onSave: (u: Partial<Section>) => void; onDelete: () => void }) {
+  const [open, setOpen] = useState(section.title === 'New section')
+  const [title, setTitle] = useState(section.title)
+  const [contentType, setContentType] = useState(section.content_type)
+  const [contentText, setContentText] = useState(section.content_text || '')
+  const [contentUrl, setContentUrl] = useState(section.content_url || '')
+  const [saving, setSaving] = useState(false)
+  const editorRef = useRef<HTMLDivElement>(null)
+
+  async function save() {
+    setSaving(true)
+    await onSave({ title, content_type: contentType, content_text: contentText || null, content_url: contentUrl || null })
+    setSaving(false)
+  }
+
+  const tabs = [
+    { id: 'text', icon: '📝' }, { id: 'video', icon: '🎬' }, { id: 'audio', icon: '🎵' },
+    { id: 'pdf', icon: '📄' }, { id: 'slides', icon: '🖥️' }, { id: 'excel', icon: '📊' }, { id: 'quiz', icon: '❓' },
+  ]
+
+  return (
+    <div style={{ border: `1px solid ${t.border}`, borderRadius: '10px', overflow: 'hidden', marginBottom: '10px' }}>
+      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', backgroundColor: t.surface, cursor: 'pointer' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ opacity: 0.4 }}>{I.chevron(open)}</span>
+          <span style={{ fontSize: '0.875rem', fontWeight: 500, color: title && title !== 'New section' ? t.text : t.muted }}>{title || 'Untitled section'}</span>
+          <span style={{ fontSize: '0.65rem', border: `1px solid ${t.border}`, borderRadius: '4px', padding: '1px 5px', color: t.dim }}>{contentType}</span>
+        </div>
+        <button onClick={e => { e.stopPropagation(); if (confirm('Delete this section?')) onDelete() }} style={{ fontSize: '0.75rem', color: t.red + '70', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+      </div>
+
+      {open && (
+        <div style={{ padding: '16px', backgroundColor: t.bg }}>
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '5px' }}>Section title</label>
+            <input value={title} onChange={e => setTitle(e.target.value)}
+              style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }} />
+          </div>
+
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const, marginBottom: '12px' }}>
+            {tabs.map(tab => (
+              <button key={tab.id} onClick={() => setContentType(tab.id as any)}
+                style={{ padding: '5px 12px', borderRadius: '6px', border: `1px solid ${contentType === tab.id ? t.text : t.border}`, backgroundColor: contentType === tab.id ? t.text : 'transparent', color: contentType === tab.id ? t.bg : t.muted, fontSize: '0.75rem', cursor: 'pointer' }}>
+                {tab.icon} {tab.id}
+              </button>
+            ))}
+          </div>
+
+          {contentType === 'text' && (
+            <RichEditorInline value={contentText} onChange={setContentText} t={t} />
+          )}
+          {contentType === 'video' && (
+            <input value={contentUrl} onChange={e => setContentUrl(e.target.value)} placeholder="https://www.youtube.com/embed/VIDEO_ID"
+              style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }} />
+          )}
+          {(contentType === 'audio' || contentType === 'pdf' || contentType === 'slides' || contentType === 'excel') && (
+            <input value={contentUrl} onChange={e => setContentUrl(e.target.value)} placeholder="Paste URL or upload via file picker…"
+              style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }} />
+          )}
+          {contentType === 'quiz' && (
+            <textarea value={contentText} onChange={e => setContentText(e.target.value)} rows={6} placeholder='[{"type":"multiple_choice","question":"...","options":["A","B"],"correct_index":0,"explanation":"..."}]'
+              style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.8rem', outline: 'none', resize: 'vertical' as const, boxSizing: 'border-box' as const, fontFamily: 'monospace' }} />
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+            <button onClick={save} disabled={saving} style={{ backgroundColor: t.accent, color: t.accentText, border: 'none', borderRadius: '7px', padding: '8px 20px', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+              {saving ? 'Saving…' : 'Save section'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Inline rich editor (no modal dependency) ─────────────────────────────────
+function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: any }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [dir, setDir] = useState<'ltr' | 'rtl'>('ltr')
+
+  useEffect(() => {
+    if (!document.getElementById('arabic-font')) {
+      const link = document.createElement('link'); link.id = 'arabic-font'; link.rel = 'stylesheet'
+      link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600&family=Amiri:wght@400;700&display=swap'
+      document.head.appendChild(link)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (ref.current && !ref.current.innerHTML) ref.current.innerHTML = value || ''
+  }, [])
+
+  useEffect(() => {
+    if (ref.current) ref.current.dir = dir
+  }, [dir])
+
+  function exec(cmd: string, val?: string) { ref.current?.focus(); document.execCommand(cmd, false, val); sync() }
+  function sync() { if (ref.current) onChange(ref.current.innerHTML) }
+
+  const btn = { padding: '3px 7px', fontSize: '0.72rem', border: `1px solid ${t.border}`, borderRadius: '4px', cursor: 'pointer', background: 'transparent', color: t.muted, lineHeight: 1.2 }
+
+  return (
+    <div style={{ border: `1px solid ${t.border}`, borderRadius: '8px', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '3px', padding: '7px 10px', borderBottom: `1px solid ${t.border}`, backgroundColor: t.surface, alignItems: 'center' }}>
+        <button type="button" onClick={() => exec('undo')} style={btn}>↩</button>
+        <button type="button" onClick={() => exec('redo')} style={btn}>↪</button>
+        <span style={{ width: 1, background: t.border, alignSelf: 'stretch', margin: '0 2px' }} />
+        <button type="button" onClick={() => exec('bold')} style={btn}><b>B</b></button>
+        <button type="button" onClick={() => exec('italic')} style={btn}><i>I</i></button>
+        <button type="button" onClick={() => exec('underline')} style={btn}><u>U</u></button>
+        <button type="button" onClick={() => exec('strikeThrough')} style={btn}><s>S</s></button>
+        <span style={{ width: 1, background: t.border, alignSelf: 'stretch', margin: '0 2px' }} />
+        <button type="button" onClick={() => exec('formatBlock', 'h2')} style={btn}>H2</button>
+        <button type="button" onClick={() => exec('formatBlock', 'h3')} style={btn}>H3</button>
+        <button type="button" onClick={() => exec('formatBlock', 'p')} style={btn}>¶</button>
+        <span style={{ width: 1, background: t.border, alignSelf: 'stretch', margin: '0 2px' }} />
+        <button type="button" onClick={() => exec('justifyLeft')} style={btn}>⬅</button>
+        <button type="button" onClick={() => exec('justifyCenter')} style={btn}>☰</button>
+        <button type="button" onClick={() => exec('justifyRight')} style={btn}>➡</button>
+        <span style={{ width: 1, background: t.border, alignSelf: 'stretch', margin: '0 2px' }} />
+        <button type="button" onClick={() => exec('insertUnorderedList')} style={btn}>• List</button>
+        <button type="button" onClick={() => exec('insertOrderedList')} style={btn}>1.</button>
+        <button type="button" onClick={() => setDir(d => d === 'ltr' ? 'rtl' : 'ltr')} style={{ ...btn, color: dir === 'rtl' ? t.amber : t.muted, borderColor: dir === 'rtl' ? t.amber + '60' : t.border }}>{dir.toUpperCase()}</button>
+      </div>
+      <div ref={ref} contentEditable suppressContentEditableWarning onInput={sync} onBlur={sync} dir={dir}
+        style={{ minHeight: '160px', padding: '12px', outline: 'none', backgroundColor: t.bg, color: t.text, fontSize: '0.875rem', lineHeight: 1.7, direction: dir }} />
     </div>
   )
 }
@@ -165,10 +660,8 @@ function OverviewSection({ t, onNavigate }: { t: any; onNavigate: (s: AdminSecti
         supabase.from('courses').select('id', { count: 'exact', head: true }).eq('is_published', true),
         supabase.from('enrollments').select('*, profiles(*), courses(title)').order('enrolled_at', { ascending: false }).limit(6),
       ])
-      const revenue = (rev || []).reduce((s: number, e: any) => s + (e.amount_paid || 0), 0)
-      setStats({ users: u || 0, enrollments: en || 0, completed: co || 0, revenue, courses: cr || 0, published: pub || 0 })
-      setRecent(rec || [])
-      setLoading(false)
+      setStats({ users: u || 0, enrollments: en || 0, completed: co || 0, revenue: (rev || []).reduce((s: number, e: any) => s + (e.amount_paid || 0), 0), courses: cr || 0, published: pub || 0 })
+      setRecent(rec || []); setLoading(false)
     }
     load()
   }, [])
@@ -211,155 +704,6 @@ function OverviewSection({ t, onNavigate }: { t: any; onNavigate: (s: AdminSecti
   )
 }
 
-// ─── Courses ──────────────────────────────────────────────────────────────────
-type ModuleWithLessons = Module & { lessons: Lesson[] }
-
-function CoursesSection({ t }: { t: any }) {
-  const [courses, setCourses] = useState<Course[]>([])
-  const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState<Course | null>(null)
-
-  useEffect(() => { fetchCourses() }, [])
-
-  async function fetchCourses() {
-    const { data } = await supabase.from('courses').select('*').order('created_at', { ascending: false })
-    setCourses(data || []); setLoading(false)
-  }
-
-  async function togglePublish(course: Course) {
-    await supabase.from('courses').update({ is_published: !course.is_published }).eq('id', course.id)
-    fetchCourses()
-  }
-
-  const blank: Course = { id: '', title: '', slug: '', subtitle: null, description: '', thumbnail_url: null, price: 0, stripe_price_id: null, stripe_product_id: null, is_published: false, position: 0, created_at: '', updated_at: '' }
-
-  if (editing) return <CourseEditor course={editing} onBack={() => { setEditing(null); fetchCourses() }} t={t} />
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <p style={{ fontSize: '0.855rem', color: t.muted }}>{courses.length} course{courses.length !== 1 ? 's' : ''}</p>
-        <button onClick={() => setEditing(blank)} style={{ backgroundColor: t.accent, color: t.accentText, border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '0.855rem', fontWeight: 500, cursor: 'pointer' }}>+ New course</button>
-      </div>
-      {loading ? <p style={{ color: t.muted }}>Loading…</p> : courses.length === 0 ? (
-        <div style={{ border: `1px dashed ${t.border}`, borderRadius: '12px', padding: '48px', textAlign: 'center' as const, color: t.muted, fontSize: '0.875rem' }}>No courses yet. Create your first one.</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '8px' }}>
-          {courses.map(course => (
-            <div key={course.id} style={{ border: `1px solid ${t.border}`, borderRadius: '10px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: t.surface }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '3px' }}>
-                  <span style={{ fontWeight: 500, fontSize: '0.9rem', color: t.text }}>{course.title}</span>
-                  <span style={{ fontSize: '0.68rem', padding: '2px 7px', borderRadius: '4px', border: `1px solid ${course.is_published ? t.green + '50' : t.border}`, color: course.is_published ? t.green : t.muted }}>
-                    {course.is_published ? 'Published' : 'Draft'}
-                  </span>
-                </div>
-                <p style={{ fontSize: '0.75rem', color: t.muted }}>${course.price} · /{course.slug}</p>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <button onClick={() => togglePublish(course)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>{course.is_published ? 'Unpublish' : 'Publish'}</button>
-                <button onClick={() => setEditing(course)} style={{ fontSize: '0.78rem', border: `1px solid ${t.border}`, background: 'none', color: t.text, borderRadius: '7px', padding: '6px 14px', cursor: 'pointer' }}>Edit →</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function CourseEditor({ course, onBack, t }: { course: Course; onBack: () => void; t: any }) {
-  const isNew = !course.id
-  const [form, setForm] = useState({ title: course.title, slug: course.slug || '', description: course.description || '', price: course.price })
-  const [modules, setModules] = useState<ModuleWithLessons[]>([])
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [courseId, setCourseId] = useState(course.id)
-  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null)
-
-  useEffect(() => { if (courseId) fetchModules() }, [courseId])
-
-  async function fetchModules() {
-    const { data: mods } = await supabase.from('modules').select('*').eq('course_id', courseId).order('position')
-    const withLessons = await Promise.all((mods || []).map(async m => {
-      const { data: ls } = await supabase.from('lessons').select('*').eq('module_id', m.id).order('position')
-      return { ...m, lessons: ls || [] }
-    }))
-    setModules(withLessons)
-  }
-
-  async function saveCourse() {
-    setSaving(true)
-    if (isNew) {
-      const { data } = await supabase.from('courses').insert({ ...form, is_published: false }).select().single()
-      if (data) setCourseId(data.id)
-    } else {
-      await supabase.from('courses').update(form).eq('id', courseId)
-    }
-    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
-  }
-
-  const inp = { width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }
-  const lbl = { fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }
-
-  return (
-    <div>
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: t.muted, cursor: 'pointer', fontSize: '0.8rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '6px' }}>← Back to courses</button>
-      <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '20px', color: t.text }}>{isNew ? 'New course' : `Edit: ${course.title}`}</h2>
-      <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '20px', marginBottom: '20px', backgroundColor: t.surface, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-        <div style={{ gridColumn: '1/-1' }}><label style={lbl}>Title</label><input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} style={inp} /></div>
-        <div><label style={lbl}>Slug</label><input value={form.slug} onChange={e => setForm(p => ({ ...p, slug: e.target.value }))} placeholder="url-slug" style={inp} /></div>
-        <div><label style={lbl}>Price (USD)</label><input type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: Number(e.target.value) }))} style={inp} /></div>
-        <div style={{ gridColumn: '1/-1' }}><label style={lbl}>Description</label><textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} style={{ ...inp, resize: 'vertical' as const, fontFamily: 'inherit' }} /></div>
-        <div>
-          <button onClick={saveCourse} disabled={saving} style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1, transition: 'background-color 0.2s' }}>
-            {saved ? '✓ Saved' : saving ? 'Saving…' : isNew ? 'Create course' : 'Save changes'}
-          </button>
-        </div>
-      </div>
-      {courseId && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <p style={{ fontSize: '0.72rem', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.muted }}>Modules & Lessons</p>
-            <button onClick={async () => { const title = prompt('Module title:'); if (!title) return; await supabase.from('modules').insert({ course_id: courseId, title, position: modules.length + 1 }); fetchModules() }} style={{ fontSize: '0.75rem', color: t.muted, border: `1px solid ${t.border}`, background: 'none', borderRadius: '6px', padding: '5px 12px', cursor: 'pointer' }}>+ Add module</button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '10px' }}>
-            {modules.map((mod, mIdx) => (
-              <div key={mod.id} style={{ border: `1px solid ${t.border}`, borderRadius: '10px', overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: t.surface }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '0.68rem', color: t.dim }}>M{mIdx + 1}</span>
-                    <span style={{ fontWeight: 500, fontSize: '0.875rem', color: t.text }}>{mod.title}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={async () => { const title = prompt('Lesson title:'); if (!title) return; const { data } = await supabase.from('lessons').insert({ module_id: mod.id, course_id: courseId, title, content_type: 'text', position: mod.lessons.length + 1, is_published: true }).select().single(); fetchModules(); if (data) setEditingLesson(data) }} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>+ lesson</button>
-                    <button onClick={async () => { if (!confirm('Delete module?')) return; await supabase.from('modules').delete().eq('id', mod.id); fetchModules() }} style={{ fontSize: '0.75rem', color: t.red + '80', background: 'none', border: 'none', cursor: 'pointer' }}>delete</button>
-                  </div>
-                </div>
-                {mod.lessons.map((lesson, lIdx) => (
-                  <div key={lesson.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderTop: `1px solid ${t.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '0.68rem', color: t.dim, width: 18 }}>{lIdx + 1}</span>
-                      <span style={{ fontSize: '0.855rem', color: t.muted }}>{lesson.title}</span>
-                      <span style={{ fontSize: '0.65rem', border: `1px solid ${t.border}`, borderRadius: '4px', padding: '1px 5px', color: t.dim }}>{lesson.content_type}</span>
-                      {!lesson.is_published && <span style={{ fontSize: '0.65rem', color: t.amber }}>draft</span>}
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button onClick={() => setEditingLesson(lesson)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>edit</button>
-                      <button onClick={async () => { if (!confirm('Delete lesson?')) return; await supabase.from('lessons').delete().eq('id', lesson.id); fetchModules() }} style={{ fontSize: '0.75rem', color: t.red + '80', background: 'none', border: 'none', cursor: 'pointer' }}>delete</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {editingLesson && <LessonEditor lesson={editingLesson} t={t} onClose={() => { setEditingLesson(null); fetchModules() }} />}
-    </div>
-  )
-}
-
 // ─── Users ────────────────────────────────────────────────────────────────────
 function UsersSection({ t }: { t: any }) {
   const [users, setUsers] = useState<Profile[]>([])
@@ -370,12 +714,6 @@ function UsersSection({ t }: { t: any }) {
     supabase.from('profiles').select('*').order('created_at', { ascending: false })
       .then(({ data }) => { setUsers(data || []); setLoading(false) })
   }, [])
-
-  async function toggleAdmin(u: Profile) {
-    const role = u.role === 'admin' ? 'student' : 'admin'
-    await supabase.from('profiles').update({ role }).eq('id', u.id)
-    setUsers(p => p.map(x => x.id === u.id ? { ...x, role } : x))
-  }
 
   const filtered = users.filter(u => (u.email + (u.full_name || '')).toLowerCase().includes(search.toLowerCase()))
 
@@ -398,7 +736,11 @@ function UsersSection({ t }: { t: any }) {
                   <td style={{ padding: '11px 16px', color: t.muted }}>{u.full_name || '—'}</td>
                   <td style={{ padding: '11px 16px' }}><span style={{ fontSize: '0.68rem', padding: '2px 7px', borderRadius: '4px', border: `1px solid ${u.role === 'admin' ? t.amber + '50' : t.border}`, color: u.role === 'admin' ? t.amber : t.muted }}>{u.role}</span></td>
                   <td style={{ padding: '11px 16px', color: t.muted, fontSize: '0.78rem' }}>{new Date(u.created_at).toLocaleDateString()}</td>
-                  <td style={{ padding: '11px 16px', textAlign: 'right' as const }}><button onClick={() => toggleAdmin(u)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>{u.role === 'admin' ? 'Remove admin' : 'Make admin'}</button></td>
+                  <td style={{ padding: '11px 16px', textAlign: 'right' as const }}>
+                    <button onClick={async () => { const role = u.role === 'admin' ? 'student' : 'admin'; await supabase.from('profiles').update({ role }).eq('id', u.id); setUsers(p => p.map(x => x.id === u.id ? { ...x, role } : x)) }} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>
+                      {u.role === 'admin' ? 'Remove admin' : 'Make admin'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -420,15 +762,12 @@ function EnrollmentsSection({ t }: { t: any }) {
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [search, setSearch] = useState('')
 
-  useEffect(() => { fetchData() }, [])
-
-  async function fetchData() {
-    const [{ data: enrs }, { data: crs }] = await Promise.all([
+  useEffect(() => {
+    Promise.all([
       supabase.from('enrollments').select('*, profiles(*), courses(title)').order('enrolled_at', { ascending: false }).limit(100),
       supabase.from('courses').select('*').order('title'),
-    ])
-    setEnrollments(enrs || []); setCourses(crs || []); setLoading(false)
-  }
+    ]).then(([{ data: enrs }, { data: crs }]) => { setEnrollments(enrs || []); setCourses(crs || []); setLoading(false) })
+  }, [])
 
   async function grant() {
     if (!email || !selectedCourse) return
@@ -437,7 +776,9 @@ function EnrollmentsSection({ t }: { t: any }) {
     if (!p) { setMsg({ text: 'User not found. They must sign in once first.', ok: false }); setGranting(false); return }
     await supabase.from('enrollments').upsert({ user_id: p.id, course_id: selectedCourse, enrolled_at: new Date().toISOString() }, { onConflict: 'user_id,course_id' })
     setMsg({ text: 'Access granted.', ok: true })
-    setEmail(''); setSelectedCourse(''); setGranting(false); fetchData()
+    setEmail(''); setSelectedCourse(''); setGranting(false)
+    supabase.from('enrollments').select('*, profiles(*), courses(title)').order('enrolled_at', { ascending: false }).limit(100)
+      .then(({ data }) => setEnrollments(data || []))
   }
 
   const filtered = enrollments.filter((e: any) => ((e.profiles?.email || '') + (e.courses?.title || '')).toLowerCase().includes(search.toLowerCase()))
@@ -498,7 +839,6 @@ function AnalyticsSection({ t }: { t: any }) {
         supabase.from('enrollments').select('enrolled_at, completed_at, amount_paid, course_id'),
         supabase.from('courses').select('id, title, is_published'),
       ])
-
       const now = new Date()
       const months = Array.from({ length: 6 }, (_, i) => {
         const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
@@ -509,27 +849,20 @@ function AnalyticsSection({ t }: { t: any }) {
         const m = months.find(mo => mo.year === d.getFullYear() && mo.month === d.getMonth())
         if (m) { m.revenue += e.amount_paid || 0; m.count++ }
       })
-
       const courseStats = (courses || []).map((c: any) => {
         const en = (enrs || []).filter((e: any) => e.course_id === c.id)
         const comp = en.filter((e: any) => e.completed_at).length
         return { ...c, enrolled: en.length, completed: comp, rate: en.length > 0 ? Math.round((comp / en.length) * 100) : 0 }
       })
-
       const totalRevenue = (enrs || []).reduce((s: number, e: any) => s + (e.amount_paid || 0), 0)
       const totalCompleted = (enrs || []).filter((e: any) => e.completed_at).length
-      const rate = enrs?.length ? Math.round((totalCompleted / enrs.length) * 100) : 0
-
-      setData({ months, courseStats, totalRevenue, totalCompleted, rate, total: enrs?.length || 0 })
+      setData({ months, courseStats, totalRevenue, totalCompleted, rate: enrs?.length ? Math.round((totalCompleted / enrs.length) * 100) : 0, total: enrs?.length || 0 })
       setLoading(false)
     }
     load()
   }, [])
 
   if (loading) return <p style={{ color: t.muted, fontSize: '0.875rem' }}>Loading analytics…</p>
-
-  const maxRev = Math.max(...data.months.map((m: any) => m.revenue), 1)
-  const maxCnt = Math.max(...data.months.map((m: any) => m.count), 1)
 
   function BarChart({ months, key2, color, label }: any) {
     const max = Math.max(...months.map((m: any) => m[key2]), 1)
@@ -556,10 +889,8 @@ function AnalyticsSection({ t }: { t: any }) {
         <StatCard label="Enrollments" value={data.total} color={t.blue} t={t} />
         <StatCard label="Completions" value={data.totalCompleted} sub={`${data.rate}% rate`} color={t.green} t={t} />
       </div>
-
       <BarChart months={data.months} key2="revenue" color={t.amber} label="Revenue — last 6 months" />
       <BarChart months={data.months} key2="count" color={t.blue} label="Enrollments — last 6 months" />
-
       <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', overflow: 'hidden', backgroundColor: t.surface }}>
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${t.border}` }}>
           <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: t.text }}>Completion by course</h3>
@@ -569,23 +900,23 @@ function AnalyticsSection({ t }: { t: any }) {
             <tr>{['Course', 'Enrolled', 'Completed', 'Rate'].map(h => <th key={h} style={{ textAlign: 'left' as const, fontSize: '0.68rem', textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: t.muted, padding: '10px 20px', fontWeight: 400 }}>{h}</th>)}</tr>
           </thead>
           <tbody>
-            {data.courseStats.length === 0 ? (
-              <tr><td colSpan={4} style={{ padding: '20px', color: t.muted, textAlign: 'center' as const }}>No data yet.</td></tr>
-            ) : data.courseStats.map((c: any) => (
-              <tr key={c.id} style={{ borderTop: `1px solid ${t.border}` }}>
-                <td style={{ padding: '12px 20px', color: t.text }}>{c.title}{!c.is_published && <span style={{ fontSize: '0.65rem', color: t.muted, marginLeft: '6px' }}>(draft)</span>}</td>
-                <td style={{ padding: '12px 20px', color: t.muted }}>{c.enrolled}</td>
-                <td style={{ padding: '12px 20px', color: t.muted }}>{c.completed}</td>
-                <td style={{ padding: '12px 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: 80, height: 4, backgroundColor: t.dim, borderRadius: '2px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${c.rate}%`, backgroundColor: c.rate >= 70 ? t.green : c.rate >= 40 ? t.amber : t.red, borderRadius: '2px' }} />
+            {data.courseStats.length === 0
+              ? <tr><td colSpan={4} style={{ padding: '20px', color: t.muted, textAlign: 'center' as const }}>No data yet.</td></tr>
+              : data.courseStats.map((c: any) => (
+                <tr key={c.id} style={{ borderTop: `1px solid ${t.border}` }}>
+                  <td style={{ padding: '12px 20px', color: t.text }}>{c.title}{!c.is_published && <span style={{ fontSize: '0.65rem', color: t.muted, marginLeft: '6px' }}>(draft)</span>}</td>
+                  <td style={{ padding: '12px 20px', color: t.muted }}>{c.enrolled}</td>
+                  <td style={{ padding: '12px 20px', color: t.muted }}>{c.completed}</td>
+                  <td style={{ padding: '12px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: 80, height: 4, backgroundColor: t.dim, borderRadius: '2px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${c.rate}%`, backgroundColor: c.rate >= 70 ? t.green : c.rate >= 40 ? t.amber : t.red, borderRadius: '2px' }} />
+                      </div>
+                      <span style={{ fontSize: '0.78rem', color: t.muted }}>{c.rate}%</span>
                     </div>
-                    <span style={{ fontSize: '0.78rem', color: t.muted }}>{c.rate}%</span>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
