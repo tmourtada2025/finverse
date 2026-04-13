@@ -370,7 +370,6 @@ export default function Admin() {
         </div>
 
         <nav style={{ flex: 1, padding: '10px', overflowY: 'auto' }}>
-          <p style={{ fontSize: '0.62rem', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.muted, padding: '8px 12px 6px', opacity: 0.6 }}>          {/* ── PLATFORM ── */}
           <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: t.muted, padding: '8px 12px 4px', margin: 0, opacity: 0.5 }}>Platform</p>
           {navBtn('overview', 'Overview', I.overview)}
           {navBtn('users', 'Users', I.users)}
