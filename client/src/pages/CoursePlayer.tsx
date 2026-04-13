@@ -143,19 +143,55 @@ export default function CoursePlayer() {
     setCompleting(false)
   }
 
-  function navigateToLesson(lesson: Lesson) {
+  async function navigateToLesson(lesson: Lesson) {
     setActiveLesson(lesson)
     setLessonCompleted(
       modules.flatMap(m => m.lessons).find(l => l.id === lesson.id)?.progress?.completed || false
     )
     setLocation(`/learn/${courseId}/${lesson.id}`)
     if (window.innerWidth < 768) setSidebarOpen(false)
+    // Load sections for this lesson
+    const { data: secs } = await supabase.from('sections').select('*').eq('lesson_id', lesson.id).order('position')
+    const sections = secs || []
+    setLessonSections(sections)
+    setActiveSection(sections[0] || null)
+    setExpandedLessons(prev => new Set([...prev, lesson.id]))
   }
 
   function nextLesson() {
     const all = modules.flatMap(m => m.lessons)
     const idx = all.findIndex(l => l.id === activeLesson?.id)
     if (idx < all.length - 1) navigateToLesson(all[idx + 1])
+  }
+
+  function prevLesson() {
+    const all = modules.flatMap(m => m.lessons)
+    const idx = all.findIndex(l => l.id === activeLesson?.id)
+    if (idx > 0) navigateToLesson(all[idx - 1])
+  }
+
+  function navigateToSection(section: Section) {
+    setActiveSection(section)
+  }
+
+  function nextSection() {
+    if (!activeSection || !lessonSections.length) return
+    const idx = lessonSections.findIndex(s => s.id === activeSection.id)
+    if (idx < lessonSections.length - 1) {
+      setActiveSection(lessonSections[idx + 1])
+    } else {
+      nextLesson()
+    }
+  }
+
+  function prevSection() {
+    if (!activeSection || !lessonSections.length) return
+    const idx = lessonSections.findIndex(s => s.id === activeSection.id)
+    if (idx > 0) {
+      setActiveSection(lessonSections[idx - 1])
+    } else {
+      prevLesson()
+    }
   }
 
   if (loading || dataLoading) {
