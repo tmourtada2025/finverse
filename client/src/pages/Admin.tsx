@@ -1140,78 +1140,144 @@ function AdminQuizBuilder({ value, onChange, t }: { value: string; onChange: (v:
 }
 
 // ─── Section block ────────────────────────────────────────────────────────────
+// ─── Block types ─────────────────────────────────────────────────────────────
+type BlockType = 'text' | 'video' | 'audio' | 'image' | 'pdf' | 'slides' | 'excel' | 'quiz'
+interface ContentBlock {
+  id: string
+  type: BlockType
+  content_text?: string | null
+  content_url?: string | null
+}
+
+function makeBlock(type: BlockType): ContentBlock {
+  return { id: Math.random().toString(36).slice(2), type, content_text: null, content_url: null }
+}
+
+// ─── Section block — block editor ────────────────────────────────────────────
 function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: any; onSave: (u: Partial<Section>) => void; onDelete: () => void }) {
   const [open, setOpen] = useState(section.title === 'New section')
   const [title, setTitle] = useState(section.title)
-  const [contentType, setContentType] = useState(section.content_type)
-  const [contentText, setContentText] = useState(section.content_text || '')
-  const [contentUrl, setContentUrl] = useState(section.content_url || '')
   const [saving, setSaving] = useState(false)
-  const editorRef = useRef<HTMLDivElement>(null)
+
+  // Initialise blocks — prefer new `blocks` column, fall back to legacy columns
+  const [blocks, setBlocks] = useState<ContentBlock[]>(() => {
+    if ((section as any).blocks) {
+      try { return JSON.parse((section as any).blocks) } catch {}
+    }
+    // Legacy: convert existing flat section to single block
+    if (section.content_type && section.content_type !== 'text') {
+      return [{ id: 'legacy', type: section.content_type as BlockType, content_text: section.content_text || null, content_url: section.content_url || null }]
+    }
+    if (section.content_text) {
+      return [{ id: 'legacy', type: 'text', content_text: section.content_text, content_url: null }]
+    }
+    return []
+  })
+
+  function addBlock(type: BlockType) {
+    setBlocks(b => [...b, makeBlock(type)])
+  }
+
+  function updateBlock(id: string, patch: Partial<ContentBlock>) {
+    setBlocks(b => b.map(bl => bl.id === id ? { ...bl, ...patch } : bl))
+  }
+
+  function deleteBlock(id: string) {
+    setBlocks(b => b.filter(bl => bl.id !== id))
+  }
+
+  function moveBlock(id: string, dir: -1 | 1) {
+    setBlocks(b => {
+      const idx = b.findIndex(bl => bl.id === id)
+      if (idx < 0) return b
+      const next = idx + dir
+      if (next < 0 || next >= b.length) return b
+      const arr = [...b]
+      ;[arr[idx], arr[next]] = [arr[next], arr[idx]]
+      return arr
+    })
+  }
 
   async function save() {
     setSaving(true)
-    await onSave({ title, content_type: contentType, content_text: contentText || null, content_url: contentUrl || null })
+    // Derive legacy fields from first block for backwards compat
+    const first = blocks[0]
+    await onSave({
+      title,
+      blocks: JSON.stringify(blocks) as any,
+      content_type: first?.type || 'text',
+      content_text: first?.content_text || null,
+      content_url: first?.content_url || null,
+    })
     setSaving(false)
   }
 
-  const tabs = [
-    { id: 'text', icon: '📝' }, { id: 'video', icon: '🎬' }, { id: 'audio', icon: '🎵' },
-    { id: 'pdf', icon: '📄' }, { id: 'slides', icon: '🖥️' }, { id: 'excel', icon: '📊' }, { id: 'quiz', icon: '❓' },
+  // Block type summary for collapsed header
+  const blockSummary = blocks.length === 0 ? 'empty' : blocks.map(b => ({ text: '📝', video: '🎬', audio: '🎵', image: '🖼️', pdf: '📄', slides: '🖥️', excel: '📊', quiz: '❓' }[b.type])).join(' ')
+
+  const addBtns: { type: BlockType; icon: string; label: string }[] = [
+    { type: 'text', icon: '📝', label: 'Text' },
+    { type: 'image', icon: '🖼️', label: 'Image' },
+    { type: 'video', icon: '🎬', label: 'Video' },
+    { type: 'audio', icon: '🎵', label: 'Audio' },
+    { type: 'pdf', icon: '📄', label: 'PDF' },
+    { type: 'slides', icon: '🖥️', label: 'Slides' },
+    { type: 'excel', icon: '📊', label: 'Excel' },
+    { type: 'quiz', icon: '❓', label: 'Quiz' },
   ]
 
   return (
     <div style={{ border: `1px solid ${t.border}`, borderRadius: '10px', overflow: 'hidden', marginBottom: '10px' }}>
+      {/* Header */}
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', backgroundColor: t.surface, cursor: 'pointer' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ opacity: 0.4 }}>{I.chevron(open)}</span>
           <span style={{ fontSize: '0.875rem', fontWeight: 500, color: title && title !== 'New section' ? t.text : t.muted }}>{title || 'Untitled section'}</span>
-          <span style={{ fontSize: '0.65rem', border: `1px solid ${t.border}`, borderRadius: '4px', padding: '1px 5px', color: t.dim }}>{contentType}</span>
+          <span style={{ fontSize: '0.72rem', color: t.dim }}>{blockSummary}</span>
         </div>
         <button onClick={e => { e.stopPropagation(); if (confirm('Delete this section?')) onDelete() }} style={{ fontSize: '0.75rem', color: t.red + '70', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
       </div>
 
       {open && (
         <div style={{ padding: '16px', backgroundColor: t.bg }}>
-          <div style={{ marginBottom: '12px' }}>
+          {/* Section title */}
+          <div style={{ marginBottom: '16px' }}>
             <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '5px' }}>Section title</label>
             <input value={title} onChange={e => setTitle(e.target.value)}
               style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }} />
           </div>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const, marginBottom: '12px' }}>
-            {tabs.map(tab => (
-              <button key={tab.id} onClick={() => setContentType(tab.id as any)}
-                style={{ padding: '5px 12px', borderRadius: '6px', border: `1px solid ${contentType === tab.id ? t.text : t.border}`, backgroundColor: contentType === tab.id ? t.text : 'transparent', color: contentType === tab.id ? t.bg : t.muted, fontSize: '0.75rem', cursor: 'pointer' }}>
-                {tab.icon} {tab.id}
-              </button>
-            ))}
-          </div>
-          {contentType === 'text' && <RichEditorInline value={contentText} onChange={setContentText} t={t} />}
-          {contentType === 'video' && (
-            <input value={contentUrl} onChange={e => setContentUrl(e.target.value)} placeholder="https://www.youtube.com/embed/VIDEO_ID"
-              style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }} />
-          )}
-          {contentType === 'audio' && <AdminFileUploader bucket="lesson-audio" accept="audio/*" icon="🎵" label="audio" maxMB={100} value={contentUrl} onChange={setContentUrl} t={t} />}
-          {contentType === 'pdf' && (
-            <div>
-              <AdminFileUploader bucket="lesson-pdfs" accept="application/pdf" icon="📄" label="PDF" maxMB={50} value={contentUrl} onChange={setContentUrl} t={t} />
-              {contentUrl && <iframe src={contentUrl} style={{ width: '100%', height: '360px', border: `1px solid ${t.border}`, borderRadius: '8px', marginTop: '10px' }} />}
-            </div>
-          )}
-          {contentType === 'slides' && (
-            <div>
-              <AdminFileUploader bucket="lesson-pdfs" accept=".pptx,.ppt,.odp" icon="🖥️" label="PowerPoint" maxMB={50} value={contentUrl} onChange={setContentUrl} t={t} />
-              {contentUrl && contentUrl.startsWith('http') && (
-                <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(contentUrl)}`} style={{ width: '100%', height: '400px', border: `1px solid ${t.border}`, borderRadius: '8px', marginTop: '10px' }} allowFullScreen />
-              )}
-              <p style={{ fontSize: '0.7rem', color: t.muted, marginTop: '6px' }}>Tip: Use YouTube embed URL or Google Slides embed URL for best results.</p>
-            </div>
-          )}
-          {contentType === 'excel' && <AdminFileUploader bucket="lesson-excel" accept=".xlsx,.xls,.csv" icon="📊" label="Excel" maxMB={20} value={contentUrl} onChange={setContentUrl} t={t} />}
-          {contentType === 'quiz' && <AdminQuizBuilder value={contentText} onChange={setContentText} t={t} />}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-            <button onClick={save} disabled={saving} style={{ backgroundColor: t.accent, color: t.accentText, border: 'none', borderRadius: '7px', padding: '8px 20px', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+          {/* Block list */}
+          {blocks.map((block, idx) => (
+            <BlockEditor
+              key={block.id}
+              block={block}
+              idx={idx}
+              total={blocks.length}
+              t={t}
+              onChange={patch => updateBlock(block.id, patch)}
+              onDelete={() => deleteBlock(block.id)}
+              onMove={dir => moveBlock(block.id, dir)}
+            />
+          ))}
+
+          {/* Add block buttons */}
+          <div style={{ marginTop: '12px', marginBottom: '16px' }}>
+            <p style={{ fontSize: '0.68rem', color: t.muted, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: '8px' }}>Add block</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }}>
+              {addBtns.map(b => (
+                <button key={b.type} onClick={() => addBlock(b.type)}
+                  style={{ padding: '5px 12px', borderRadius: '6px', border: `1px solid ${t.border}`, backgroundColor: 'transparent', color: t.muted, fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {b.icon} {b.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Save */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={save} disabled={saving}
+              style={{ backgroundColor: t.accent, color: t.accentText, border: 'none', borderRadius: '7px', padding: '8px 20px', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Saving…' : 'Save section'}
             </button>
           </div>
@@ -1221,7 +1287,93 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
   )
 }
 
-// ─── Rich editor ──────────────────────────────────────────────────────────────
+// ─── Individual block editor ──────────────────────────────────────────────────
+function BlockEditor({ block, idx, total, t, onChange, onDelete, onMove }: {
+  block: ContentBlock; idx: number; total: number; t: any
+  onChange: (patch: Partial<ContentBlock>) => void
+  onDelete: () => void
+  onMove: (dir: -1 | 1) => void
+}) {
+  const typeLabels: Record<BlockType, string> = { text: '📝 Text', video: '🎬 Video', audio: '🎵 Audio', image: '🖼️ Image', pdf: '📄 PDF', slides: '🖥️ Slides', excel: '📊 Excel', quiz: '❓ Quiz' }
+
+  return (
+    <div style={{ border: `1px solid ${t.border}`, borderRadius: '8px', marginBottom: '10px', overflow: 'hidden' }}>
+      {/* Block header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px', backgroundColor: t.surface, borderBottom: `1px solid ${t.border}` }}>
+        <span style={{ fontSize: '0.72rem', color: t.muted }}>{typeLabels[block.type]}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+          <button onClick={() => onMove(-1)} disabled={idx === 0} style={{ padding: '2px 6px', fontSize: '0.7rem', background: 'none', border: 'none', color: t.dim, cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.3 : 1 }}>↑</button>
+          <button onClick={() => onMove(1)} disabled={idx === total - 1} style={{ padding: '2px 6px', fontSize: '0.7rem', background: 'none', border: 'none', color: t.dim, cursor: idx === total - 1 ? 'default' : 'pointer', opacity: idx === total - 1 ? 0.3 : 1 }}>↓</button>
+          <button onClick={() => { if (confirm('Remove this block?')) onDelete() }} style={{ padding: '2px 6px', fontSize: '0.7rem', color: t.red + '70', background: 'none', border: 'none', cursor: 'pointer', marginLeft: '4px' }}>✕</button>
+        </div>
+      </div>
+
+      {/* Block content editor */}
+      <div style={{ padding: '12px', backgroundColor: t.bg }}>
+        {block.type === 'text' && (
+          <RichEditorInline value={block.content_text || ''} onChange={v => onChange({ content_text: v })} t={t} />
+        )}
+
+        {block.type === 'image' && (
+          <div>
+            <AdminFileUploader bucket="lesson-images" accept="image/*" icon="🖼️" label="image" maxMB={10} value={block.content_url || ''} onChange={v => onChange({ content_url: v })} t={t} />
+            {block.content_url && (
+              <img src={block.content_url} alt="" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '6px', marginTop: '10px', objectFit: 'contain' }} />
+            )}
+            <div style={{ marginTop: '8px' }}>
+              <label style={{ fontSize: '0.68rem', color: t.muted, display: 'block', marginBottom: '4px' }}>Caption (optional)</label>
+              <input value={block.content_text || ''} onChange={e => onChange({ content_text: e.target.value })} placeholder="Image caption…"
+                style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '6px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box' as const }} />
+            </div>
+          </div>
+        )}
+
+        {block.type === 'video' && (
+          <div>
+            <label style={{ fontSize: '0.68rem', color: t.muted, display: 'block', marginBottom: '4px' }}>YouTube embed URL</label>
+            <input value={block.content_url || ''} onChange={e => onChange({ content_url: e.target.value })} placeholder="https://www.youtube.com/embed/VIDEO_ID"
+              style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }} />
+            {block.content_url && block.content_url.includes('embed') && (
+              <div style={{ marginTop: '10px', aspectRatio: '16/9', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${t.border}` }}>
+                <iframe src={block.content_url} style={{ width: '100%', height: '100%' }} allowFullScreen />
+              </div>
+            )}
+          </div>
+        )}
+
+        {block.type === 'audio' && (
+          <AdminFileUploader bucket="lesson-audio" accept="audio/*" icon="🎵" label="audio" maxMB={100} value={block.content_url || ''} onChange={v => onChange({ content_url: v })} t={t} />
+        )}
+
+        {block.type === 'pdf' && (
+          <div>
+            <AdminFileUploader bucket="lesson-pdfs" accept="application/pdf" icon="📄" label="PDF" maxMB={50} value={block.content_url || ''} onChange={v => onChange({ content_url: v })} t={t} />
+            {block.content_url && <iframe src={block.content_url} style={{ width: '100%', height: '360px', border: `1px solid ${t.border}`, borderRadius: '8px', marginTop: '10px' }} />}
+          </div>
+        )}
+
+        {block.type === 'slides' && (
+          <div>
+            <AdminFileUploader bucket="lesson-pdfs" accept=".pptx,.ppt,.odp" icon="🖥️" label="PowerPoint" maxMB={50} value={block.content_url || ''} onChange={v => onChange({ content_url: v })} t={t} />
+            {block.content_url && block.content_url.startsWith('http') && (
+              <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(block.content_url)}`} style={{ width: '100%', height: '400px', border: `1px solid ${t.border}`, borderRadius: '8px', marginTop: '10px' }} allowFullScreen />
+            )}
+          </div>
+        )}
+
+        {block.type === 'excel' && (
+          <AdminFileUploader bucket="lesson-excel" accept=".xlsx,.xls,.csv" icon="📊" label="Excel" maxMB={20} value={block.content_url || ''} onChange={v => onChange({ content_url: v })} t={t} />
+        )}
+
+        {block.type === 'quiz' && (
+          <AdminQuizBuilder value={block.content_text || ''} onChange={v => onChange({ content_text: v })} t={t} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Rich editor — with hyperlink and image insert ────────────────────────────
 function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: any }) {
   const ref = useRef<HTMLDivElement>(null)
   const [dir, setDir] = useState<'ltr' | 'rtl'>('ltr')
@@ -1276,6 +1428,44 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
     sync()
   }
 
+  function insertLink() {
+    const url = prompt('Enter URL:', 'https://')
+    if (!url) return
+    ref.current?.focus()
+    document.execCommand('createLink', false, url)
+    // Make link open in new tab
+    setTimeout(() => {
+      ref.current?.querySelectorAll('a').forEach(a => {
+        a.target = '_blank'
+        a.rel = 'noopener noreferrer'
+      })
+      sync()
+    }, 0)
+  }
+
+  function removeLink() {
+    ref.current?.focus()
+    document.execCommand('unlink', false)
+    setTimeout(sync, 0)
+  }
+
+  function insertImageInline() {
+    const url = prompt('Image URL:', 'https://')
+    if (!url) return
+    ref.current?.focus()
+    document.execCommand('insertImage', false, url)
+    // Style the inserted image
+    setTimeout(() => {
+      ref.current?.querySelectorAll('img').forEach(img => {
+        img.style.maxWidth = '100%'
+        img.style.borderRadius = '6px'
+        img.style.margin = '8px 0'
+        img.style.display = 'block'
+      })
+      sync()
+    }, 0)
+  }
+
   const btn = (extra?: any) => ({ padding: '3px 7px', fontSize: '0.72rem', border: `1px solid ${t.border}`, borderRadius: '4px', cursor: 'pointer', background: 'transparent', color: t.muted, lineHeight: 1.2, ...extra })
   const sep = { width: 1, background: t.border, alignSelf: 'stretch' as const, margin: '0 2px' }
   const fonts = [
@@ -1305,6 +1495,13 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
         <button type="button" onMouseDown={e => { e.preventDefault(); insertList(false) }} style={btn()}>• List</button>
         <button type="button" onMouseDown={e => { e.preventDefault(); insertList(true) }} style={btn()}>1.</button>
         <span style={sep} />
+        {/* Hyperlink */}
+        <button type="button" onMouseDown={e => { e.preventDefault(); insertLink() }} style={btn()} title="Insert link">🔗</button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); removeLink() }} style={btn()} title="Remove link">🔗̶</button>
+        <span style={sep} />
+        {/* Inline image */}
+        <button type="button" onMouseDown={e => { e.preventDefault(); insertImageInline() }} style={btn()} title="Insert image inline">🖼️</button>
+        <span style={sep} />
         <button type="button" onMouseDown={e => { e.preventDefault(); toggleDir() }}
           style={btn({ color: dir === 'rtl' ? t.amber : t.muted, borderColor: dir === 'rtl' ? t.amber + '60' : t.border })}>
           {dir.toUpperCase()}
@@ -1324,6 +1521,8 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
         .fv-editor ul { list-style-type: disc !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
         .fv-editor ol { list-style-type: decimal !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
         .fv-editor li { display: list-item !important; }
+        .fv-editor a { color: #3b82f6; text-decoration: underline; }
+        .fv-editor img { max-width: 100%; border-radius: 6px; margin: 8px 0; display: block; }
       `}</style>
       <div ref={ref} contentEditable suppressContentEditableWarning onInput={sync} onBlur={sync} className="fv-editor"
         style={{ minHeight: '160px', padding: '12px', outline: 'none', backgroundColor: t.bg, color: t.text, fontSize: '0.875rem', lineHeight: 1.7, fontFamily: font, direction: dir, textAlign: dir === 'rtl' ? 'right' : 'left' }} />
