@@ -21,6 +21,13 @@ export default function CoursePlayer() {
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null)
   const [dataLoading, setDataLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem('fv-theme') !== 'light' } catch { return true }
+  })
+
+  useEffect(() => {
+    try { localStorage.setItem('fv-theme', dark ? 'dark' : 'light') } catch {}
+  }, [dark])
   const [completing, setCompleting] = useState(false)
   const [lessonCompleted, setLessonCompleted] = useState(false)
 
@@ -208,7 +215,7 @@ export default function CoursePlayer() {
   const overallProgress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className={`min-h-screen ${dark ? "bg-[#0a0a0a] text-white" : "bg-white text-black"} flex flex-col">
       {/* Top nav */}
       <nav className="border-b border-[#1a1a1a] px-6 py-3 flex items-center justify-between sticky top-0 bg-[#0a0a0a]/95 backdrop-blur z-50 shrink-0">
         <div className="flex items-center gap-4">
@@ -229,6 +236,7 @@ export default function CoursePlayer() {
             </svg>
             Dashboard
           </button>
+          <button onClick={() => setDark(d => !d)} className="text-[#555] hover:text-white transition-colors ml-2" title="Toggle theme">{dark ? '☀️' : '🌙'}</button>
           <span className="text-[#333]">|</span>
           <span className="text-white font-bold text-lg tracking-tight">
             Fin<span className="font-light">Verse</span>
@@ -332,6 +340,7 @@ export default function CoursePlayer() {
 
               {/* Navigation */}
               <div className="mt-10 flex items-center justify-between border-t border-[#1a1a1a] pt-6">
+                {/* Previous / Back */}
                 <button
                   onClick={prevSection}
                   disabled={
@@ -347,7 +356,7 @@ export default function CoursePlayer() {
                 </button>
 
                 <div className="flex items-center gap-3">
-                  {/* Mark lesson complete — shown on last section */}
+                  {/* Mark complete — always at lesson level, shown when on last section */}
                   {activeSection && lessonSections.findIndex(s => s.id === activeSection.id) === lessonSections.length - 1 && (
                     <button
                       onClick={markComplete}
@@ -362,11 +371,11 @@ export default function CoursePlayer() {
                         ? '✓ Completed'
                         : completing
                         ? 'Saving…'
-                        : 'Mark complete'}
+                        : 'Mark lesson complete'}
                     </button>
                   )}
 
-                  {/* Next section or next lesson */}
+                  {/* Next section / Next lesson / Start */}
                   <button
                     onClick={nextSection}
                     disabled={
@@ -375,8 +384,10 @@ export default function CoursePlayer() {
                     }
                     className="px-5 py-2.5 rounded-lg text-sm font-medium border border-[#1a1a1a] text-[#888] hover:text-white hover:border-[#333] transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    {activeSection && lessonSections.findIndex(s => s.id === activeSection.id) === lessonSections.length - 1
-                      ? 'Next lesson'
+                    {!activeSection
+                      ? 'Start'
+                      : lessonSections.findIndex(s => s.id === activeSection.id) === lessonSections.length - 1
+                      ? 'Next lesson →'
                       : 'Next section'}
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />

@@ -304,6 +304,28 @@ export default function Admin() {
     if (!isAdmin) window.location.href = '/dashboard'
   }, [loading, isAuthenticated, isAdmin])
 
+  useEffect(() => {
+    if (isAdmin) loadCourseTree()
+  }, [isAdmin])
+
+  async function loadCourseTree() {
+    const { data: courses } = await supabase.from('courses').select('id, title').order('title')
+    if (!courses) return
+    const tree = await Promise.all(courses.map(async (course: any) => {
+      const { data: modules } = await supabase.from('modules').select('id, title, position').eq('course_id', course.id).order('position')
+      const modulesWithLessons = await Promise.all((modules || []).map(async (mod: any) => {
+        const { data: lessons } = await supabase.from('lessons').select('id, title, position').eq('module_id', mod.id).order('position')
+        const lessonsWithSections = await Promise.all((lessons || []).map(async (lesson: any) => {
+          const { data: sections } = await supabase.from('sections').select('id, title, content_type, position').eq('lesson_id', lesson.id).order('position')
+          return { ...lesson, sections: sections || [] }
+        }))
+        return { ...mod, lessons: lessonsWithSections }
+      }))
+      return { ...course, modules: modulesWithLessons }
+    }))
+    setCourseTree(tree)
+  }
+
   if (loading || !isAdmin) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0d0d0f' }}>
       <div style={{ width: 28, height: 28, border: '2px solid #222', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
@@ -445,7 +467,7 @@ export default function Admin() {
         </div>
         <div style={{ padding: '28px 32px' }}>
           {section === 'overview' && <OverviewSection t={t} onNavigate={(s) => { setSection(s); if (s === 'courses_edit') setCoursesOpen(true) }} />}
-          {section === 'courses_new' && <CourseForm course={null} t={t} onSaved={(c) => { setSection('courses_edit'); setEditingCourse(c); setCoursesOpen(true) }} />}
+          {section === 'courses_new' && <CourseForm course={null} t={t} onSaved={(c) => { setSection('courses_edit'); setEditingCourse(c); setCoursesOpen(true); loadCourseTree() }} />}
           {section === 'courses_edit' && !editingCourse && <CourseList t={t} onSelect={(c) => setEditingCourse(c)} />}
           {section === 'courses_edit' && editingCourse && !editingLesson && (
             <CourseEditor
