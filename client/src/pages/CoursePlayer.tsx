@@ -251,7 +251,7 @@ export default function CoursePlayer() {
         <div className="flex items-center gap-3">
           <span className="text-[#555] text-xs">{completedCount}/{totalCount} lessons</span>
           <div className="w-24 h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
-            <div className="h-full bg-white rounded-full transition-all" style={{ width: `${overallProgress}%` }} />
+            <div className="h-full bg-white rounded-full transition-all" style={{ width: (overallProgress) + '%' }} />
           </div>
         </div>
       </nav>
@@ -423,7 +423,7 @@ function QuizPlayer({ questions: raw }: { questions: string }) {
       {questions.map((q: any, qi: number) => (
         <div key={qi} className="border border-[#1a1a1a] rounded-xl p-5 bg-[#0f0f0f]">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: `${typeColors[q.type]}15`, color: typeColors[q.type] }}>
+            <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: typeColors[q.type] + '15', color: typeColors[q.type] }}>
               {q.type === 'multiple_choice' ? 'Multiple choice' : q.type === 'fill_blank' ? 'Fill in the blank' : 'Matching'}
             </span>
           </div>
