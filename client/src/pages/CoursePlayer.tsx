@@ -459,46 +459,6 @@ function QuizPlayer({ questions: raw }: { questions: string }) {
   )
 }
 
-function SectionContent({ section }: { section: Section }) {
-  switch (section.content_type) {
-    case 'video':
-      return (
-        <div className="aspect-video bg-[#111] rounded-lg overflow-hidden mb-6">
-          {section.content_url ? (
-            <iframe src={section.content_url} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-          ) : <div className="flex items-center justify-center h-full text-[#555]">Video coming soon</div>}
-        </div>
-      )
-    case 'audio':
-      return (
-        <div className="bg-[#111] border border-[#1a1a1a] rounded-lg p-6 mb-6">
-          {section.content_url ? (
-            <audio controls className="w-full"><source src={section.content_url} /></audio>
-          ) : <p className="text-[#555] text-center">Audio coming soon</p>}
-          {section.content_text && <div className="mt-6"><HtmlContent html={section.content_text} /></div>}
-        </div>
-      )
-    case 'pdf':
-      return section.content_url ? (
-        <iframe src={section.content_url} className="w-full rounded-lg border border-[#1a1a1a] mb-6" style={{ height: '600px' }} />
-      ) : null
-    case 'slides':
-      return section.content_url ? (
-        <iframe src={section.content_url} className="w-full rounded-lg border border-[#1a1a1a] mb-6" style={{ height: '480px' }} allowFullScreen />
-      ) : null
-    case 'excel':
-      return section.content_url ? (
-        <iframe
-          src={section.content_url.includes('supabase') ? section.content_url : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(section.content_url)}`}
-          className="w-full rounded-lg border border-[#1a1a1a] mb-6" style={{ height: '400px' }}
-        />
-      ) : null
-    case 'quiz':
-      return section.content_text ? <QuizContent jsonContent={section.content_text} /> : null
-    default:
-      return section.content_text ? <HtmlContent html={section.content_text} /> : null
-  }
-}
 
 function HtmlContent({ html }: { html: string }) {
   const isHtml = html.trim().startsWith('<')
