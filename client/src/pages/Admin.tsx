@@ -475,6 +475,7 @@ export default function Admin() {
               t={t}
               onBack={() => setEditingCourse(null)}
               onEditLesson={(l) => setEditingLesson(l)}
+              onTreeChange={() => loadCourseTree()}
             />
           )}
           {section === 'courses_edit' && editingCourse && editingLesson && (
@@ -586,6 +587,7 @@ function CourseForm({ course, t, onSaved }: { course: Course | null; t: any; onS
           <button onClick={save} disabled={saving || !form.title} style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '10px 22px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', opacity: (saving || !form.title) ? 0.6 : 1, transition: 'background-color 0.2s' }}>
             {saved ? '✓ Saved' : saving ? 'Saving…' : isNew ? 'Create course' : 'Save changes'}
           </button>
+          {onSaved && <button type="button" onClick={() => window.history.back()} style={{ fontSize: '0.875rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '9px 20px', cursor: 'pointer' }}>Cancel</button>}
         </div>
       </div>
       {isNew && <p style={{ fontSize: '0.78rem', color: t.muted, marginTop: '12px' }}>After creating, you'll be taken to the course editor to add modules and lessons.</p>}
@@ -596,7 +598,7 @@ function CourseForm({ course, t, onSaved }: { course: Course | null; t: any; onS
 // ─── Course editor (full page) ────────────────────────────────────────────────
 type ModuleWithLessons = Module & { lessons: Lesson[] }
 
-function CourseEditor({ course, t, onBack, onEditLesson }: { course: Course; t: any; onBack: () => void; onEditLesson: (l: Lesson) => void }) {
+function CourseEditor({ course, t, onBack, onEditLesson, onTreeChange }: { course: Course; t: any; onBack: () => void; onEditLesson: (l: Lesson) => void; onTreeChange?: () => void }) {
   const [modules, setModules] = useState<ModuleWithLessons[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -614,13 +616,13 @@ function CourseEditor({ course, t, onBack, onEditLesson }: { course: Course; t: 
   async function addModule() {
     const title = prompt('Module title:'); if (!title) return
     await supabase.from('modules').insert({ course_id: course.id, title, position: modules.length + 1 })
-    fetchModules()
+    fetchModules(); onTreeChange?.()
   }
 
   async function deleteModule(modId: string) {
     if (!confirm('Delete this module and all its lessons?')) return
     await supabase.from('modules').delete().eq('id', modId)
-    fetchModules()
+    fetchModules(); onTreeChange?.()
   }
 
   async function addLesson(moduleId: string, pos: number) {
@@ -633,7 +635,7 @@ function CourseEditor({ course, t, onBack, onEditLesson }: { course: Course; t: 
   async function deleteLesson(lessonId: string) {
     if (!confirm('Delete this lesson?')) return
     await supabase.from('lessons').delete().eq('id', lessonId)
-    fetchModules()
+    fetchModules(); onTreeChange?.()
   }
 
   return (
@@ -764,6 +766,7 @@ function LessonEditorPage({ lesson, t, onBack }: { lesson: Lesson; t: any; onBac
           <button onClick={saveLesson} disabled={saving} style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '0.855rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1, transition: 'background-color 0.2s' }}>
             {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save lesson'}
           </button>
+          <button onClick={onBack} style={{ fontSize: '0.855rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '8px 20px', cursor: 'pointer' }}>← Back</button>
         </div>
       </div>
 
