@@ -54,8 +54,6 @@ function StatCard({ label, value, sub, color, t }: any) {
   )
 }
 
-
-
 // ─── User Profile Page ────────────────────────────────────────────────────────
 function UserProfilePage({ userId, t, onBack }: { userId: string; t: any; onBack: () => void }) {
   const [profile, setProfile] = useState<any>(null)
@@ -75,7 +73,6 @@ function UserProfilePage({ userId, t, onBack }: { userId: string; t: any; onBack
     const enrolData = enrols || []
     setEnrollments(enrolData)
 
-    // Load progress per enrollment
     const progressData = await Promise.all(enrolData.map(async (enrol: any) => {
       const { data: lessons } = await supabase
         .from('lessons')
@@ -105,8 +102,6 @@ function UserProfilePage({ userId, t, onBack }: { userId: string; t: any; onBack
   return (
     <div style={{ maxWidth: '720px' }}>
       <button onClick={onBack} style={{ fontSize: '0.8rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>← Back to users</button>
-
-      {/* Contact */}
       <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '1.25rem', backgroundColor: t.surface, marginBottom: '1.25rem' }}>
         <h2 style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: t.muted, margin: '0 0 12px' }}>Contact</h2>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -128,8 +123,6 @@ function UserProfilePage({ userId, t, onBack }: { userId: string; t: any; onBack
           </div>
         </div>
       </div>
-
-      {/* Enrollments + Progress */}
       <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '1.25rem', backgroundColor: t.surface }}>
         <h2 style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: t.muted, margin: '0 0 12px' }}>Courses & Progress</h2>
         {enrollments.length === 0 ? (
@@ -216,8 +209,6 @@ function NotificationsSection({ t }: { t: any }) {
   return (
     <div style={{ maxWidth: '680px' }}>
       <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 1.5rem', color: t.text }}>Push Notification</h2>
-
-      {/* Compose */}
       <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '1.25rem', backgroundColor: t.surface, marginBottom: '2rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
           <div>
@@ -253,8 +244,6 @@ function NotificationsSection({ t }: { t: any }) {
           </button>
         </div>
       </div>
-
-      {/* History */}
       <h3 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: t.muted, margin: '0 0 12px' }}>Sent notifications</h3>
       {history.length === 0 ? (
         <div style={{ border: `1px dashed ${t.border}`, borderRadius: '10px', padding: '2rem', textAlign: 'center', color: t.muted, fontSize: '0.875rem' }}>No notifications sent yet</div>
@@ -271,6 +260,103 @@ function NotificationsSection({ t }: { t: any }) {
           <button onClick={() => deleteNotif(n.id)} style={{ fontSize: '0.75rem', color: '#ef444460', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, marginLeft: '12px' }}>Delete</button>
         </div>
       ))}
+    </div>
+  )
+}
+
+// ─── Module Editor Page ───────────────────────────────────────────────────────
+function ModuleEditorPage({ module, courseTitle, t, onBack, onDeleted, onSaved }: {
+  module: any; courseTitle: string; t: any
+  onBack: () => void; onDeleted: () => void; onSaved: (updated: any) => void
+}) {
+  const [title, setTitle] = useState(module.title || '')
+  const [description, setDescription] = useState(module.description || '')
+  const [introVideoUrl, setIntroVideoUrl] = useState(module.intro_video_url || '')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function save() {
+    setSaving(true)
+    const updates = { title: title.trim(), description: description.trim() || null, intro_video_url: introVideoUrl.trim() || null }
+    await supabase.from('modules').update(updates).eq('id', module.id)
+    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
+    onSaved({ ...module, ...updates })
+  }
+
+  async function deleteModule() {
+    if (!confirm('Delete this module and all its lessons? This cannot be undone.')) return
+    setDeleting(true)
+    await supabase.from('modules').delete().eq('id', module.id)
+    onDeleted()
+  }
+
+  const inp = { width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }
+  const lbl = { fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }
+
+  return (
+    <div style={{ maxWidth: 640 }}>
+      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: `1px solid ${t.border}`, color: t.muted, cursor: 'pointer', fontSize: '0.8rem', borderRadius: '7px', padding: '6px 12px', marginBottom: '24px' }}>
+        <I.back /> Back to course
+      </button>
+
+      <div style={{ marginBottom: '20px' }}>
+        <p style={{ fontSize: '0.72rem', color: t.muted, margin: '0 0 4px' }}>{courseTitle}</p>
+        <h2 style={{ fontSize: '1rem', fontWeight: 600, color: t.text, margin: 0 }}>Module settings</h2>
+      </div>
+
+      <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '22px', backgroundColor: t.surface, display: 'flex', flexDirection: 'column' as const, gap: '16px' }}>
+        <div>
+          <label style={lbl}>Module title</label>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Module title…" style={inp} />
+        </div>
+
+        <div>
+          <label style={lbl}>Description</label>
+          <p style={{ fontSize: '0.72rem', color: t.muted, margin: '0 0 6px' }}>Shown to students before they start the first lesson. Set context, explain what this module covers.</p>
+          <textarea
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            rows={4}
+            placeholder="What will students learn in this module? What should they expect?"
+            style={{ ...inp, resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.6 }}
+          />
+        </div>
+
+        <div>
+          <label style={lbl}>Intro video URL (optional)</label>
+          <p style={{ fontSize: '0.72rem', color: t.muted, margin: '0 0 6px' }}>A short overview video shown on the module intro screen. Use a YouTube embed URL.</p>
+          <input
+            value={introVideoUrl}
+            onChange={e => setIntroVideoUrl(e.target.value)}
+            placeholder="https://www.youtube.com/embed/VIDEO_ID"
+            style={inp}
+          />
+          {introVideoUrl && introVideoUrl.includes('embed') && (
+            <div style={{ marginTop: '10px', aspectRatio: '16/9', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${t.border}` }}>
+              <iframe src={introVideoUrl} style={{ width: '100%', height: '100%' }} allowFullScreen />
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px' }}>
+          <button
+            onClick={deleteModule}
+            disabled={deleting}
+            style={{ fontSize: '0.8rem', color: t.red, background: 'none', border: `1px solid ${t.red}30`, borderRadius: '7px', padding: '8px 16px', cursor: 'pointer', opacity: deleting ? 0.5 : 1 }}>
+            {deleting ? 'Deleting…' : 'Delete module'}
+          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={onBack} style={{ fontSize: '0.875rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '9px 20px', cursor: 'pointer' }}>
+              Cancel
+            </button>
+            <button onClick={save} disabled={saving || !title.trim()}
+              style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '9px 22px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', opacity: (saving || !title.trim()) ? 0.6 : 1, transition: 'background-color 0.2s' }}>
+              {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save module'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -292,6 +378,7 @@ export default function Admin() {
 
   // Drill-down state
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
+  const [editingModule, setEditingModule] = useState<any | null>(null)
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null)
 
   useEffect(() => {
@@ -312,7 +399,7 @@ export default function Admin() {
     const { data: courses } = await supabase.from('courses').select('id, title').order('title')
     if (!courses) return
     const tree = await Promise.all(courses.map(async (course: any) => {
-      const { data: modules } = await supabase.from('modules').select('id, title, position').eq('course_id', course.id).order('position')
+      const { data: modules } = await supabase.from('modules').select('id, title, position, description, intro_video_url').eq('course_id', course.id).order('position')
       const modulesWithLessons = await Promise.all((modules || []).map(async (mod: any) => {
         const { data: lessons } = await supabase.from('lessons').select('id, title, position').eq('module_id', mod.id).order('position')
         const lessonsWithSections = await Promise.all((lessons || []).map(async (lesson: any) => {
@@ -336,10 +423,17 @@ export default function Admin() {
   const isCourseSection = section === 'courses_new' || section === 'courses_edit'
   const initials = profile?.full_name ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : 'A'
 
+  function clearCourseState() {
+    setEditingCourse(null)
+    setEditingModule(null)
+    setEditingLesson(null)
+    setActiveSectionId(null)
+  }
+
   function navBtn(id: AdminSection, label: string, Icon: () => JSX.Element) {
     const active = section === id && !isCourseSection
     return (
-      <button onClick={() => { setSection(id); setCoursesOpen(false); setEditingCourse(null); setEditingLesson(null) }}
+      <button onClick={() => { setSection(id); setCoursesOpen(false); clearCourseState() }}
         style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, marginBottom: '1px', transition: 'all 0.12s', backgroundColor: active ? t.activeNavBg : 'transparent', color: active ? t.activeNavText : t.navText, fontWeight: active ? 500 : 400, fontSize: '0.855rem' }}>
         <span style={{ opacity: active ? 1 : 0.7, flexShrink: 0 }}><Icon /></span>
         <span>{label}</span>
@@ -347,13 +441,54 @@ export default function Admin() {
     )
   }
 
+  // ── Sidebar click handlers ──────────────────────────────────────────────────
+
+  function handleCourseClick(course: any) {
+    // Find the full Course object from the tree
+    setEditingCourse(course as Course)
+    setEditingModule(null)
+    setEditingLesson(null)
+    setActiveSectionId(null)
+    setSection('courses_edit')
+    setExpandedCourses(s => { const n = new Set(s); n.add(course.id); return n })
+  }
+
+  function handleModuleClick(course: any, mod: any) {
+    setEditingCourse(course as Course)
+    setEditingModule(mod)
+    setEditingLesson(null)
+    setActiveSectionId(null)
+    setSection('courses_edit')
+    setExpandedCourses(s => { const n = new Set(s); n.add(course.id); return n })
+    setExpandedModules(s => { const n = new Set(s); n.add(mod.id); return n })
+  }
+
+  function handleLessonClick(course: any, lesson: any) {
+    setEditingCourse(course as Course)
+    setEditingModule(null)
+    setEditingLesson(lesson as Lesson)
+    setActiveSectionId(null)
+    setSection('courses_edit')
+    setExpandedCourses(s => { const n = new Set(s); n.add(course.id); return n })
+    setExpandedLessons(s => { const n = new Set(s); n.add(lesson.id); return n })
+  }
+
+  function handleSectionClick(course: any, lesson: any, sectionId: string) {
+    setEditingCourse(course as Course)
+    setEditingModule(null)
+    setEditingLesson(lesson as Lesson)
+    setActiveSectionId(sectionId)
+    setSection('courses_edit')
+  }
+
   // Breadcrumb
   function Breadcrumb() {
     const crumbs: string[] = []
     if (section === 'courses_new') crumbs.push('Courses', 'New course')
     else if (section === 'courses_edit') {
-      crumbs.push('Courses', 'Edit')
+      crumbs.push('Courses')
       if (editingCourse) crumbs.push(editingCourse.title)
+      if (editingModule) crumbs.push(editingModule.title)
       if (editingLesson) crumbs.push(editingLesson.title)
     } else {
       crumbs.push({ overview: 'Overview', users: 'Users', enrollments: 'Enrollments', analytics: 'Analytics', notifications: 'Notifications' }[section] || '')
@@ -368,6 +503,60 @@ export default function Admin() {
         ))}
       </div>
     )
+  }
+
+  // ── Render logic ────────────────────────────────────────────────────────────
+  function renderMain() {
+    if (section === 'overview') return <OverviewSection t={t} onNavigate={(s) => { setSection(s); if (s === 'courses_edit') setCoursesOpen(true) }} />
+    if (section === 'courses_new') return <CourseForm course={null} t={t} onSaved={(c) => { setSection('courses_edit'); setEditingCourse(c); setCoursesOpen(true); loadCourseTree() }} />
+    if (section === 'users') return <UsersSection t={t} onViewProfile={(id) => { setSelectedUserId(id); setSection('user_profile' as any) }} />
+    if (section === 'enrollments') return <EnrollmentsSection t={t} />
+    if (section === 'analytics') return <AnalyticsSection t={t} />
+    if (section === 'notifications') return <NotificationsSection t={t} />
+    if ((section as any) === 'user_profile' && selectedUserId) return <UserProfilePage userId={selectedUserId} t={t} onBack={() => setSection('users')} />
+
+    // courses_edit branch — order matters
+    if (section === 'courses_edit') {
+      // No course selected → show course list
+      if (!editingCourse) {
+        return <CourseList t={t} onSelect={(c) => { setEditingCourse(c); setEditingModule(null); setEditingLesson(null) }} />
+      }
+      // Module selected
+      if (editingModule) {
+        return (
+          <ModuleEditorPage
+            module={editingModule}
+            courseTitle={editingCourse.title}
+            t={t}
+            onBack={() => { setEditingModule(null) }}
+            onDeleted={() => { setEditingModule(null); loadCourseTree() }}
+            onSaved={(updated) => { setEditingModule(updated); loadCourseTree() }}
+          />
+        )
+      }
+      // Lesson selected
+      if (editingLesson) {
+        return (
+          <LessonEditorPage
+            lesson={editingLesson}
+            t={t}
+            onBack={() => setEditingLesson(null)}
+          />
+        )
+      }
+      // Course selected, nothing else
+      return (
+        <CourseEditor
+          course={editingCourse}
+          t={t}
+          onBack={() => setEditingCourse(null)}
+          onEditLesson={(l) => { setEditingLesson(l); setEditingModule(null) }}
+          onTreeChange={() => loadCourseTree()}
+        />
+      )
+    }
+
+    return null
   }
 
   return (
@@ -402,45 +591,82 @@ export default function Admin() {
           {/* ── COURSES ── */}
           <div style={{ marginTop: '14px', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px' }}>
             <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: t.muted, margin: 0, opacity: 0.5 }}>Courses</p>
-            <button onClick={() => { setSection('courses_new'); setEditingCourse(null); setEditingLesson(null) }}
+            <button onClick={() => { setSection('courses_new'); clearCourseState() }}
               style={{ fontSize: '0.7rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '5px', padding: '2px 7px', cursor: 'pointer' }}>+ New</button>
           </div>
+
           <div style={{ overflowY: 'auto', flex: 1, paddingBottom: '8px' }}>
-            {courseTree.map((course: any) => (
-              <div key={course.id}>
-                <button onClick={() => setExpandedCourses(s => { const n = new Set(s); n.has(course.id) ? n.delete(course.id) : n.add(course.id); return n })}
-                  style={{ display: 'flex', alignItems: 'center', gap: '7px', width: '100%', padding: '6px 12px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: t.text, fontSize: '0.82rem', fontWeight: 500, textAlign: 'left' as const }}>
-                  <span style={{ fontSize: '0.55rem', opacity: 0.4, flexShrink: 0 }}>{expandedCourses.has(course.id) ? '▼' : '▶'}</span>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{course.title}</span>
-                </button>
-                {expandedCourses.has(course.id) && course.modules.map((mod: any) => (
-                  <div key={mod.id} style={{ marginLeft: '16px', borderLeft: `1px solid ${t.border}`, paddingLeft: '8px' }}>
-                    <button onClick={() => setExpandedModules(s => { const n = new Set(s); n.has(mod.id) ? n.delete(mod.id) : n.add(mod.id); return n })}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '5px 8px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: t.muted, fontSize: '0.78rem', textAlign: 'left' as const }}>
-                      <span style={{ fontSize: '0.5rem', opacity: 0.4, flexShrink: 0 }}>{expandedModules.has(mod.id) ? '▼' : '▶'}</span>
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{mod.title}</span>
+            {courseTree.map((course: any) => {
+              const courseActive = editingCourse?.id === course.id && !editingModule && !editingLesson && section === 'courses_edit'
+              return (
+                <div key={course.id}>
+                  {/* Course row — click opens course editor, chevron expands tree */}
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <button
+                      onClick={() => handleCourseClick(course)}
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '7px', padding: '6px 4px 6px 12px', border: 'none', cursor: 'pointer', backgroundColor: courseActive ? t.activeNavBg : 'transparent', color: courseActive ? t.activeNavText : t.text, fontSize: '0.82rem', fontWeight: 500, textAlign: 'left' as const, borderRadius: '6px' }}>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{course.title}</span>
                     </button>
-                    {expandedModules.has(mod.id) && mod.lessons.map((lesson: any) => (
-                      <div key={lesson.id} style={{ marginLeft: '10px', borderLeft: `1px solid ${t.border}`, paddingLeft: '8px' }}>
-                        <button onClick={() => { setExpandedLessons(s => { const n = new Set(s); n.has(lesson.id) ? n.delete(lesson.id) : n.add(lesson.id); return n }); setEditingLesson(lesson); setSection('courses_edit' as any) }}
-                          style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '4px 8px', border: 'none', cursor: 'pointer', backgroundColor: editingLesson?.id === lesson.id ? t.subNavBg : 'transparent', color: editingLesson?.id === lesson.id ? t.text : t.muted, fontSize: '0.75rem', textAlign: 'left' as const, borderRadius: '5px' }}>
-                          <span style={{ fontSize: '0.5rem', opacity: 0.4, flexShrink: 0 }}>{expandedLessons.has(lesson.id) ? '▼' : '▶'}</span>
-                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{lesson.title}</span>
-                        </button>
-                        {expandedLessons.has(lesson.id) && lesson.sections.map((sec: any) => (
-                          <button key={sec.id}
-                            onClick={() => { setActiveSectionId(sec.id); setEditingLesson(lesson); setSection('courses_edit' as any) }}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '3px 8px 3px 18px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, borderRadius: '5px', backgroundColor: activeSectionId === sec.id ? t.subNavBg : 'transparent', color: activeSectionId === sec.id ? t.text : t.dim, fontSize: '0.72rem', marginBottom: '1px' }}>
-                            <span style={{ opacity: 0.5, flexShrink: 0 }}>{sec.content_type === 'video' ? '🎬' : sec.content_type === 'audio' ? '🎵' : sec.content_type === 'pdf' ? '📄' : sec.content_type === 'quiz' ? '❓' : sec.content_type === 'slides' ? '🖥️' : sec.content_type === 'excel' ? '📊' : '📝'}</span>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{sec.title}</span>
-                          </button>
-                        ))}
-                      </div>
-                    ))}
+                    <button
+                      onClick={() => setExpandedCourses(s => { const n = new Set(s); n.has(course.id) ? n.delete(course.id) : n.add(course.id); return n })}
+                      style={{ padding: '6px 8px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: t.muted, flexShrink: 0 }}>
+                      <span style={{ fontSize: '0.55rem' }}>{expandedCourses.has(course.id) ? '▼' : '▶'}</span>
+                    </button>
                   </div>
-                ))}
-              </div>
-            ))}
+
+                  {expandedCourses.has(course.id) && course.modules.map((mod: any) => {
+                    const modActive = editingModule?.id === mod.id && section === 'courses_edit'
+                    return (
+                      <div key={mod.id} style={{ marginLeft: '16px', borderLeft: `1px solid ${t.border}`, paddingLeft: '8px' }}>
+                        {/* Module row */}
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <button
+                            onClick={() => handleModuleClick(course, mod)}
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 4px 5px 8px', border: 'none', cursor: 'pointer', backgroundColor: modActive ? t.subNavBg : 'transparent', color: modActive ? t.text : t.muted, fontSize: '0.78rem', textAlign: 'left' as const, borderRadius: '5px' }}>
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{mod.title}</span>
+                          </button>
+                          <button
+                            onClick={() => setExpandedModules(s => { const n = new Set(s); n.has(mod.id) ? n.delete(mod.id) : n.add(mod.id); return n })}
+                            style={{ padding: '5px 6px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: t.muted, flexShrink: 0 }}>
+                            <span style={{ fontSize: '0.5rem' }}>{expandedModules.has(mod.id) ? '▼' : '▶'}</span>
+                          </button>
+                        </div>
+
+                        {expandedModules.has(mod.id) && mod.lessons.map((lesson: any) => {
+                          const lessonActive = editingLesson?.id === lesson.id && !editingModule && section === 'courses_edit'
+                          return (
+                            <div key={lesson.id} style={{ marginLeft: '10px', borderLeft: `1px solid ${t.border}`, paddingLeft: '8px' }}>
+                              {/* Lesson row */}
+                              <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <button
+                                  onClick={() => handleLessonClick(course, lesson)}
+                                  style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 4px 4px 8px', border: 'none', cursor: 'pointer', backgroundColor: lessonActive ? t.subNavBg : 'transparent', color: lessonActive ? t.text : t.muted, fontSize: '0.75rem', textAlign: 'left' as const, borderRadius: '5px' }}>
+                                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{lesson.title}</span>
+                                </button>
+                                <button
+                                  onClick={() => setExpandedLessons(s => { const n = new Set(s); n.has(lesson.id) ? n.delete(lesson.id) : n.add(lesson.id); return n })}
+                                  style={{ padding: '4px 6px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: t.muted, flexShrink: 0 }}>
+                                  <span style={{ fontSize: '0.5rem' }}>{expandedLessons.has(lesson.id) ? '▼' : '▶'}</span>
+                                </button>
+                              </div>
+
+                              {expandedLessons.has(lesson.id) && lesson.sections.map((sec: any) => (
+                                <button key={sec.id}
+                                  onClick={() => handleSectionClick(course, lesson, sec.id)}
+                                  style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '3px 8px 3px 18px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, borderRadius: '5px', backgroundColor: activeSectionId === sec.id ? t.subNavBg : 'transparent', color: activeSectionId === sec.id ? t.text : t.dim, fontSize: '0.72rem', marginBottom: '1px' }}>
+                                  <span style={{ opacity: 0.5, flexShrink: 0 }}>{sec.content_type === 'video' ? '🎬' : sec.content_type === 'audio' ? '🎵' : sec.content_type === 'pdf' ? '📄' : sec.content_type === 'quiz' ? '❓' : sec.content_type === 'slides' ? '🖥️' : sec.content_type === 'excel' ? '📊' : '📝'}</span>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{sec.title}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
             {courseTree.length === 0 && (
               <p style={{ fontSize: '0.75rem', color: t.dim, padding: '8px 12px' }}>No courses yet</p>
             )}
@@ -466,30 +692,7 @@ export default function Admin() {
           <Breadcrumb />
         </div>
         <div style={{ padding: '28px 32px' }}>
-          {section === 'overview' && <OverviewSection t={t} onNavigate={(s) => { setSection(s); if (s === 'courses_edit') setCoursesOpen(true) }} />}
-          {section === 'courses_new' && <CourseForm course={null} t={t} onSaved={(c) => { setSection('courses_edit'); setEditingCourse(c); setCoursesOpen(true); loadCourseTree() }} />}
-          {section === 'courses_edit' && !editingCourse && <CourseList t={t} onSelect={(c) => setEditingCourse(c)} />}
-          {section === 'courses_edit' && editingCourse && !editingLesson && (
-            <CourseEditor
-              course={editingCourse}
-              t={t}
-              onBack={() => setEditingCourse(null)}
-              onEditLesson={(l) => setEditingLesson(l)}
-              onTreeChange={() => loadCourseTree()}
-            />
-          )}
-          {section === 'courses_edit' && editingCourse && editingLesson && (
-            <LessonEditorPage
-              lesson={editingLesson}
-              t={t}
-              onBack={() => setEditingLesson(null)}
-            />
-          )}
-          {section === 'users' && <UsersSection t={t} onViewProfile={(id) => { setSelectedUserId(id); setSection('user_profile') }} />}
-          {section === 'enrollments' && <EnrollmentsSection t={t} />}
-          {section === 'analytics' && <AnalyticsSection t={t} />}
-          {section === 'notifications' && <NotificationsSection t={t} />}
-          {section === 'user_profile' && selectedUserId && <UserProfilePage userId={selectedUserId} t={t} onBack={() => setSection('users')} />}
+          {renderMain()}
         </div>
       </main>
     </div>
@@ -516,7 +719,7 @@ function CourseList({ t, onSelect }: { t: any; onSelect: (c: Course) => void }) 
 
   if (courses.length === 0) return (
     <div style={{ border: `1px dashed ${t.border}`, borderRadius: '12px', padding: '48px', textAlign: 'center' as const, color: t.muted, fontSize: '0.875rem' }}>
-      No courses yet. Use "New course" to create one.
+      No courses yet. Use "+ New" to create one.
     </div>
   )
 
@@ -583,7 +786,7 @@ function CourseForm({ course, t, onSaved }: { course: Course | null; t: any; onS
         <div><label style={lbl}>Slug</label><input value={form.slug} onChange={e => setForm(p => ({ ...p, slug: e.target.value }))} placeholder="url-slug" style={inp} /></div>
         <div><label style={lbl}>Price (USD)</label><input type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: Number(e.target.value) }))} style={inp} /></div>
         <div style={{ gridColumn: '1/-1' }}><label style={lbl}>Description</label><textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} style={{ ...inp, resize: 'vertical' as const, fontFamily: 'inherit' }} /></div>
-        <div>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={save} disabled={saving || !form.title} style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '10px 22px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', opacity: (saving || !form.title) ? 0.6 : 1, transition: 'background-color 0.2s' }}>
             {saved ? '✓ Saved' : saving ? 'Saving…' : isNew ? 'Create course' : 'Save changes'}
           </button>
@@ -640,7 +843,6 @@ function CourseEditor({ course, t, onBack, onEditLesson, onTreeChange }: { cours
 
   return (
     <div>
-      {/* Back + course meta edit */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
         <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: `1px solid ${t.border}`, color: t.muted, cursor: 'pointer', fontSize: '0.8rem', borderRadius: '7px', padding: '6px 12px' }}>
           <I.back /> Back
@@ -651,12 +853,10 @@ function CourseEditor({ course, t, onBack, onEditLesson, onTreeChange }: { cours
         </div>
       </div>
 
-      {/* Inline course meta form */}
       <CourseForm course={course} t={t} />
 
       <div style={{ height: '1px', backgroundColor: t.border, margin: '24px 0' }} />
 
-      {/* Modules & Lessons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: t.text }}>Modules & Lessons</h3>
         <button onClick={addModule} style={{ fontSize: '0.78rem', color: t.muted, border: `1px solid ${t.border}`, background: 'none', borderRadius: '7px', padding: '6px 14px', cursor: 'pointer' }}>+ Add module</button>
@@ -673,6 +873,7 @@ function CourseEditor({ course, t, onBack, onEditLesson, onTreeChange }: { cours
                   <span style={{ fontSize: '0.68rem', color: t.dim, fontWeight: 600 }}>M{mIdx + 1}</span>
                   <span style={{ fontWeight: 500, fontSize: '0.875rem', color: t.text }}>{mod.title}</span>
                   <span style={{ fontSize: '0.68rem', color: t.muted }}>{mod.lessons.length} lesson{mod.lessons.length !== 1 ? 's' : ''}</span>
+                  {mod.description && <span style={{ fontSize: '0.65rem', color: t.green, border: `1px solid ${t.green}30`, borderRadius: '4px', padding: '1px 5px' }}>has intro</span>}
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => addLesson(mod.id, mod.lessons.length + 1)} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>+ lesson</button>
@@ -704,7 +905,7 @@ function CourseEditor({ course, t, onBack, onEditLesson, onTreeChange }: { cours
   )
 }
 
-// ─── Lesson editor page (sections, full page, no modal) ───────────────────────
+// ─── Lesson editor page ───────────────────────────────────────────────────────
 function LessonEditorPage({ lesson, t, onBack }: { lesson: Lesson; t: any; onBack: () => void }) {
   const [title, setTitle] = useState(lesson.title)
   const [durationMinutes, setDurationMinutes] = useState(lesson.duration_minutes || 0)
@@ -747,12 +948,10 @@ function LessonEditorPage({ lesson, t, onBack }: { lesson: Lesson; t: any; onBac
 
   return (
     <div>
-      {/* Back */}
       <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: `1px solid ${t.border}`, color: t.muted, cursor: 'pointer', fontSize: '0.8rem', borderRadius: '7px', padding: '6px 12px', marginBottom: '24px' }}>
         <I.back /> Back to course
       </button>
 
-      {/* Lesson meta */}
       <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '20px', backgroundColor: t.surface, marginBottom: '24px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: '14px', marginBottom: '14px' }}>
           <div><label style={lbl}>Lesson title</label><input value={title} onChange={e => setTitle(e.target.value)} style={inp} /></div>
@@ -763,14 +962,15 @@ function LessonEditorPage({ lesson, t, onBack }: { lesson: Lesson; t: any; onBac
             <input type="checkbox" id="pub" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: t.green }} />
             <label htmlFor="pub" style={{ fontSize: '0.8rem', color: t.muted, cursor: 'pointer' }}>Published</label>
           </div>
-          <button onClick={saveLesson} disabled={saving} style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '0.855rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1, transition: 'background-color 0.2s' }}>
-            {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save lesson'}
-          </button>
-          <button onClick={onBack} style={{ fontSize: '0.855rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '8px 20px', cursor: 'pointer' }}>← Back</button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={onBack} style={{ fontSize: '0.855rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '8px 20px', cursor: 'pointer' }}>← Back</button>
+            <button onClick={saveLesson} disabled={saving} style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '0.855rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1, transition: 'background-color 0.2s' }}>
+              {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save lesson'}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Sections */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
         <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: t.text }}>Sections ({sections.length})</h3>
         <button onClick={addSection} style={{ fontSize: '0.78rem', color: t.muted, border: `1px solid ${t.border}`, background: 'none', borderRadius: '7px', padding: '6px 14px', cursor: 'pointer' }}>+ Add section</button>
@@ -789,8 +989,7 @@ function LessonEditorPage({ lesson, t, onBack }: { lesson: Lesson; t: any; onBac
   )
 }
 
-
-// ─── File uploader (for Admin SectionBlock) ───────────────────────────────────
+// ─── File uploader ────────────────────────────────────────────────────────────
 function AdminFileUploader({ bucket, accept, icon, label, maxMB, value, onChange, t }: {
   bucket: string; accept: string; icon: string; label: string; maxMB: number
   value: string; onChange: (v: string) => void; t: any
@@ -836,7 +1035,14 @@ function AdminFileUploader({ bucket, accept, icon, label, maxMB, value, onChange
   )
 }
 
-// ─── Quiz builder (for Admin SectionBlock) ────────────────────────────────────
+// ─── Quiz builder ─────────────────────────────────────────────────────────────
+type QuizType = 'multiple_choice' | 'fill_blank' | 'matching'
+interface QuizQuestion {
+  type: QuizType; question: string; explanation: string; image_url: string
+  options?: string[]; correct_index?: number; correct_answer?: string
+  pairs?: { left: string; right: string }[]
+}
+
 function AdminQuizBuilder({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: any }) {
   let questions: QuizQuestion[] = []
   try { questions = JSON.parse(value || '[]') } catch { questions = [] }
@@ -851,16 +1057,13 @@ function AdminQuizBuilder({ value, onChange, t }: { value: string; onChange: (v:
   }
 
   function removeQ(qi: number) { update(questions.filter((_, i) => i !== qi)) }
-
   function updateQ(qi: number, field: string, val: any) {
     const qs = [...questions]; qs[qi] = { ...qs[qi], [field]: val }; update(qs)
   }
-
   function updateOption(qi: number, oi: number, val: string) {
     const qs = [...questions]; const opts = [...(qs[qi].options || [])]; opts[oi] = val
     qs[qi] = { ...qs[qi], options: opts }; update(qs)
   }
-
   function updatePair(qi: number, pi: number, side: 'left' | 'right', val: string) {
     const qs = [...questions]; const pairs = [...(qs[qi].pairs || [])]; pairs[pi] = { ...pairs[pi], [side]: val }
     qs[qi] = { ...qs[qi], pairs }; update(qs)
@@ -936,7 +1139,7 @@ function AdminQuizBuilder({ value, onChange, t }: { value: string; onChange: (v:
   )
 }
 
-// ─── Section block (inline, collapsible) ─────────────────────────────────────
+// ─── Section block ────────────────────────────────────────────────────────────
 function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: any; onSave: (u: Partial<Section>) => void; onDelete: () => void }) {
   const [open, setOpen] = useState(section.title === 'New section')
   const [title, setTitle] = useState(section.title)
@@ -975,7 +1178,6 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
             <input value={title} onChange={e => setTitle(e.target.value)}
               style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }} />
           </div>
-
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const, marginBottom: '12px' }}>
             {tabs.map(tab => (
               <button key={tab.id} onClick={() => setContentType(tab.id as any)}
@@ -984,17 +1186,12 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
               </button>
             ))}
           </div>
-
-          {contentType === 'text' && (
-            <RichEditorInline value={contentText} onChange={setContentText} t={t} />
-          )}
+          {contentType === 'text' && <RichEditorInline value={contentText} onChange={setContentText} t={t} />}
           {contentType === 'video' && (
             <input value={contentUrl} onChange={e => setContentUrl(e.target.value)} placeholder="https://www.youtube.com/embed/VIDEO_ID"
               style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }} />
           )}
-          {contentType === 'audio' && (
-            <AdminFileUploader bucket="lesson-audio" accept="audio/*" icon="🎵" label="audio" maxMB={100} value={contentUrl} onChange={setContentUrl} t={t} />
-          )}
+          {contentType === 'audio' && <AdminFileUploader bucket="lesson-audio" accept="audio/*" icon="🎵" label="audio" maxMB={100} value={contentUrl} onChange={setContentUrl} t={t} />}
           {contentType === 'pdf' && (
             <div>
               <AdminFileUploader bucket="lesson-pdfs" accept="application/pdf" icon="📄" label="PDF" maxMB={50} value={contentUrl} onChange={setContentUrl} t={t} />
@@ -1005,23 +1202,13 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
             <div>
               <AdminFileUploader bucket="lesson-pdfs" accept=".pptx,.ppt,.odp" icon="🖥️" label="PowerPoint" maxMB={50} value={contentUrl} onChange={setContentUrl} t={t} />
               {contentUrl && contentUrl.startsWith('http') && (
-                <iframe
-                  src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(contentUrl)}`}
-                  style={{ width: '100%', height: '400px', border: `1px solid ${t.border}`, borderRadius: '8px', marginTop: '10px' }}
-                  allowFullScreen
-                />
+                <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(contentUrl)}`} style={{ width: '100%', height: '400px', border: `1px solid ${t.border}`, borderRadius: '8px', marginTop: '10px' }} allowFullScreen />
               )}
-              <p style={{ fontSize: '0.7rem', color: t.muted, marginTop: '6px' }}>
-                Tip: For best results, upload to OneDrive and paste the embed URL, or use Google Slides embed URL.
-              </p>
+              <p style={{ fontSize: '0.7rem', color: t.muted, marginTop: '6px' }}>Tip: Use YouTube embed URL or Google Slides embed URL for best results.</p>
             </div>
           )}
-          {contentType === 'excel' && (
-            <AdminFileUploader bucket="lesson-excel" accept=".xlsx,.xls,.csv" icon="📊" label="Excel" maxMB={20} value={contentUrl} onChange={setContentUrl} t={t} />
-          )}
-          {contentType === 'quiz' && (
-            <AdminQuizBuilder value={contentText} onChange={setContentText} t={t} />
-          )}
+          {contentType === 'excel' && <AdminFileUploader bucket="lesson-excel" accept=".xlsx,.xls,.csv" icon="📊" label="Excel" maxMB={20} value={contentUrl} onChange={setContentUrl} t={t} />}
+          {contentType === 'quiz' && <AdminQuizBuilder value={contentText} onChange={setContentText} t={t} />}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
             <button onClick={save} disabled={saving} style={{ backgroundColor: t.accent, color: t.accentText, border: 'none', borderRadius: '7px', padding: '8px 20px', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
@@ -1034,7 +1221,7 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
   )
 }
 
-// ─── Inline rich editor (no modal dependency) ─────────────────────────────────
+// ─── Rich editor ──────────────────────────────────────────────────────────────
 function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: any }) {
   const ref = useRef<HTMLDivElement>(null)
   const [dir, setDir] = useState<'ltr' | 'rtl'>('ltr')
@@ -1072,7 +1259,6 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
   function insertList(ordered: boolean) {
     ref.current?.focus()
     document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false)
-    // Ensure list items have proper styling
     setTimeout(() => {
       if (ref.current) {
         ref.current.querySelectorAll('ul, ol').forEach(el => {
@@ -1092,13 +1278,9 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
 
   const btn = (extra?: any) => ({ padding: '3px 7px', fontSize: '0.72rem', border: `1px solid ${t.border}`, borderRadius: '4px', cursor: 'pointer', background: 'transparent', color: t.muted, lineHeight: 1.2, ...extra })
   const sep = { width: 1, background: t.border, alignSelf: 'stretch' as const, margin: '0 2px' }
-
   const fonts = [
-    { label: 'Default', value: 'inherit' },
-    { label: 'Serif', value: 'Georgia, serif' },
-    { label: 'Sans', value: 'Arial, sans-serif' },
-    { label: 'Cairo (AR)', value: 'Cairo, sans-serif' },
-    { label: 'Amiri (AR)', value: 'Amiri, serif' },
+    { label: 'Default', value: 'inherit' }, { label: 'Serif', value: 'Georgia, serif' },
+    { label: 'Sans', value: 'Arial, sans-serif' }, { label: 'Cairo (AR)', value: 'Cairo, sans-serif' }, { label: 'Amiri (AR)', value: 'Amiri, serif' },
   ]
 
   return (
@@ -1139,11 +1321,11 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
         </select>
       </div>
       <style>{`
-          .fv-editor ul { list-style-type: disc !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
-          .fv-editor ol { list-style-type: decimal !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
-          .fv-editor li { display: list-item !important; }
-        `}</style>
-        <div ref={ref} contentEditable suppressContentEditableWarning onInput={sync} onBlur={sync} className="fv-editor"
+        .fv-editor ul { list-style-type: disc !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
+        .fv-editor ol { list-style-type: decimal !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
+        .fv-editor li { display: list-item !important; }
+      `}</style>
+      <div ref={ref} contentEditable suppressContentEditableWarning onInput={sync} onBlur={sync} className="fv-editor"
         style={{ minHeight: '160px', padding: '12px', outline: 'none', backgroundColor: t.bg, color: t.text, fontSize: '0.875rem', lineHeight: 1.7, fontFamily: font, direction: dir, textAlign: dir === 'rtl' ? 'right' : 'left' }} />
     </div>
   )
@@ -1243,7 +1425,7 @@ function UsersSection({ t, onViewProfile }: { t: any; onViewProfile: (id: string
                   <td style={{ padding: '11px 16px' }}><span style={{ fontSize: '0.68rem', padding: '2px 7px', borderRadius: '4px', border: `1px solid ${u.role === 'admin' ? t.amber + '50' : t.border}`, color: u.role === 'admin' ? t.amber : t.muted }}>{u.role}</span></td>
                   <td style={{ padding: '11px 16px', color: t.muted, fontSize: '0.78rem' }}>{new Date(u.created_at).toLocaleDateString()}</td>
                   <td style={{ padding: '11px 16px', textAlign: 'right' as const }}>
-                    <button onClick={async () => { const role = u.role === 'admin' ? 'student' : 'admin'; await supabase.from('profiles').update({ role }).eq('id', u.id); setUsers(p => p.map(x => x.id === u.id ? { ...x, role } : x)) }} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>
+                    <button onClick={async (e) => { e.stopPropagation(); const role = u.role === 'admin' ? 'student' : 'admin'; await supabase.from('profiles').update({ role }).eq('id', u.id); setUsers(p => p.map(x => x.id === u.id ? { ...x, role } : x)) }} style={{ fontSize: '0.75rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer' }}>
                       {u.role === 'admin' ? 'Remove admin' : 'Make admin'}
                     </button>
                   </td>
