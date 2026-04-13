@@ -469,6 +469,23 @@ function SectionContent({ section }: { section: Section }) {
 }
 
 function SectionRenderer({ section }: { section: Section }) {
+  // ── New: render blocks array if present ──────────────────────────────────
+  const rawBlocks = (section as any).blocks
+  if (rawBlocks) {
+    let blocks: any[] = []
+    try { blocks = JSON.parse(rawBlocks) } catch {}
+    if (blocks.length > 0) {
+      return (
+        <div className="space-y-6">
+          {blocks.map((block: any, i: number) => (
+            <BlockRenderer key={block.id || i} block={block} />
+          ))}
+        </div>
+      )
+    }
+  }
+
+  // ── Legacy: flat content_type / content_text / content_url ───────────────
   switch (section.content_type) {
     case 'text':
       return section.content_text
@@ -508,6 +525,61 @@ function SectionRenderer({ section }: { section: Section }) {
       return <QuizPlayer questions={section.content_text || '[]'} />
     default:
       return <p className="text-[#555]">Unknown content type.</p>
+  }
+}
+
+// ─── Block renderer (student view) ───────────────────────────────────────────
+function BlockRenderer({ block }: { block: any }) {
+  switch (block.type) {
+    case 'text':
+      return block.content_text
+        ? <div className="text-[#ccc] leading-relaxed fv-content" style={{ lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: block.content_text }} />
+        : null
+
+    case 'image':
+      return block.content_url ? (
+        <figure className="my-2">
+          <img src={block.content_url} alt={block.content_text || ''} style={{ maxWidth: '100%', borderRadius: '8px', display: 'block' }} />
+          {block.content_text && (
+            <figcaption className="text-xs text-[#666] mt-2 text-center">{block.content_text}</figcaption>
+          )}
+        </figure>
+      ) : null
+
+    case 'video':
+      return block.content_url?.includes('embed') ? (
+        <div className="aspect-video bg-[#111] rounded-lg overflow-hidden">
+          <iframe src={block.content_url} className="w-full h-full" allowFullScreen />
+        </div>
+      ) : null
+
+    case 'audio':
+      return block.content_url ? (
+        <div className="bg-[#111] border border-[#1a1a1a] rounded-lg p-5">
+          <audio controls className="w-full"><source src={block.content_url} /></audio>
+        </div>
+      ) : null
+
+    case 'pdf':
+      return block.content_url
+        ? <iframe src={block.content_url} className="w-full rounded-lg border border-[#1a1a1a]" style={{ height: '70vh' }} />
+        : null
+
+    case 'slides':
+      return block.content_url
+        ? <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(block.content_url)}`} className="w-full rounded-lg border border-[#1a1a1a]" style={{ height: '70vh' }} allowFullScreen />
+        : null
+
+    case 'excel':
+      return block.content_url
+        ? <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(block.content_url)}`} className="w-full rounded-lg border border-[#1a1a1a]" style={{ height: '60vh' }} />
+        : null
+
+    case 'quiz':
+      return <QuizPlayer questions={block.content_text || '[]'} />
+
+    default:
+      return null
   }
 }
 
