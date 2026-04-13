@@ -15,6 +15,9 @@ export default function CoursePlayer() {
   const [course, setCourse] = useState<Course | null>(null)
   const [modules, setModules] = useState<ModuleWithLessons[]>([])
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null)
+  const [activeSection, setActiveSection] = useState<Section | null>(null)
+  const [lessonSections, setLessonSections] = useState<Section[]>([])
+  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set())
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null)
   const [dataLoading, setDataLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -110,6 +113,14 @@ export default function CoursePlayer() {
     }
 
     setDataLoading(false)
+    // Load sections for initial lesson
+    if (targetLesson) {
+      const { data: secs } = await supabase.from('sections').select('*').eq('lesson_id', targetLesson.id).order('position')
+      const sections = secs || []
+      setLessonSections(sections)
+      setActiveSection(sections[0] || null)
+      setExpandedLessons(new Set([targetLesson.id]))
+    }
   }
 
   async function markComplete() {
@@ -216,28 +227,38 @@ export default function CoursePlayer() {
                   {mod.lessons.map((lesson) => {
                     const isActive = lesson.id === activeLesson?.id
                     const isDone = lesson.progress?.completed
+                    const isExpanded = expandedLessons.has(lesson.id)
                     return (
-                      <button
-                        key={lesson.id}
-                        onClick={() => navigateToLesson(lesson)}
-                        className={`w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-colors ${
-                          isActive
-                            ? 'bg-[#1a1a1a] text-white'
-                            : 'text-[#888] hover:text-white hover:bg-[#111]'
-                        }`}
-                      >
-                        {/* Status icon */}
-                        <span className="shrink-0 mt-0.5">
-                          {isDone ? (
-                            <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : (
-                            <ContentIcon type={lesson.content_type} />
-                          )}
-                        </span>
-                        <span className="text-sm leading-snug">{lesson.title}</span>
-                      </button>
+                      <div key={lesson.id}>
+                        <button
+                          onClick={() => navigateToLesson(lesson)}
+                          className={`w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                            isActive
+                              ? 'bg-[#1a1a1a] text-white'
+                              : 'text-[#888] hover:text-[#ccc] hover:bg-[#111]'
+                          }`}
+                        >
+                          <span className="mt-0.5 flex-shrink-0">
+                            {isDone
+                              ? <span className="text-[#10b981] text-sm">✓</span>
+                              : <span className={`w-4 h-4 rounded-full border flex-shrink-0 inline-block ${isActive ? 'border-white' : 'border-[#333]'}`} />
+                            }
+                          </span>
+                          <span className="text-sm leading-snug flex-1">{lesson.title}</span>
+                          <span className="text-xs opacity-40">{isExpanded ? '▲' : '▼'}</span>
+                        </button>
+                        {isExpanded && isActive && lessonSections.map((sec, si) => {
+                          const secActive = sec.id === activeSection?.id
+                          const typeIcon = sec.content_type === 'video' ? '🎬' : sec.content_type === 'audio' ? '🎵' : sec.content_type === 'pdf' ? '📄' : sec.content_type === 'quiz' ? '❓' : sec.content_type === 'slides' ? '🖥️' : sec.content_type === 'excel' ? '📊' : '📝'
+                          return (
+                            <button key={sec.id} onClick={() => navigateToSection(sec)}
+                              className={`w-full text-left pl-9 pr-3 py-2 flex items-center gap-2 text-xs transition-colors rounded-lg ${secActive ? 'text-white bg-[#222]' : 'text-[#666] hover:text-[#aaa] hover:bg-[#111]'}`}>
+                              <span className="opacity-60">{typeIcon}</span>
+                              <span className="truncate">{si + 1}. {sec.title}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
                     )
                   })}
                 </div>
@@ -254,48 +275,78 @@ export default function CoursePlayer() {
             </div>
           ) : (
             <div className="max-w-3xl mx-auto px-8 py-10">
-              {/* Lesson header */}
-              <div className="mb-8">
-                <p className="text-[#555] text-xs uppercase tracking-widest mb-2">
-                  <ContentTypeLabel type={activeLesson.content_type} />
+
+              {/* Section header */}
+              <div className="mb-6">
+                <p className="text-[#555] text-xs uppercase tracking-widest mb-1">
+                  {activeLesson.title}
+                  {lessonSections.length > 1 && activeSection && (
+                    <span className="ml-2 opacity-50">· {lessonSections.findIndex(s => s.id === activeSection.id) + 1}/{lessonSections.length}</span>
+                  )}
                 </p>
-                <h1 className="text-2xl font-bold mb-1">{activeLesson.title}</h1>
-                {activeLesson.duration_minutes && (
-                  <p className="text-[#555] text-sm">{activeLesson.duration_minutes} min</p>
-                )}
+                <h1 className="text-2xl font-bold mb-1">{activeSection?.title || activeLesson.title}</h1>
               </div>
 
-              {/* Content */}
-              <LessonSections lesson={activeLesson} enrollmentId={enrollmentId || ''} userId={user?.id || ''} />
+              {/* Single section content */}
+              {activeSection ? (
+                <SectionContent section={activeSection} enrollmentId={enrollmentId || ''} userId={user?.id || ''} />
+              ) : (
+                <p className="text-[#555]">No content in this lesson yet.</p>
+              )}
 
-              {/* Actions */}
+              {/* Navigation */}
               <div className="mt-10 flex items-center justify-between border-t border-[#1a1a1a] pt-6">
                 <button
-                  onClick={markComplete}
-                  disabled={completing || lessonCompleted || !!activeLesson.progress?.completed}
-                  className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    lessonCompleted || activeLesson.progress?.completed
-                      ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/30 cursor-default'
-                      : 'bg-white text-black hover:bg-gray-100'
-                  }`}
+                  onClick={prevSection}
+                  disabled={
+                    lessonSections.findIndex(s => s.id === activeSection?.id) === 0 &&
+                    modules.flatMap(m => m.lessons).findIndex(l => l.id === activeLesson.id) === 0
+                  }
+                  className="px-5 py-2.5 rounded-lg text-sm font-medium border border-[#1a1a1a] text-[#888] hover:text-white hover:border-[#333] transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {lessonCompleted || activeLesson.progress?.completed
-                    ? '✓ Completed'
-                    : completing
-                    ? 'Saving…'
-                    : 'Mark complete'}
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Previous
                 </button>
 
-                <button
-                  onClick={nextLesson}
-                  disabled={allLessons[allLessons.length - 1]?.id === activeLesson.id}
-                  className="flex items-center gap-2 text-[#888] hover:text-white transition-colors text-sm disabled:opacity-30 disabled:cursor-default"
-                >
-                  Next lesson
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
+                <div className="flex items-center gap-3">
+                  {/* Mark lesson complete — shown on last section */}
+                  {activeSection && lessonSections.findIndex(s => s.id === activeSection.id) === lessonSections.length - 1 && (
+                    <button
+                      onClick={markComplete}
+                      disabled={completing || lessonCompleted || !!activeLesson.progress?.completed}
+                      className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                        lessonCompleted || activeLesson.progress?.completed
+                          ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20'
+                          : 'bg-white text-black hover:bg-white/90'
+                      }`}
+                    >
+                      {lessonCompleted || activeLesson.progress?.completed
+                        ? '✓ Completed'
+                        : completing
+                        ? 'Saving…'
+                        : 'Mark complete'}
+                    </button>
+                  )}
+
+                  {/* Next section or next lesson */}
+                  <button
+                    onClick={nextSection}
+                    disabled={
+                      lessonSections.findIndex(s => s.id === activeSection?.id) === lessonSections.length - 1 &&
+                      modules.flatMap(m => m.lessons).findIndex(l => l.id === activeLesson.id) === modules.flatMap(m => m.lessons).length - 1
+                    }
+                    className="px-5 py-2.5 rounded-lg text-sm font-medium border border-[#1a1a1a] text-[#888] hover:text-white hover:border-[#333] transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {activeSection && lessonSections.findIndex(s => s.id === activeSection.id) === lessonSections.length - 1
+                      ? 'Next lesson'
+                      : 'Next section'}
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -306,6 +357,107 @@ export default function CoursePlayer() {
 }
 
 // ─── Content renderer ────────────────────────────────────────────────────────
+
+
+// ─── Quiz Player ──────────────────────────────────────────────────────────────
+function QuizPlayer({ questions: raw }: { questions: string }) {
+  let questions: any[] = []
+  try { questions = JSON.parse(raw) } catch { questions = [] }
+
+  const [answers, setAnswers] = useState<Record<number, any>>({})
+  const [submitted, setSubmitted] = useState(false)
+
+  if (!questions.length) return <p className="text-[#555]">No questions yet.</p>
+
+  const typeColors: Record<string, string> = { multiple_choice: '#3b82f6', fill_blank: '#10b981', matching: '#f59e0b' }
+
+  return (
+    <div className="space-y-6">
+      {questions.map((q: any, qi: number) => (
+        <div key={qi} className="border border-[#1a1a1a] rounded-xl p-5 bg-[#0f0f0f]">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: `${typeColors[q.type]}15`, color: typeColors[q.type] }}>
+              {q.type === 'multiple_choice' ? 'Multiple choice' : q.type === 'fill_blank' ? 'Fill in the blank' : 'Matching'}
+            </span>
+          </div>
+          {q.image_url && <img src={q.image_url} className="max-w-full rounded-lg mb-3" style={{ maxHeight: '200px', objectFit: 'cover' }} />}
+          <p className="text-[#ccc] mb-4 leading-relaxed">{q.question}</p>
+
+          {q.type === 'multiple_choice' && (
+            <div className="space-y-2">
+              {(q.options || []).map((opt: string, oi: number) => {
+                const selected = answers[qi] === oi
+                const correct = submitted && oi === q.correct_index
+                const wrong = submitted && selected && oi !== q.correct_index
+                return (
+                  <button key={oi} onClick={() => !submitted && setAnswers(a => ({ ...a, [qi]: oi }))}
+                    className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors ${
+                      correct ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400' :
+                      wrong ? 'border-red-500/50 bg-red-500/10 text-red-400' :
+                      selected ? 'border-white/30 bg-white/5 text-white' :
+                      'border-[#222] text-[#888] hover:border-[#333] hover:text-[#ccc]'
+                    }`}>
+                    {opt}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {q.type === 'fill_blank' && (
+            <input
+              value={answers[qi] || ''}
+              onChange={e => !submitted && setAnswers(a => ({ ...a, [qi]: e.target.value }))}
+              placeholder="Your answer…"
+              className={`w-full bg-[#111] border rounded-lg px-4 py-3 text-sm outline-none ${
+                submitted
+                  ? answers[qi]?.toLowerCase().trim() === q.correct_answer?.toLowerCase().trim()
+                    ? 'border-emerald-500/50 text-emerald-400'
+                    : 'border-red-500/50 text-red-400'
+                  : 'border-[#222] text-[#ccc] focus:border-[#444]'
+              }`}
+            />
+          )}
+
+          {q.type === 'matching' && (
+            <div className="grid grid-cols-2 gap-3">
+              {(q.pairs || []).map((pair: any, pi: number) => (
+                <div key={pi} className="contents">
+                  <div className="px-3 py-2 bg-[#111] border border-[#222] rounded-lg text-sm text-[#ccc]">{pair.left}</div>
+                  <div className="px-3 py-2 bg-[#111] border border-[#222] rounded-lg text-sm text-[#888]">{pair.right}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {submitted && q.explanation && (
+            <p className="mt-3 text-sm text-[#666] border-t border-[#1a1a1a] pt-3">{q.explanation}</p>
+          )}
+        </div>
+      ))}
+
+      {!submitted ? (
+        <button onClick={() => setSubmitted(true)}
+          className="px-6 py-2.5 bg-white text-black rounded-lg text-sm font-medium hover:bg-white/90 transition-colors">
+          Submit answers
+        </button>
+      ) : (
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-[#555]">
+            Score: {questions.filter((q: any, qi: number) =>
+              q.type === 'multiple_choice' ? answers[qi] === q.correct_index :
+              q.type === 'fill_blank' ? answers[qi]?.toLowerCase().trim() === q.correct_answer?.toLowerCase().trim() : true
+            ).length}/{questions.length}
+          </p>
+          <button onClick={() => { setAnswers({}); setSubmitted(false) }}
+            className="px-4 py-2 text-sm border border-[#222] rounded-lg text-[#888] hover:text-white hover:border-[#333] transition-colors">
+            Retry
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function SectionContent({ section }: { section: Section }) {
   switch (section.content_type) {
@@ -381,35 +533,81 @@ function HtmlContent({ html }: { html: string }) {
   )
 }
 
-function LessonSections({ lesson, enrollmentId, userId }: { lesson: Lesson; enrollmentId: string; userId: string }) {
-  const [sections, setSections] = useState<Section[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    supabase.from('sections').select('*').eq('lesson_id', lesson.id).order('position')
-      .then(({ data }) => { setSections(data || []); setLoading(false) })
-  }, [lesson.id])
-
-  if (loading) return <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" /></div>
-
-  // If no sections, fall back to legacy lesson content
-  if (sections.length === 0) return <LessonContent lesson={lesson} />
-
+function SectionContent({ section, enrollmentId, userId }: { section: Section; enrollmentId: string; userId: string }) {
   return (
-    <div className="space-y-8">
-      {sections.map((section, idx) => (
-        <div key={section.id}>
-          {section.title && section.title !== 'New section' && (
-            <h3 className="text-white font-semibold text-lg mb-4 pb-2 border-b border-[#1a1a1a]">
-              {idx + 1}. {section.title}
-            </h3>
-          )}
-          <SectionContent section={section} />
-        </div>
-      ))}
+    <div>
+      <style>{`
+        .fv-content ul { list-style-type: disc !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
+        .fv-content ol { list-style-type: decimal !important; padding-left: 1.5em !important; margin: 0.5em 0 !important; }
+        .fv-content li { display: list-item !important; }
+        .fv-content h1 { font-size: 1.5em; font-weight: 700; margin: 0.8em 0 0.4em; }
+        .fv-content h2 { font-size: 1.25em; font-weight: 600; margin: 0.8em 0 0.4em; }
+        .fv-content h3 { font-size: 1.1em; font-weight: 600; margin: 0.6em 0 0.3em; }
+        .fv-content p { margin: 0.5em 0; }
+        .fv-content blockquote { border-left: 3px solid #444; padding-left: 1em; color: #888; margin: 0.5em 0; }
+        .fv-content img { max-width: 100%; border-radius: 6px; margin: 8px 0; }
+      `}</style>
+      <SectionRenderer section={section} />
     </div>
   )
 }
+
+function SectionRenderer({ section }: { section: Section }) {
+  switch (section.content_type) {
+    case 'text':
+      return section.content_text
+        ? <div className="text-[#ccc] leading-relaxed fv-content" style={{ lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: section.content_text }} />
+        : <p className="text-[#555]">No content yet.</p>
+
+    case 'video':
+      return (
+        <div>
+          {section.content_url?.includes('embed') ? (
+            <div className="aspect-video bg-[#111] rounded-lg overflow-hidden mb-4">
+              <iframe src={section.content_url} className="w-full h-full" allowFullScreen />
+            </div>
+          ) : <p className="text-[#555]">Video URL not set.</p>}
+          {section.content_text && (
+            <div className="mt-6 text-[#ccc] fv-content" dangerouslySetInnerHTML={{ __html: section.content_text }} />
+          )}
+        </div>
+      )
+
+    case 'audio':
+      return (
+        <div className="bg-[#111] border border-[#1a1a1a] rounded-lg p-6 mb-4">
+          {section.content_url
+            ? <audio controls className="w-full"><source src={section.content_url} /></audio>
+            : <p className="text-[#555] text-center">Audio not available.</p>}
+          {section.content_text && (
+            <div className="mt-6 text-[#ccc] fv-content" dangerouslySetInnerHTML={{ __html: section.content_text }} />
+          )}
+        </div>
+      )
+
+    case 'pdf':
+      return section.content_url
+        ? <iframe src={section.content_url} className="w-full rounded-lg border border-[#1a1a1a]" style={{ height: '70vh' }} />
+        : <p className="text-[#555]">PDF not available.</p>
+
+    case 'slides':
+      return section.content_url
+        ? <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(section.content_url)}`} className="w-full rounded-lg border border-[#1a1a1a]" style={{ height: '70vh' }} allowFullScreen />
+        : <p className="text-[#555]">Slides not available.</p>
+
+    case 'excel':
+      return section.content_url
+        ? <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(section.content_url)}`} className="w-full rounded-lg border border-[#1a1a1a]" style={{ height: '60vh' }} />
+        : <p className="text-[#555]">File not available.</p>
+
+    case 'quiz':
+      return <QuizPlayer questions={section.content_text || '[]'} />
+
+    default:
+      return <p className="text-[#555]">Unknown content type.</p>
+  }
+}
+
 
 function LessonContent({ lesson }: { lesson: Lesson }) {
   switch (lesson.content_type) {

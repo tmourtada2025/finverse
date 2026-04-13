@@ -55,6 +55,125 @@ function StatCard({ label, value, sub, color, t }: any) {
 }
 
 
+
+// ─── User Profile Page ────────────────────────────────────────────────────────
+function UserProfilePage({ userId, t, onBack }: { userId: string; t: any; onBack: () => void }) {
+  const [profile, setProfile] = useState<any>(null)
+  const [enrollments, setEnrollments] = useState<any[]>([])
+  const [progress, setProgress] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => { fetchUserData() }, [userId])
+
+  async function fetchUserData() {
+    setLoading(true)
+    const [{ data: prof }, { data: enrols }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', userId).single(),
+      supabase.from('enrollments').select('*, course:courses(id, title)').eq('user_id', userId),
+    ])
+    setProfile(prof)
+    const enrolData = enrols || []
+    setEnrollments(enrolData)
+
+    // Load progress per enrollment
+    const progressData = await Promise.all(enrolData.map(async (enrol: any) => {
+      const { data: lessons } = await supabase
+        .from('lessons')
+        .select('id, title, modules!inner(course_id)')
+        .eq('modules.course_id', enrol.course_id)
+      const { data: completed } = await supabase
+        .from('lesson_progress')
+        .select('lesson_id, completed_at')
+        .eq('user_id', userId)
+        .eq('enrollment_id', enrol.id)
+        .eq('completed', true)
+      const total = (lessons || []).length
+      const done = (completed || []).length
+      const lastActivity = completed?.sort((a: any, b: any) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())[0]?.completed_at
+      const daysSince = lastActivity ? Math.floor((Date.now() - new Date(lastActivity).getTime()) / 86400000) : null
+      return { courseId: enrol.course_id, courseTitle: enrol.course?.title, total, done, pct: total > 0 ? Math.round(done / total * 100) : 0, lastActivity, daysSince }
+    }))
+    setProgress(progressData)
+    setLoading(false)
+  }
+
+  if (loading) return <div style={{ padding: '2rem', color: t.muted }}>Loading…</div>
+  if (!profile) return <div style={{ padding: '2rem', color: t.muted }}>User not found</div>
+
+  const joinedDate = new Date(profile.created_at).toLocaleDateString('en', { year: 'numeric', month: 'long', day: 'numeric' })
+
+  return (
+    <div style={{ maxWidth: '720px' }}>
+      <button onClick={onBack} style={{ fontSize: '0.8rem', color: t.muted, background: 'none', border: 'none', cursor: 'pointer', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>← Back to users</button>
+
+      {/* Contact */}
+      <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '1.25rem', backgroundColor: t.surface, marginBottom: '1.25rem' }}>
+        <h2 style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: t.muted, margin: '0 0 12px' }}>Contact</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div>
+            <p style={{ fontSize: '0.7rem', color: t.dim, margin: '0 0 2px' }}>Full name</p>
+            <p style={{ fontSize: '0.9rem', fontWeight: 600, color: t.text, margin: 0 }}>{profile.full_name || '—'}</p>
+          </div>
+          <div>
+            <p style={{ fontSize: '0.7rem', color: t.dim, margin: '0 0 2px' }}>Email</p>
+            <p style={{ fontSize: '0.875rem', color: t.text, margin: 0 }}>{profile.email}</p>
+          </div>
+          <div>
+            <p style={{ fontSize: '0.7rem', color: t.dim, margin: '0 0 2px' }}>Joined</p>
+            <p style={{ fontSize: '0.855rem', color: t.muted, margin: 0 }}>{joinedDate}</p>
+          </div>
+          <div>
+            <p style={{ fontSize: '0.7rem', color: t.dim, margin: '0 0 2px' }}>Role</p>
+            <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px', backgroundColor: profile.role === 'admin' ? '#6366f115' : '#10b98115', color: profile.role === 'admin' ? '#6366f1' : '#10b981' }}>{profile.role || 'student'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Enrollments + Progress */}
+      <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '1.25rem', backgroundColor: t.surface }}>
+        <h2 style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: t.muted, margin: '0 0 12px' }}>Courses & Progress</h2>
+        {enrollments.length === 0 ? (
+          <p style={{ fontSize: '0.875rem', color: t.dim }}>No enrollments</p>
+        ) : enrollments.map((enrol: any, i: number) => {
+          const prog = progress[i]
+          const inactive = prog?.daysSince !== null && prog?.daysSince > 14
+          return (
+            <div key={enrol.id} style={{ border: `1px solid ${t.border}`, borderRadius: '10px', padding: '1rem', marginBottom: '10px', backgroundColor: t.bg }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                <div>
+                  <p style={{ fontSize: '0.9rem', fontWeight: 600, color: t.text, margin: '0 0 3px' }}>{enrol.course?.title}</p>
+                  <p style={{ fontSize: '0.75rem', color: t.dim, margin: 0 }}>
+                    Enrolled {new Date(enrol.enrolled_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {enrol.amount_paid ? ` · $${enrol.amount_paid}` : ''}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  {inactive && <span style={{ fontSize: '0.68rem', padding: '2px 7px', borderRadius: '4px', backgroundColor: '#f59e0b15', color: '#f59e0b' }}>Inactive {prog.daysSince}d</span>}
+                  <span style={{ fontSize: '0.68rem', padding: '2px 7px', borderRadius: '4px', backgroundColor: enrol.status === 'active' ? '#10b98115' : '#ef444415', color: enrol.status === 'active' ? '#10b981' : '#ef4444' }}>{enrol.status}</span>
+                </div>
+              </div>
+              {prog && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                    <span style={{ fontSize: '0.75rem', color: t.muted }}>{prog.done}/{prog.total} lessons completed</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: t.text }}>{prog.pct}%</span>
+                  </div>
+                  <div style={{ height: '6px', backgroundColor: t.border, borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${prog.pct}%`, backgroundColor: prog.pct === 100 ? '#10b981' : '#3b82f6', borderRadius: '3px', transition: 'width 0.4s' }} />
+                  </div>
+                  {prog.lastActivity && (
+                    <p style={{ fontSize: '0.7rem', color: t.dim, margin: '5px 0 0' }}>Last activity: {new Date(prog.lastActivity).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ─── Notifications Section ────────────────────────────────────────────────────
 function NotificationsSection({ t }: { t: any }) {
   const [title, setTitle] = useState('')
@@ -160,6 +279,12 @@ export default function Admin() {
   const { loading, isAuthenticated, isAdmin, profile } = useAuth()
   const [section, setSection] = useState<AdminSection>('overview')
   const [coursesOpen, setCoursesOpen] = useState(false)
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [courseTree, setCourseTree] = useState<any[]>([])
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set())
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
+  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set())
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null)
   const [dark, setDark] = useState(() => {
     try { return localStorage.getItem('fv-theme') !== 'light' } catch { return true }
   })
@@ -245,39 +370,60 @@ export default function Admin() {
         </div>
 
         <nav style={{ flex: 1, padding: '10px', overflowY: 'auto' }}>
-          <p style={{ fontSize: '0.62rem', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.muted, padding: '8px 12px 6px', opacity: 0.6 }}>Management</p>
-
+          <p style={{ fontSize: '0.62rem', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.muted, padding: '8px 12px 6px', opacity: 0.6 }}>          {/* ── PLATFORM ── */}
+          <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: t.muted, padding: '8px 12px 4px', margin: 0, opacity: 0.5 }}>Platform</p>
           {navBtn('overview', 'Overview', I.overview)}
-
-          {/* Courses expandable */}
-          <button
-            onClick={() => setCoursesOpen(o => !o)}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, marginBottom: '1px', transition: 'all 0.12s', backgroundColor: isCourseSection ? t.activeNavBg : 'transparent', color: isCourseSection ? t.activeNavText : t.navText, fontWeight: isCourseSection ? 500 : 400, fontSize: '0.855rem' }}>
-            <span style={{ opacity: isCourseSection ? 1 : 0.7, flexShrink: 0 }}><I.courses /></span>
-            <span style={{ flex: 1 }}>Courses</span>
-            <span style={{ opacity: 0.5 }}>{I.chevron(coursesOpen)}</span>
-          </button>
-
-          {/* Sub-items */}
-          {coursesOpen && (
-            <div style={{ marginLeft: '14px', marginBottom: '4px', borderLeft: `1px solid ${t.border}`, paddingLeft: '10px' }}>
-              <button
-                onClick={() => { setSection('courses_new'); setEditingCourse(null); setEditingLesson(null) }}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '7px 10px', borderRadius: '7px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, marginBottom: '1px', backgroundColor: section === 'courses_new' ? t.subNavBg : 'transparent', color: section === 'courses_new' ? t.text : t.muted, fontSize: '0.82rem', fontWeight: section === 'courses_new' ? 500 : 400 }}>
-                <I.plus /><span>New course</span>
-              </button>
-              <button
-                onClick={() => { setSection('courses_edit'); setEditingCourse(null); setEditingLesson(null) }}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '7px 10px', borderRadius: '7px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, backgroundColor: section === 'courses_edit' ? t.subNavBg : 'transparent', color: section === 'courses_edit' ? t.text : t.muted, fontSize: '0.82rem', fontWeight: section === 'courses_edit' ? 500 : 400 }}>
-                <I.edit /><span>Edit course</span>
-              </button>
-            </div>
-          )}
-
           {navBtn('users', 'Users', I.users)}
           {navBtn('enrollments', 'Enrollments', I.enrollments)}
           {navBtn('analytics', 'Analytics', I.analytics)}
-          {navBtn('notifications', 'Notifications', () => <span>🔔</span>)}
+          {navBtn('notifications', 'Notifications', () => <span style={{fontSize:'0.9rem'}}>🔔</span>)}
+
+          {/* ── COURSES ── */}
+          <div style={{ marginTop: '14px', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px' }}>
+            <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: t.muted, margin: 0, opacity: 0.5 }}>Courses</p>
+            <button onClick={() => { setSection('courses_new'); setEditingCourse(null); setEditingLesson(null) }}
+              style={{ fontSize: '0.7rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '5px', padding: '2px 7px', cursor: 'pointer' }}>+ New</button>
+          </div>
+          <div style={{ overflowY: 'auto', flex: 1, paddingBottom: '8px' }}>
+            {courseTree.map((course: any) => (
+              <div key={course.id}>
+                <button onClick={() => setExpandedCourses(s => { const n = new Set(s); n.has(course.id) ? n.delete(course.id) : n.add(course.id); return n })}
+                  style={{ display: 'flex', alignItems: 'center', gap: '7px', width: '100%', padding: '6px 12px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: t.text, fontSize: '0.82rem', fontWeight: 500, textAlign: 'left' as const }}>
+                  <span style={{ fontSize: '0.55rem', opacity: 0.4, flexShrink: 0 }}>{expandedCourses.has(course.id) ? '▼' : '▶'}</span>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{course.title}</span>
+                </button>
+                {expandedCourses.has(course.id) && course.modules.map((mod: any) => (
+                  <div key={mod.id} style={{ marginLeft: '16px', borderLeft: `1px solid ${t.border}`, paddingLeft: '8px' }}>
+                    <button onClick={() => setExpandedModules(s => { const n = new Set(s); n.has(mod.id) ? n.delete(mod.id) : n.add(mod.id); return n })}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '5px 8px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: t.muted, fontSize: '0.78rem', textAlign: 'left' as const }}>
+                      <span style={{ fontSize: '0.5rem', opacity: 0.4, flexShrink: 0 }}>{expandedModules.has(mod.id) ? '▼' : '▶'}</span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{mod.title}</span>
+                    </button>
+                    {expandedModules.has(mod.id) && mod.lessons.map((lesson: any) => (
+                      <div key={lesson.id} style={{ marginLeft: '10px', borderLeft: `1px solid ${t.border}`, paddingLeft: '8px' }}>
+                        <button onClick={() => { setExpandedLessons(s => { const n = new Set(s); n.has(lesson.id) ? n.delete(lesson.id) : n.add(lesson.id); return n }); setEditingLesson(lesson); setSection('courses_edit' as any) }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '4px 8px', border: 'none', cursor: 'pointer', backgroundColor: editingLesson?.id === lesson.id ? t.subNavBg : 'transparent', color: editingLesson?.id === lesson.id ? t.text : t.muted, fontSize: '0.75rem', textAlign: 'left' as const, borderRadius: '5px' }}>
+                          <span style={{ fontSize: '0.5rem', opacity: 0.4, flexShrink: 0 }}>{expandedLessons.has(lesson.id) ? '▼' : '▶'}</span>
+                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{lesson.title}</span>
+                        </button>
+                        {expandedLessons.has(lesson.id) && lesson.sections.map((sec: any) => (
+                          <button key={sec.id}
+                            onClick={() => { setActiveSectionId(sec.id); setEditingLesson(lesson); setSection('courses_edit' as any) }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '3px 8px 3px 18px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, borderRadius: '5px', backgroundColor: activeSectionId === sec.id ? t.subNavBg : 'transparent', color: activeSectionId === sec.id ? t.text : t.dim, fontSize: '0.72rem', marginBottom: '1px' }}>
+                            <span style={{ opacity: 0.5, flexShrink: 0 }}>{sec.content_type === 'video' ? '🎬' : sec.content_type === 'audio' ? '🎵' : sec.content_type === 'pdf' ? '📄' : sec.content_type === 'quiz' ? '❓' : sec.content_type === 'slides' ? '🖥️' : sec.content_type === 'excel' ? '📊' : '📝'}</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{sec.title}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ))}
+            {courseTree.length === 0 && (
+              <p style={{ fontSize: '0.75rem', color: t.dim, padding: '8px 12px' }}>No courses yet</p>
+            )}
+          </div>
         </nav>
 
         <div style={{ padding: '10px', borderTop: `1px solid ${t.sidebarBorder}` }}>
@@ -317,10 +463,11 @@ export default function Admin() {
               onBack={() => setEditingLesson(null)}
             />
           )}
-          {section === 'users' && <UsersSection t={t} />}
+          {section === 'users' && <UsersSection t={t} onViewProfile={(id) => { setSelectedUserId(id); setSection('user_profile') }} />}
           {section === 'enrollments' && <EnrollmentsSection t={t} />}
           {section === 'analytics' && <AnalyticsSection t={t} />}
           {section === 'notifications' && <NotificationsSection t={t} />}
+          {section === 'user_profile' && selectedUserId && <UserProfilePage userId={selectedUserId} t={t} onBack={() => setSection('users')} />}
         </div>
       </main>
     </div>
@@ -1040,7 +1187,7 @@ function OverviewSection({ t, onNavigate }: { t: any; onNavigate: (s: AdminSecti
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
-function UsersSection({ t }: { t: any }) {
+function UsersSection({ t, onViewProfile }: { t: any; onViewProfile: (id: string) => void }) {
   const [users, setUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -1066,7 +1213,7 @@ function UsersSection({ t }: { t: any }) {
             </thead>
             <tbody>
               {filtered.map(u => (
-                <tr key={u.id} style={{ borderTop: `1px solid ${t.border}` }}>
+                <tr key={u.id} onClick={() => onViewProfile(u.id)} style={{ borderTop: `1px solid ${t.border}`, cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = t.surface} onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
                   <td style={{ padding: '11px 16px', color: t.text }}>{u.email}</td>
                   <td style={{ padding: '11px 16px', color: t.muted }}>{u.full_name || '—'}</td>
                   <td style={{ padding: '11px 16px' }}><span style={{ fontSize: '0.68rem', padding: '2px 7px', borderRadius: '4px', border: `1px solid ${u.role === 'admin' ? t.amber + '50' : t.border}`, color: u.role === 'admin' ? t.amber : t.muted }}>{u.role}</span></td>
