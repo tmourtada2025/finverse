@@ -121,12 +121,13 @@ export default function CoursePlayer() {
 
     setDataLoading(false)
     // Load sections for initial lesson
-    if (targetLesson) {
-      const { data: secs } = await supabase.from('sections').select('*').eq('lesson_id', targetLesson.id).order('position')
+    const initialLesson = firstIncomplete || allLessons[0] || null
+    if (initialLesson) {
+      const { data: secs } = await supabase.from('sections').select('*').eq('lesson_id', initialLesson.id).order('position')
       const sections = secs || []
       setLessonSections(sections)
       setActiveSection(sections[0] || null)
-      setExpandedLessons(new Set([targetLesson.id]))
+      setExpandedLessons(new Set([initialLesson.id]))
     }
   }
 
@@ -215,7 +216,7 @@ export default function CoursePlayer() {
   const overallProgress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
   return (
-    <div className={`min-h-screen ${dark ? "bg-[#0a0a0a] text-white" : "bg-white text-black"} flex flex-col">
+    <div className={"min-h-screen flex flex-col " + (dark ? "bg-[#0a0a0a] text-white" : "bg-white text-black")}>
       {/* Top nav */}
       <nav className="border-b border-[#1a1a1a] px-6 py-3 flex items-center justify-between sticky top-0 bg-[#0a0a0a]/95 backdrop-blur z-50 shrink-0">
         <div className="flex items-center gap-4">
