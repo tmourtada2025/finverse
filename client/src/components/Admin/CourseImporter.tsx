@@ -3,10 +3,9 @@
 // Includes template browser (downloads from Supabase Storage) above the upload area.
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { supabase } from '../lib/supabase'; // adjust path to your supabase client
-import { parseCourseMarkdown, getCourseStats, CourseData } from '../lib/courseParser';
-import { importCourseToSupabase, ImportProgress } from '../lib/courseImportService';
-
+import { supabase } from '@/lib/supabase';
+import { parseCourseMarkdown, getCourseStats, CourseData } from '@/lib/courseParser';
+import { importCourseToSupabase, ImportProgress } from '@/lib/courseImportService';
 type Step = 'upload' | 'preview' | 'importing' | 'done' | 'error';
 
 interface TemplateFile {
