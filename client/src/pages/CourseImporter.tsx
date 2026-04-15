@@ -3,9 +3,9 @@
 // It adds an "Import Course" tab/section that Darine can use to bulk-upload course content.
 
 import { useState, useCallback, useRef } from 'react';
-import { supabase } from '../lib/supabase'; // adjust path to your supabase client
-import { parseCourseMarkdown, getCourseStats, CourseData } from './courseParser';
-import { importCourseToSupabase, ImportProgress } from './courseImportService';
+import { supabase } from '../../lib/supabase';
+import { parseCourseMarkdown, getCourseStats, CourseData } from '../../lib/courseParser';
+import { importCourseToSupabase, ImportProgress } from '../../lib/courseImportService';
 
 type Step = 'upload' | 'preview' | 'importing' | 'done' | 'error';
 
