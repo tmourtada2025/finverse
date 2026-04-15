@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth'
 import { supabase, Course, Module, Lesson, Profile, Section } from '@/lib/supabase'
+import CourseImporter from '@/components/admin/CourseImporter'
 
-type AdminSection = 'overview' | 'courses_new' | 'courses_edit' | 'users' | 'enrollments' | 'analytics'
+type AdminSection = 'overview' | 'courses_new' | 'courses_edit' | 'users' | 'enrollments' | 'analytics' | 'import'
 type CourseView = 'list' | 'editor'
 type LessonView = 'editor'
 
@@ -299,57 +300,38 @@ function ModuleEditorPage({ module, courseTitle, t, onBack, onDeleted, onSaved }
       <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: `1px solid ${t.border}`, color: t.muted, cursor: 'pointer', fontSize: '0.8rem', borderRadius: '7px', padding: '6px 12px', marginBottom: '24px' }}>
         <I.back /> Back to course
       </button>
-
       <div style={{ marginBottom: '20px' }}>
         <p style={{ fontSize: '0.72rem', color: t.muted, margin: '0 0 4px' }}>{courseTitle}</p>
         <h2 style={{ fontSize: '1rem', fontWeight: 600, color: t.text, margin: 0 }}>Module settings</h2>
       </div>
-
       <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', padding: '22px', backgroundColor: t.surface, display: 'flex', flexDirection: 'column' as const, gap: '16px' }}>
         <div>
           <label style={lbl}>Module title</label>
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Module title…" style={inp} />
         </div>
-
         <div>
           <label style={lbl}>Description</label>
-          <p style={{ fontSize: '0.72rem', color: t.muted, margin: '0 0 6px' }}>Shown to students before they start the first lesson. Set context, explain what this module covers.</p>
-          <textarea
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            rows={4}
-            placeholder="What will students learn in this module? What should they expect?"
-            style={{ ...inp, resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.6 }}
-          />
+          <p style={{ fontSize: '0.72rem', color: t.muted, margin: '0 0 6px' }}>Shown to students before they start the first lesson.</p>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={4} placeholder="What will students learn in this module?"
+            style={{ ...inp, resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.6 }} />
         </div>
-
         <div>
           <label style={lbl}>Intro video URL (optional)</label>
-          <p style={{ fontSize: '0.72rem', color: t.muted, margin: '0 0 6px' }}>A short overview video shown on the module intro screen. Use a YouTube embed URL.</p>
-          <input
-            value={introVideoUrl}
-            onChange={e => setIntroVideoUrl(e.target.value)}
-            placeholder="https://www.youtube.com/embed/VIDEO_ID"
-            style={inp}
-          />
+          <p style={{ fontSize: '0.72rem', color: t.muted, margin: '0 0 6px' }}>A short overview video. Use a YouTube embed URL.</p>
+          <input value={introVideoUrl} onChange={e => setIntroVideoUrl(e.target.value)} placeholder="https://www.youtube.com/embed/VIDEO_ID" style={inp} />
           {introVideoUrl && introVideoUrl.includes('embed') && (
             <div style={{ marginTop: '10px', aspectRatio: '16/9', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${t.border}` }}>
               <iframe src={introVideoUrl} style={{ width: '100%', height: '100%' }} allowFullScreen />
             </div>
           )}
         </div>
-
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px' }}>
-          <button
-            onClick={deleteModule}
-            disabled={deleting}
+          <button onClick={deleteModule} disabled={deleting}
             style={{ fontSize: '0.8rem', color: t.red, background: 'none', border: `1px solid ${t.red}30`, borderRadius: '7px', padding: '8px 16px', cursor: 'pointer', opacity: deleting ? 0.5 : 1 }}>
             {deleting ? 'Deleting…' : 'Delete module'}
           </button>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={onBack} style={{ fontSize: '0.875rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '9px 20px', cursor: 'pointer' }}>
-              Cancel
-            </button>
+            <button onClick={onBack} style={{ fontSize: '0.875rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '9px 20px', cursor: 'pointer' }}>Cancel</button>
             <button onClick={save} disabled={saving || !title.trim()}
               style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '9px 22px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', opacity: (saving || !title.trim()) ? 0.6 : 1, transition: 'background-color 0.2s' }}>
               {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save module'}
@@ -376,7 +358,6 @@ export default function Admin() {
   })
   const t = mkT(dark)
 
-  // Drill-down state
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [editingModule, setEditingModule] = useState<any | null>(null)
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null)
@@ -441,10 +422,7 @@ export default function Admin() {
     )
   }
 
-  // ── Sidebar click handlers ──────────────────────────────────────────────────
-
   function handleCourseClick(course: any) {
-    // Find the full Course object from the tree
     setEditingCourse(course as Course)
     setEditingModule(null)
     setEditingLesson(null)
@@ -481,7 +459,6 @@ export default function Admin() {
     setSection('courses_edit')
   }
 
-  // Breadcrumb
   function Breadcrumb() {
     const crumbs: string[] = []
     if (section === 'courses_new') crumbs.push('Courses', 'New course')
@@ -490,6 +467,8 @@ export default function Admin() {
       if (editingCourse) crumbs.push(editingCourse.title)
       if (editingModule) crumbs.push(editingModule.title)
       if (editingLesson) crumbs.push(editingLesson.title)
+    } else if (section === 'import') {
+      crumbs.push('Import Course')
     } else {
       crumbs.push({ overview: 'Overview', users: 'Users', enrollments: 'Enrollments', analytics: 'Analytics', notifications: 'Notifications' }[section] || '')
     }
@@ -505,7 +484,6 @@ export default function Admin() {
     )
   }
 
-  // ── Render logic ────────────────────────────────────────────────────────────
   function renderMain() {
     if (section === 'overview') return <OverviewSection t={t} onNavigate={(s) => { setSection(s); if (s === 'courses_edit') setCoursesOpen(true) }} />
     if (section === 'courses_new') return <CourseForm course={null} t={t} onSaved={(c) => { setSection('courses_edit'); setEditingCourse(c); setCoursesOpen(true); loadCourseTree() }} />
@@ -513,15 +491,13 @@ export default function Admin() {
     if (section === 'enrollments') return <EnrollmentsSection t={t} />
     if (section === 'analytics') return <AnalyticsSection t={t} />
     if (section === 'notifications') return <NotificationsSection t={t} />
+    if (section === 'import') return <CourseImporter />
     if ((section as any) === 'user_profile' && selectedUserId) return <UserProfilePage userId={selectedUserId} t={t} onBack={() => setSection('users')} />
 
-    // courses_edit branch — order matters
     if (section === 'courses_edit') {
-      // No course selected → show course list
       if (!editingCourse) {
         return <CourseList t={t} onSelect={(c) => { setEditingCourse(c); setEditingModule(null); setEditingLesson(null) }} />
       }
-      // Module selected
       if (editingModule) {
         return (
           <ModuleEditorPage
@@ -534,7 +510,6 @@ export default function Admin() {
           />
         )
       }
-      // Lesson selected
       if (editingLesson) {
         return (
           <LessonEditorPage
@@ -544,7 +519,6 @@ export default function Admin() {
           />
         )
       }
-      // Course selected, nothing else
       return (
         <CourseEditor
           course={editingCourse}
@@ -587,6 +561,7 @@ export default function Admin() {
           {navBtn('enrollments', 'Enrollments', I.enrollments)}
           {navBtn('analytics', 'Analytics', I.analytics)}
           {navBtn('notifications', 'Notifications', () => <span style={{fontSize:'0.9rem'}}>🔔</span>)}
+          {navBtn('import', 'Import Course', () => <span style={{fontSize:'0.9rem'}}>📥</span>)}
 
           {/* ── COURSES ── */}
           <div style={{ marginTop: '14px', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px' }}>
@@ -600,15 +575,12 @@ export default function Admin() {
               const courseActive = editingCourse?.id === course.id && !editingModule && !editingLesson && section === 'courses_edit'
               return (
                 <div key={course.id}>
-                  {/* Course row — click opens course editor, chevron expands tree */}
                   <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <button
-                      onClick={() => handleCourseClick(course)}
+                    <button onClick={() => handleCourseClick(course)}
                       style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '7px', padding: '6px 4px 6px 12px', border: 'none', cursor: 'pointer', backgroundColor: courseActive ? t.activeNavBg : 'transparent', color: courseActive ? t.activeNavText : t.text, fontSize: '0.82rem', fontWeight: 500, textAlign: 'left' as const, borderRadius: '6px' }}>
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{course.title}</span>
                     </button>
-                    <button
-                      onClick={() => setExpandedCourses(s => { const n = new Set(s); n.has(course.id) ? n.delete(course.id) : n.add(course.id); return n })}
+                    <button onClick={() => setExpandedCourses(s => { const n = new Set(s); n.has(course.id) ? n.delete(course.id) : n.add(course.id); return n })}
                       style={{ padding: '6px 8px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: t.muted, flexShrink: 0 }}>
                       <span style={{ fontSize: '0.55rem' }}>{expandedCourses.has(course.id) ? '▼' : '▶'}</span>
                     </button>
@@ -618,15 +590,12 @@ export default function Admin() {
                     const modActive = editingModule?.id === mod.id && section === 'courses_edit'
                     return (
                       <div key={mod.id} style={{ marginLeft: '16px', borderLeft: `1px solid ${t.border}`, paddingLeft: '8px' }}>
-                        {/* Module row */}
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                          <button
-                            onClick={() => handleModuleClick(course, mod)}
+                          <button onClick={() => handleModuleClick(course, mod)}
                             style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 4px 5px 8px', border: 'none', cursor: 'pointer', backgroundColor: modActive ? t.subNavBg : 'transparent', color: modActive ? t.text : t.muted, fontSize: '0.78rem', textAlign: 'left' as const, borderRadius: '5px' }}>
                             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{mod.title}</span>
                           </button>
-                          <button
-                            onClick={() => setExpandedModules(s => { const n = new Set(s); n.has(mod.id) ? n.delete(mod.id) : n.add(mod.id); return n })}
+                          <button onClick={() => setExpandedModules(s => { const n = new Set(s); n.has(mod.id) ? n.delete(mod.id) : n.add(mod.id); return n })}
                             style={{ padding: '5px 6px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: t.muted, flexShrink: 0 }}>
                             <span style={{ fontSize: '0.5rem' }}>{expandedModules.has(mod.id) ? '▼' : '▶'}</span>
                           </button>
@@ -636,23 +605,19 @@ export default function Admin() {
                           const lessonActive = editingLesson?.id === lesson.id && !editingModule && section === 'courses_edit'
                           return (
                             <div key={lesson.id} style={{ marginLeft: '10px', borderLeft: `1px solid ${t.border}`, paddingLeft: '8px' }}>
-                              {/* Lesson row */}
                               <div style={{ display: 'flex', alignItems: 'center' }}>
-                                <button
-                                  onClick={() => handleLessonClick(course, lesson)}
+                                <button onClick={() => handleLessonClick(course, lesson)}
                                   style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 4px 4px 8px', border: 'none', cursor: 'pointer', backgroundColor: lessonActive ? t.subNavBg : 'transparent', color: lessonActive ? t.text : t.muted, fontSize: '0.75rem', textAlign: 'left' as const, borderRadius: '5px' }}>
                                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{lesson.title}</span>
                                 </button>
-                                <button
-                                  onClick={() => setExpandedLessons(s => { const n = new Set(s); n.has(lesson.id) ? n.delete(lesson.id) : n.add(lesson.id); return n })}
+                                <button onClick={() => setExpandedLessons(s => { const n = new Set(s); n.has(lesson.id) ? n.delete(lesson.id) : n.add(lesson.id); return n })}
                                   style={{ padding: '4px 6px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: t.muted, flexShrink: 0 }}>
                                   <span style={{ fontSize: '0.5rem' }}>{expandedLessons.has(lesson.id) ? '▼' : '▶'}</span>
                                 </button>
                               </div>
 
                               {expandedLessons.has(lesson.id) && lesson.sections.map((sec: any) => (
-                                <button key={sec.id}
-                                  onClick={() => handleSectionClick(course, lesson, sec.id)}
+                                <button key={sec.id} onClick={() => handleSectionClick(course, lesson, sec.id)}
                                   style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '3px 8px 3px 18px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, borderRadius: '5px', backgroundColor: activeSectionId === sec.id ? t.subNavBg : 'transparent', color: activeSectionId === sec.id ? t.text : t.dim, fontSize: '0.72rem', marginBottom: '1px' }}>
                                   <span style={{ opacity: 0.5, flexShrink: 0 }}>{sec.content_type === 'video' ? '🎬' : sec.content_type === 'audio' ? '🎵' : sec.content_type === 'pdf' ? '📄' : sec.content_type === 'quiz' ? '❓' : sec.content_type === 'slides' ? '🖥️' : sec.content_type === 'excel' ? '📊' : '📝'}</span>
                                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{sec.title}</span>
@@ -756,7 +721,7 @@ function CourseList({ t, onSelect }: { t: any; onSelect: (c: Course) => void }) 
   )
 }
 
-// ─── Course form (new or edit meta) ──────────────────────────────────────────
+// ─── Course form ──────────────────────────────────────────────────────────────
 function CourseForm({ course, t, onSaved }: { course: Course | null; t: any; onSaved?: (c: Course) => void }) {
   const [form, setForm] = useState({ title: course?.title || '', slug: course?.slug || '', description: course?.description || '', price: course?.price || 0 })
   const [saving, setSaving] = useState(false)
@@ -798,7 +763,7 @@ function CourseForm({ course, t, onSaved }: { course: Course | null; t: any; onS
   )
 }
 
-// ─── Course editor (full page) ────────────────────────────────────────────────
+// ─── Course editor ────────────────────────────────────────────────────────────
 type ModuleWithLessons = Module & { lessons: Lesson[] }
 
 function CourseEditor({ course, t, onBack, onEditLesson, onTreeChange }: { course: Course; t: any; onBack: () => void; onEditLesson: (l: Lesson) => void; onTreeChange?: () => void }) {
@@ -1139,8 +1104,7 @@ function AdminQuizBuilder({ value, onChange, t }: { value: string; onChange: (v:
   )
 }
 
-// ─── Section block ────────────────────────────────────────────────────────────
-// ─── Block types ─────────────────────────────────────────────────────────────
+// ─── Block types ──────────────────────────────────────────────────────────────
 type BlockType = 'text' | 'video' | 'audio' | 'image' | 'pdf' | 'slides' | 'excel' | 'quiz'
 interface ContentBlock {
   id: string
@@ -1153,18 +1117,16 @@ function makeBlock(type: BlockType): ContentBlock {
   return { id: Math.random().toString(36).slice(2), type, content_text: null, content_url: null }
 }
 
-// ─── Section block — block editor ────────────────────────────────────────────
+// ─── Section block ────────────────────────────────────────────────────────────
 function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: any; onSave: (u: Partial<Section>) => void; onDelete: () => void }) {
   const [open, setOpen] = useState(section.title === 'New section')
   const [title, setTitle] = useState(section.title)
   const [saving, setSaving] = useState(false)
 
-  // Initialise blocks — prefer new `blocks` column, fall back to legacy columns
   const [blocks, setBlocks] = useState<ContentBlock[]>(() => {
     if ((section as any).blocks) {
       try { return JSON.parse((section as any).blocks) } catch {}
     }
-    // Legacy: convert existing flat section to single block
     if (section.content_type && section.content_type !== 'text') {
       return [{ id: 'legacy', type: section.content_type as BlockType, content_text: section.content_text || null, content_url: section.content_url || null }]
     }
@@ -1174,33 +1136,23 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
     return []
   })
 
-  function addBlock(type: BlockType) {
-    setBlocks(b => [...b, makeBlock(type)])
-  }
-
-  function updateBlock(id: string, patch: Partial<ContentBlock>) {
-    setBlocks(b => b.map(bl => bl.id === id ? { ...bl, ...patch } : bl))
-  }
-
-  function deleteBlock(id: string) {
-    setBlocks(b => b.filter(bl => bl.id !== id))
-  }
-
+  function addBlock(type: BlockType) { setBlocks(b => [...b, makeBlock(type)]) }
+  function updateBlock(id: string, patch: Partial<ContentBlock>) { setBlocks(b => b.map(bl => bl.id === id ? { ...bl, ...patch } : bl)) }
+  function deleteBlock(id: string) { setBlocks(b => b.filter(bl => bl.id !== id)) }
   function moveBlock(id: string, dir: -1 | 1) {
     setBlocks(b => {
       const idx = b.findIndex(bl => bl.id === id)
       if (idx < 0) return b
       const next = idx + dir
       if (next < 0 || next >= b.length) return b
-      const arr = [...b]
-      ;[arr[idx], arr[next]] = [arr[next], arr[idx]]
+      const arr = [...b];
+      [arr[idx], arr[next]] = [arr[next], arr[idx]]
       return arr
     })
   }
 
   async function save() {
     setSaving(true)
-    // Derive legacy fields from first block for backwards compat
     const first = blocks[0]
     await onSave({
       title,
@@ -1212,23 +1164,17 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
     setSaving(false)
   }
 
-  // Block type summary for collapsed header
   const blockSummary = blocks.length === 0 ? 'empty' : blocks.map(b => ({ text: '📝', video: '🎬', audio: '🎵', image: '🖼️', pdf: '📄', slides: '🖥️', excel: '📊', quiz: '❓' }[b.type])).join(' ')
 
   const addBtns: { type: BlockType; icon: string; label: string }[] = [
-    { type: 'text', icon: '📝', label: 'Text' },
-    { type: 'image', icon: '🖼️', label: 'Image' },
-    { type: 'video', icon: '🎬', label: 'Video' },
-    { type: 'audio', icon: '🎵', label: 'Audio' },
-    { type: 'pdf', icon: '📄', label: 'PDF' },
-    { type: 'slides', icon: '🖥️', label: 'Slides' },
-    { type: 'excel', icon: '📊', label: 'Excel' },
-    { type: 'quiz', icon: '❓', label: 'Quiz' },
+    { type: 'text', icon: '📝', label: 'Text' }, { type: 'image', icon: '🖼️', label: 'Image' },
+    { type: 'video', icon: '🎬', label: 'Video' }, { type: 'audio', icon: '🎵', label: 'Audio' },
+    { type: 'pdf', icon: '📄', label: 'PDF' }, { type: 'slides', icon: '🖥️', label: 'Slides' },
+    { type: 'excel', icon: '📊', label: 'Excel' }, { type: 'quiz', icon: '❓', label: 'Quiz' },
   ]
 
   return (
     <div style={{ border: `1px solid ${t.border}`, borderRadius: '10px', overflow: 'hidden', marginBottom: '10px' }}>
-      {/* Header */}
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', backgroundColor: t.surface, cursor: 'pointer' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ opacity: 0.4 }}>{I.chevron(open)}</span>
@@ -1240,28 +1186,19 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
 
       {open && (
         <div style={{ padding: '16px', backgroundColor: t.bg }}>
-          {/* Section title */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ fontSize: '0.7rem', color: t.muted, textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '5px' }}>Section title</label>
             <input value={title} onChange={e => setTitle(e.target.value)}
               style={{ width: '100%', backgroundColor: t.surface, border: `1px solid ${t.border}`, color: t.text, borderRadius: '7px', padding: '8px 12px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }} />
           </div>
 
-          {/* Block list */}
           {blocks.map((block, idx) => (
-            <BlockEditor
-              key={block.id}
-              block={block}
-              idx={idx}
-              total={blocks.length}
-              t={t}
+            <BlockEditor key={block.id} block={block} idx={idx} total={blocks.length} t={t}
               onChange={patch => updateBlock(block.id, patch)}
               onDelete={() => deleteBlock(block.id)}
-              onMove={dir => moveBlock(block.id, dir)}
-            />
+              onMove={dir => moveBlock(block.id, dir)} />
           ))}
 
-          {/* Add block buttons */}
           <div style={{ marginTop: '12px', marginBottom: '16px' }}>
             <p style={{ fontSize: '0.68rem', color: t.muted, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: '8px' }}>Add block</p>
             <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }}>
@@ -1274,7 +1211,6 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
             </div>
           </div>
 
-          {/* Save */}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button onClick={save} disabled={saving}
               style={{ backgroundColor: t.accent, color: t.accentText, border: 'none', borderRadius: '7px', padding: '8px 20px', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
@@ -1287,7 +1223,7 @@ function SectionBlock({ section, t, onSave, onDelete }: { section: Section; t: a
   )
 }
 
-// ─── Individual block editor ──────────────────────────────────────────────────
+// ─── Block editor ─────────────────────────────────────────────────────────────
 function BlockEditor({ block, idx, total, t, onChange, onDelete, onMove }: {
   block: ContentBlock; idx: number; total: number; t: any
   onChange: (patch: Partial<ContentBlock>) => void
@@ -1298,7 +1234,6 @@ function BlockEditor({ block, idx, total, t, onChange, onDelete, onMove }: {
 
   return (
     <div style={{ border: `1px solid ${t.border}`, borderRadius: '8px', marginBottom: '10px', overflow: 'hidden' }}>
-      {/* Block header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px', backgroundColor: t.surface, borderBottom: `1px solid ${t.border}` }}>
         <span style={{ fontSize: '0.72rem', color: t.muted }}>{typeLabels[block.type]}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -1308,18 +1243,14 @@ function BlockEditor({ block, idx, total, t, onChange, onDelete, onMove }: {
         </div>
       </div>
 
-      {/* Block content editor */}
       <div style={{ padding: '12px', backgroundColor: t.bg }}>
         {block.type === 'text' && (
           <RichEditorInline value={block.content_text || ''} onChange={v => onChange({ content_text: v })} t={t} />
         )}
-
         {block.type === 'image' && (
           <div>
             <AdminFileUploader bucket="lesson-images" accept="image/*" icon="🖼️" label="image" maxMB={10} value={block.content_url || ''} onChange={v => onChange({ content_url: v })} t={t} />
-            {block.content_url && (
-              <img src={block.content_url} alt="" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '6px', marginTop: '10px', objectFit: 'contain' }} />
-            )}
+            {block.content_url && <img src={block.content_url} alt="" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '6px', marginTop: '10px', objectFit: 'contain' }} />}
             <div style={{ marginTop: '8px' }}>
               <label style={{ fontSize: '0.68rem', color: t.muted, display: 'block', marginBottom: '4px' }}>Caption (optional)</label>
               <input value={block.content_text || ''} onChange={e => onChange({ content_text: e.target.value })} placeholder="Image caption…"
@@ -1327,7 +1258,6 @@ function BlockEditor({ block, idx, total, t, onChange, onDelete, onMove }: {
             </div>
           </div>
         )}
-
         {block.type === 'video' && (
           <div>
             <label style={{ fontSize: '0.68rem', color: t.muted, display: 'block', marginBottom: '4px' }}>YouTube embed URL</label>
@@ -1340,18 +1270,13 @@ function BlockEditor({ block, idx, total, t, onChange, onDelete, onMove }: {
             )}
           </div>
         )}
-
-        {block.type === 'audio' && (
-          <AdminFileUploader bucket="lesson-audio" accept="audio/*" icon="🎵" label="audio" maxMB={100} value={block.content_url || ''} onChange={v => onChange({ content_url: v })} t={t} />
-        )}
-
+        {block.type === 'audio' && <AdminFileUploader bucket="lesson-audio" accept="audio/*" icon="🎵" label="audio" maxMB={100} value={block.content_url || ''} onChange={v => onChange({ content_url: v })} t={t} />}
         {block.type === 'pdf' && (
           <div>
             <AdminFileUploader bucket="lesson-pdfs" accept="application/pdf" icon="📄" label="PDF" maxMB={50} value={block.content_url || ''} onChange={v => onChange({ content_url: v })} t={t} />
             {block.content_url && <iframe src={block.content_url} style={{ width: '100%', height: '360px', border: `1px solid ${t.border}`, borderRadius: '8px', marginTop: '10px' }} />}
           </div>
         )}
-
         {block.type === 'slides' && (
           <div>
             <AdminFileUploader bucket="lesson-pdfs" accept=".pptx,.ppt,.odp" icon="🖥️" label="PowerPoint" maxMB={50} value={block.content_url || ''} onChange={v => onChange({ content_url: v })} t={t} />
@@ -1360,20 +1285,14 @@ function BlockEditor({ block, idx, total, t, onChange, onDelete, onMove }: {
             )}
           </div>
         )}
-
-        {block.type === 'excel' && (
-          <AdminFileUploader bucket="lesson-excel" accept=".xlsx,.xls,.csv" icon="📊" label="Excel" maxMB={20} value={block.content_url || ''} onChange={v => onChange({ content_url: v })} t={t} />
-        )}
-
-        {block.type === 'quiz' && (
-          <AdminQuizBuilder value={block.content_text || ''} onChange={v => onChange({ content_text: v })} t={t} />
-        )}
+        {block.type === 'excel' && <AdminFileUploader bucket="lesson-excel" accept=".xlsx,.xls,.csv" icon="📊" label="Excel" maxMB={20} value={block.content_url || ''} onChange={v => onChange({ content_url: v })} t={t} />}
+        {block.type === 'quiz' && <AdminQuizBuilder value={block.content_text || ''} onChange={v => onChange({ content_text: v })} t={t} />}
       </div>
     </div>
   )
 }
 
-// ─── Rich editor — with hyperlink and image insert ────────────────────────────
+// ─── Rich editor ──────────────────────────────────────────────────────────────
 function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: any }) {
   const ref = useRef<HTMLDivElement>(null)
   const [dir, setDir] = useState<'ltr' | 'rtl'>('ltr')
@@ -1414,8 +1333,8 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
     setTimeout(() => {
       if (ref.current) {
         ref.current.querySelectorAll('ul, ol').forEach(el => {
-          (el as HTMLElement).style.paddingLeft = '1.5em'
-          ;(el as HTMLElement).style.margin = '0.5em 0'
+          (el as HTMLElement).style.paddingLeft = '1.5em';
+          (el as HTMLElement).style.margin = '0.5em 0'
         })
       }
       sync()
@@ -1433,12 +1352,8 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
     if (!url) return
     ref.current?.focus()
     document.execCommand('createLink', false, url)
-    // Make link open in new tab
     setTimeout(() => {
-      ref.current?.querySelectorAll('a').forEach(a => {
-        a.target = '_blank'
-        a.rel = 'noopener noreferrer'
-      })
+      ref.current?.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer' })
       sync()
     }, 0)
   }
@@ -1454,13 +1369,10 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
     if (!url) return
     ref.current?.focus()
     document.execCommand('insertImage', false, url)
-    // Style the inserted image
     setTimeout(() => {
       ref.current?.querySelectorAll('img').forEach(img => {
-        img.style.maxWidth = '100%'
-        img.style.borderRadius = '6px'
-        img.style.margin = '8px 0'
-        img.style.display = 'block'
+        img.style.maxWidth = '100%'; img.style.borderRadius = '6px'
+        img.style.margin = '8px 0'; img.style.display = 'block'
       })
       sync()
     }, 0)
@@ -1495,11 +1407,9 @@ function RichEditorInline({ value, onChange, t }: { value: string; onChange: (v:
         <button type="button" onMouseDown={e => { e.preventDefault(); insertList(false) }} style={btn()}>• List</button>
         <button type="button" onMouseDown={e => { e.preventDefault(); insertList(true) }} style={btn()}>1.</button>
         <span style={sep} />
-        {/* Hyperlink */}
         <button type="button" onMouseDown={e => { e.preventDefault(); insertLink() }} style={btn()} title="Insert link">🔗</button>
         <button type="button" onMouseDown={e => { e.preventDefault(); removeLink() }} style={btn()} title="Remove link">🔗̶</button>
         <span style={sep} />
-        {/* Inline image */}
         <button type="button" onMouseDown={e => { e.preventDefault(); insertImageInline() }} style={btn()} title="Insert image inline">🖼️</button>
         <span style={sep} />
         <button type="button" onMouseDown={e => { e.preventDefault(); toggleDir() }}
