@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth'
 import { supabase, Course, Module, Lesson, Profile, Section } from '@/lib/supabase'
-import CourseImporter from '@/components/admin/CourseImporter'
+import CourseImporter from '@/components/Admin/CourseImporter'
 
 type AdminSection = 'overview' | 'courses_new' | 'courses_edit' | 'users' | 'enrollments' | 'analytics' | 'import'
 type CourseView = 'list' | 'editor'
