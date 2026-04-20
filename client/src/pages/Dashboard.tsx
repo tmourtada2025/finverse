@@ -129,7 +129,13 @@ export default function Dashboard() {
   }, [user])
 
   async function fetchEnrollments() {
-    const { data } = await supabase.from('enrollments').select('*, course:courses(*)').eq('user_id', user!.id).order('enrolled_at', { ascending: false })
+    // FIX: only show active enrollments — refunded courses don't appear
+    const { data } = await supabase
+      .from('enrollments')
+      .select('*, course:courses(*)')
+      .eq('user_id', user!.id)
+      .eq('status', 'active')
+      .order('enrolled_at', { ascending: false })
     setEnrollments((data as EnrollmentWithCourse[]) || [])
   }
 
@@ -159,7 +165,6 @@ export default function Dashboard() {
     cardBorder: '#e8e8e2', green: '#059669', blue: '#2563eb', amber: '#d97706', indigo: '#4f46e5',
   }
 
-  // Nav order: Profile → Catalogue → My Courses
   const navItems = [
     { id: 'profile' as Section, label: 'Profile', Icon: Icons.profile },
     { id: 'catalogue' as Section, label: 'Catalogue', Icon: Icons.catalogue },
@@ -176,7 +181,6 @@ export default function Dashboard() {
     <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: t.bg, color: t.text, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}@keyframes spin{to{transform:rotate(360deg)}}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${t.dim};border-radius:2px}`}</style>
 
-      {/* Sidebar — logo only, no bell */}
       <aside style={{ width: 220, flexShrink: 0, backgroundColor: t.sidebar, borderRight: `1px solid ${t.sidebarBorder}`, display: 'flex', flexDirection: 'column', height: '100vh', position: 'sticky', top: 0 }}>
         <div style={{ padding: '22px 20px 18px', borderBottom: `1px solid ${t.sidebarBorder}` }}>
           <span style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.03em', color: t.text }}>
@@ -233,9 +237,7 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* Main */}
       <main style={{ flex: 1, overflowY: 'auto', minHeight: '100vh' }}>
-        {/* Topbar — bell lives here only */}
         <div style={{ padding: '0 32px', height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, backgroundColor: t.bg, zIndex: 10 }}>
           <h1 style={{ fontSize: '0.95rem', fontWeight: 600, color: t.text }}>{sectionTitles[section]}</h1>
           {user && <NotificationBell userId={user.id} t={t} />}

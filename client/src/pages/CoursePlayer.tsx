@@ -58,8 +58,8 @@ export default function CoursePlayer() {
 
   async function loadCourse() {
     const { data: enrollment } = await supabase
-      .from('enrollments').select('id').eq('user_id', user!.id).eq('course_id', courseId).single()
-    if (!enrollment) { setLocation('/dashboard'); return }
+      .from('enrollments').select('id, status').eq('user_id', user!.id).eq('course_id', courseId).single()
+    if (!enrollment || enrollment.status === 'refunded') { setLocation('/dashboard'); return }
     setEnrollmentId(enrollment.id)
 
     const { data: courseData } = await supabase.from('courses').select('*').eq('id', courseId).single()
