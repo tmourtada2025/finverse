@@ -1,16 +1,40 @@
 import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
+async function activatePendingEnrollments(userId: string, email: string) {
+  // Find any pending enrollments for this email
+  const { data: pending } = await supabase
+    .from('enrollments')
+    .select('id, course_id')
+    .eq('pending_email', email.toLowerCase())
+    .eq('status', 'pending_signup')
+
+  if (!pending || pending.length === 0) return
+
+  // Activate each one — update user_id and status
+  for (const enrollment of pending) {
+    await supabase
+      .from('enrollments')
+      .update({
+        user_id: userId,
+        status: 'active',
+        pending_email: null,
+      })
+      .eq('id', enrollment.id)
+  }
+
+  console.log(`Activated ${pending.length} pending enrollment(s) for ${email}`)
+}
+
 export default function AuthCallback() {
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
+    const params   = new URLSearchParams(window.location.search)
     const hashParams = new URLSearchParams(window.location.hash.replace('#', ''))
-    
-    const type = params.get('type') || hashParams.get('type')
-    const accessToken = hashParams.get('access_token')
+    const type     = params.get('type') || hashParams.get('type')
+    const accessToken  = hashParams.get('access_token')
     const refreshToken = hashParams.get('refresh_token')
 
-    // Password recovery flow
+    // ── Password recovery flow ──────────────────────────────────────────────
     if (type === 'recovery') {
       if (accessToken && refreshToken) {
         supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
@@ -22,11 +46,21 @@ export default function AuthCallback() {
       return
     }
 
-    // Normal OAuth/magic link flow
+    // ── Normal sign-in / sign-up flow ───────────────────────────────────────
     supabase.auth.exchangeCodeForSession(window.location.search)
-      .then(() => { window.location.replace('/dashboard') })
+      .then(async ({ data }) => {
+        const user = data?.session?.user
+        if (user?.id && user?.email) {
+          await activatePendingEnrollments(user.id, user.email)
+        }
+        window.location.replace('/dashboard')
+      })
       .catch(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        // Fallback: hash-based flow
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
+          if (session?.user?.id && session?.user?.email) {
+            await activatePendingEnrollments(session.user.id, session.user.email)
+          }
           window.location.replace(session ? '/dashboard' : '/login')
         })
       })
