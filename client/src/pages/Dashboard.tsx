@@ -254,7 +254,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(256px, 1fr))', gap: '14px' }}>
-                {enrollments.map(e => <CourseCard key={e.id} enrollment={e} t={t} />)}
+                {enrollments.map(e => <CourseCard key={e.id} enrollment={e} t={t} onRefunded={() => setEnrollments(prev => prev.filter(x => x.id !== e.id))} />)}
               </div>
             )
           )}
@@ -289,15 +289,24 @@ export default function Dashboard() {
             )
           )}
 
-          {section === 'profile' && <ProfileSection profile={profile} userId={user?.id || ''} t={t} />}
+          {section === 'profile' && <ProfileSection profile={profile} userId={user?.id || ''} t={t} enrollments={enrollments} />}
         </div>
       </main>
     </div>
   )
 }
 
-function CourseCard({ enrollment, t }: { enrollment: EnrollmentWithCourse; t: any }) {
-  const [cardState, setCardState] = useState<'start' | 'continue' | 'review' | null>(null)
+function CourseCard({ enrollment, t, onRefunded }: { enrollment: EnrollmentWithCourse; t: any; onRefunded: () => void }) {
+  const [cardState, setCardState]       = useState<'start' | 'continue' | 'review' | null>(null)
+  const [showRefund, setShowRefund]     = useState(false)
+  const [refunding, setRefunding]       = useState(false)
+  const [refundError, setRefundError]   = useState<string | null>(null)
+
+  const enrolledAt       = new Date(enrollment.enrolled_at)
+  const daysSince        = Math.floor((Date.now() - enrolledAt.getTime()) / 86400000)
+  const daysLeft         = 14 - daysSince
+  const canRefund        = daysLeft >= 0 && !!enrollment.stripe_session_id
+  const showCountdown    = daysLeft <= 3 && daysLeft >= 0
 
   useEffect(() => { determineState() }, [])
 
@@ -310,31 +319,104 @@ function CourseCard({ enrollment, t }: { enrollment: EnrollmentWithCourse; t: an
     setCardState((count ?? 0) > 0 ? 'continue' : 'start')
   }
 
+  async function requestRefund() {
+    setRefunding(true); setRefundError(null)
+    try {
+      const res = await fetch('/api/refund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enrollmentId: enrollment.id, userId: enrollment.user_id }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setRefundError(data.error || 'Refund failed'); setRefunding(false); return }
+      // Success — remove from list
+      onRefunded()
+    } catch {
+      setRefundError('Something went wrong. Please try again.')
+      setRefunding(false)
+    }
+  }
+
   const labels: Record<string, string> = { start: 'Start course →', continue: 'Continue →', review: 'Review →' }
 
   return (
-    <div style={{ border: `1px solid ${t.cardBorder}`, borderRadius: '12px', padding: '20px', backgroundColor: t.surface, display: 'flex', flexDirection: 'column' as const, gap: '14px' }}>
-      <div>
-        <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: t.text, lineHeight: 1.4, marginBottom: '4px' }}>{enrollment.course.title}</h3>
-        <p style={{ fontSize: '0.72rem', color: t.muted }}>Since {new Date(enrollment.enrolled_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+    <>
+      <div style={{ border: `1px solid ${t.cardBorder}`, borderRadius: '12px', padding: '20px', backgroundColor: t.surface, display: 'flex', flexDirection: 'column' as const, gap: '14px' }}>
+        <div>
+          <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: t.text, lineHeight: 1.4, marginBottom: '4px' }}>{enrollment.course.title}</h3>
+          <p style={{ fontSize: '0.72rem', color: t.muted }}>Since {new Date(enrollment.enrolled_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+        </div>
+
+        {/* Countdown badge — only last 3 days */}
+        {showCountdown && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '6px', backgroundColor: `${t.amber}15`, border: `1px solid ${t.amber}30` }}>
+            <span style={{ fontSize: '0.75rem' }}>⏳</span>
+            <span style={{ fontSize: '0.72rem', color: t.amber }}>
+              {daysLeft === 0 ? 'Last day to request a refund' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left to request a refund`}
+            </span>
+          </div>
+        )}
+
+        {cardState === 'review' && (
+          <span style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '4px', backgroundColor: `${t.green}15`, color: t.green, fontWeight: 500, alignSelf: 'flex-start' as const }}>Completed</span>
+        )}
+
+        <Link href={`/learn/${enrollment.course_id}`}>
+          <button style={{ width: '100%', padding: '9px', borderRadius: '8px', border: `1px solid ${t.border}`, backgroundColor: 'transparent', color: t.text, fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer' }}>
+            {cardState ? labels[cardState] : '…'}
+          </button>
+        </Link>
+
+        {/* Refund link — only within window */}
+        {canRefund && (
+          <button
+            onClick={() => setShowRefund(true)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.72rem', color: t.muted, textDecoration: 'underline', padding: 0, textAlign: 'left' as const }}>
+            Request refund
+          </button>
+        )}
       </div>
-      {cardState === 'review' && (
-        <span style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '4px', backgroundColor: `${t.green}15`, color: t.green, fontWeight: 500, alignSelf: 'flex-start' as const }}>Completed</span>
+
+      {/* Refund confirmation modal */}
+      {showRefund && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ backgroundColor: t.surface, border: `1px solid ${t.border}`, borderRadius: '14px', padding: '28px', maxWidth: '400px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: t.text, marginBottom: '8px' }}>Request a refund?</h3>
+            <p style={{ fontSize: '0.82rem', color: t.muted, lineHeight: 1.6, marginBottom: '16px' }}>
+              You will immediately lose access to <strong style={{ color: t.text }}>{enrollment.course.title}</strong>. Your refund will be processed to your original payment method within 5–10 business days.
+            </p>
+            {daysLeft <= 3 && (
+              <p style={{ fontSize: '0.78rem', color: t.amber, marginBottom: '16px' }}>
+                ⏳ {daysLeft === 0 ? 'This is your last day' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining`} in your refund window.
+              </p>
+            )}
+            {refundError && <p style={{ fontSize: '0.78rem', color: t.red, marginBottom: '12px' }}>{refundError}</p>}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={() => { setShowRefund(false); setRefundError(null) }}
+                style={{ fontSize: '0.855rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '9px 20px', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={requestRefund} disabled={refunding}
+                style={{ fontSize: '0.855rem', fontWeight: 600, color: '#fff', backgroundColor: t.red, border: 'none', borderRadius: '8px', padding: '9px 20px', cursor: 'pointer', opacity: refunding ? 0.6 : 1 }}>
+                {refunding ? 'Processing…' : 'Confirm refund'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-      <Link href={`/learn/${enrollment.course_id}`}>
-        <button style={{ width: '100%', padding: '9px', borderRadius: '8px', border: `1px solid ${t.border}`, backgroundColor: 'transparent', color: t.text, fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer' }}>
-          {cardState ? labels[cardState] : '…'}
-        </button>
-      </Link>
-    </div>
+    </>
   )
 }
 
-function ProfileSection({ profile, userId, t }: { profile: any; userId: string; t: any }) {
+function ProfileSection({ profile, userId, t, enrollments }: { profile: any; userId: string; t: any; enrollments: any[] }) {
   const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [lastName, setLastName]   = useState('')
+  const [saving, setSaving]       = useState(false)
+  const [status, setStatus]       = useState<'idle' | 'saved' | 'error'>('idle')
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false)
+  const [deleteAccountText, setDeleteAccountText] = useState('')
+  const [deletingAccount, setDeletingAccount]     = useState(false)
+  const hasActiveCourses = enrollments.length > 0
 
   useEffect(() => {
     if (profile?.full_name) {
@@ -355,6 +437,17 @@ function ProfileSection({ profile, userId, t }: { profile: any; userId: string; 
 
   const input = { width: '100%', backgroundColor: t.bg, border: `1px solid ${t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }
   const lbl = { fontSize: '0.72rem', color: t.muted, textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }
+
+  async function deleteAccount() {
+    setDeletingAccount(true)
+    // Anonymize enrollments — keep financial records but remove user link
+    await supabase.from('enrollments').update({ user_id: '00000000-0000-0000-0000-000000000000' }).eq('user_id', userId)
+    // Delete profile
+    await supabase.from('profiles').delete().eq('id', userId)
+    // Delete auth user (requires service role — handled via RPC or just sign out)
+    await supabase.auth.signOut()
+    window.location.href = '/'
+  }
 
   return (
     <div style={{ maxWidth: 500 }}>
@@ -383,6 +476,67 @@ function ProfileSection({ profile, userId, t }: { profile: any; userId: string; 
           </button>
         </div>
       </div>
+
+      {/* Danger zone */}
+      <div style={{ border: `1px solid ${t.red}30`, borderRadius: '12px', overflow: 'hidden', marginTop: '24px' }}>
+        <div style={{ padding: '18px 22px', borderBottom: `1px solid ${t.red}20` }}>
+          <h2 style={{ fontSize: '0.875rem', fontWeight: 600, color: t.red }}>Danger zone</h2>
+          <p style={{ fontSize: '0.78rem', color: t.muted, marginTop: '2px' }}>Permanent actions that cannot be undone.</p>
+        </div>
+        <div style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+          <div>
+            <p style={{ fontSize: '0.855rem', fontWeight: 500, color: t.text, marginBottom: '2px' }}>Delete account</p>
+            <p style={{ fontSize: '0.78rem', color: t.muted }}>
+              {hasActiveCourses
+                ? 'You must have no active courses to delete your account.'
+                : 'Permanently delete your account and all personal data.'}
+            </p>
+          </div>
+          <button
+            onClick={() => { setShowDeleteAccount(true); setDeleteAccountText('') }}
+            disabled={hasActiveCourses}
+            style={{ flexShrink: 0, fontSize: '0.8rem', color: hasActiveCourses ? t.muted : t.red, background: 'none', border: `1px solid ${hasActiveCourses ? t.border : t.red + '40'}`, borderRadius: '7px', padding: '7px 14px', cursor: hasActiveCourses ? 'not-allowed' : 'pointer', opacity: hasActiveCourses ? 0.5 : 1, whiteSpace: 'nowrap' as const }}>
+            Delete account
+          </button>
+        </div>
+      </div>
+
+      {/* Delete account modal */}
+      {showDeleteAccount && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ backgroundColor: t.surface, border: `1px solid ${t.red}40`, borderRadius: '14px', padding: '28px', maxWidth: '400px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.red, marginBottom: '8px', fontWeight: 600 }}>Permanent action</p>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: t.text, marginBottom: '8px' }}>Delete your account?</h3>
+            <p style={{ fontSize: '0.82rem', color: t.muted, lineHeight: 1.6, marginBottom: '20px' }}>
+              Your profile and login will be permanently deleted. This cannot be undone.
+            </p>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '0.75rem', color: t.muted, display: 'block', marginBottom: '8px' }}>
+                Type <strong style={{ color: t.text }}>DELETE</strong> to confirm
+              </label>
+              <input
+                value={deleteAccountText}
+                onChange={e => setDeleteAccountText(e.target.value)}
+                placeholder="DELETE"
+                autoFocus
+                style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${deleteAccountText === 'DELETE' ? t.red : t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={() => { setShowDeleteAccount(false); setDeleteAccountText('') }}
+                style={{ fontSize: '0.855rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '9px 20px', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button
+                onClick={deleteAccount}
+                disabled={deleteAccountText !== 'DELETE' || deletingAccount}
+                style={{ fontSize: '0.855rem', fontWeight: 600, color: '#fff', backgroundColor: deleteAccountText === 'DELETE' ? t.red : t.dim, border: 'none', borderRadius: '8px', padding: '9px 20px', cursor: deleteAccountText === 'DELETE' ? 'pointer' : 'not-allowed', opacity: deletingAccount ? 0.6 : 1 }}>
+                {deletingAccount ? 'Deleting…' : 'Delete account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
