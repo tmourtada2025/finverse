@@ -60,7 +60,7 @@ export default function Blueprint() {
                 Most traders learn how to read markets. Almost none learn how to manage the money those markets generate. This course closes that gap.
               </p>
               <div className="flex flex-wrap gap-6 mb-10">
-                {["6 Modules", "Lifetime Access", "Downloadable Frameworks", "14-Day Refund"].map((item) => (
+                {["8 Modules", "Lifetime Access", "Downloadable Frameworks", "14-Day Refund"].map((item) => (
                   <div key={item} className="flex items-center gap-2">
                     <CheckCircle size={14} style={{ color: "#3E5C76" }} />
                     <span className="text-sm text-[#9EA7B3]">{item}</span>
@@ -84,7 +84,7 @@ export default function Blueprint() {
                 <span className="text-sm text-[#9EA7B3] opacity-60 ml-1">one-time</span>
               </div>
               <div style={{ height: "1px", backgroundColor: "rgba(158,167,179,0.12)", marginBottom: "1.5rem" }} />
-              {["6 in-depth video modules","Personal capital structure framework","Income architecture worksheet","Tax planning checklist","Risk of ruin calculator","Lifetime access & future updates","14-day money-back guarantee"].map((item) => (
+              {["8 in-depth video modules","Personal capital structure framework","Income architecture worksheet","Tax planning checklist","Risk of ruin calculator","Lifetime access & future updates","14-day money-back guarantee"].map((item) => (
                 <div key={item} className="flex items-start gap-3 mb-3">
                   <CheckCircle size={14} className="shrink-0 mt-0.5" style={{ color: "#3E5C76" }} />
                   <span className="text-sm text-[#9EA7B3]">{item}</span>
@@ -125,7 +125,7 @@ export default function Blueprint() {
         <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
           <div style={{ maxWidth: "720px" }} className="mb-16">
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-6">What's Inside</p>
-            <h2 className="font-serif text-3xl md:text-4xl font-bold leading-tight text-[#F4F4F2]">Six modules. One complete financial system.</h2>
+            <h2 className="font-serif text-3xl md:text-4xl font-bold leading-tight text-[#F4F4F2]">Eight modules. One complete financial system.</h2>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
             {modules.map((mod) => {
