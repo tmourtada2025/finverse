@@ -106,7 +106,6 @@ export default function CoursePlayer() {
     setDataLoading(false)
   }
 
-  // ── Silent auto-complete on next past last section ──────────────────────────
   async function silentComplete(lesson: Lesson) {
     if (!enrollmentId || !user) return
     if (lesson.progress?.completed) return
@@ -118,14 +117,12 @@ export default function CoursePlayer() {
       completed_at: new Date().toISOString(),
     }, { onConflict: 'user_id,lesson_id' })
 
-    // Check if this was the last lesson
     const allLessons = modules.flatMap(m => m.lessons)
     const allCompleted = allLessons.every(l => l.id === lesson.id || l.progress?.completed)
     if (allCompleted) {
       await supabase.from('enrollments').update({ completed_at: new Date().toISOString() }).eq('id', enrollmentId)
     }
 
-    // Update in-memory state silently
     setModules(prev => prev.map(mod => ({
       ...mod,
       lessons: mod.lessons.map(l => l.id === lesson.id
@@ -156,7 +153,16 @@ export default function CoursePlayer() {
     const sections = secs || []
     setLessonSections(sections)
     setActiveSection(sections[0] || null)
-    setExpandedLessons(prev => new Set([...prev, lesson.id]))
+    // FIX: toggle expand/collapse instead of always adding
+    setExpandedLessons(prev => {
+      const next = new Set(prev)
+      if (next.has(lesson.id)) {
+        next.delete(lesson.id)
+      } else {
+        next.add(lesson.id)
+      }
+      return next
+    })
   }
 
   function nextLesson() {
@@ -177,7 +183,6 @@ export default function CoursePlayer() {
     if (idx < lessonSections.length - 1) {
       setActiveSection(lessonSections[idx + 1])
     } else {
-      // Last section — auto-complete this lesson then go to next
       if (activeLesson) await silentComplete(activeLesson)
       nextLesson()
     }
@@ -190,7 +195,6 @@ export default function CoursePlayer() {
     else prevLesson()
   }
 
-  // Breadcrumb: find which module contains the active lesson
   const activeModuleForLesson = activeLesson
     ? modules.find(m => m.lessons.some(l => l.id === activeLesson.id)) || null
     : activeModule
@@ -203,21 +207,24 @@ export default function CoursePlayer() {
     )
   }
 
-  const bg = dark ? 'bg-[#0a0a0a] text-white' : 'bg-white text-black'
-  const borderCol = dark ? 'border-[#1a1a1a]' : 'border-[#e8e8e2]'
-  const mutedText = dark ? 'text-[#555]' : 'text-[#999]'
+  const bg         = dark ? 'bg-[#0a0a0a] text-white'    : 'bg-[#f7f7f5] text-[#111]'
+  const borderCol  = dark ? 'border-[#1a1a1a]'            : 'border-[#e0e0da]'
+  const mutedText  = dark ? 'text-[#555]'                 : 'text-[#888]'
+  const surfaceBg  = dark ? 'bg-[#0a0a0a]'               : 'bg-white'
+  const sidebarBg  = dark ? 'bg-[#0a0a0a]'               : 'bg-white'
+  const bodyText   = dark ? 'text-[#ccc]'                 : 'text-[#222]'
 
   const allLessons = modules.flatMap(m => m.lessons)
-  const isLastLesson = allLessons.findIndex(l => l.id === activeLesson?.id) === allLessons.length - 1
-  const isLastSection = lessonSections.findIndex(s => s.id === activeSection?.id) === lessonSections.length - 1
+  const isLastLesson   = allLessons.findIndex(l => l.id === activeLesson?.id) === allLessons.length - 1
+  const isLastSection  = lessonSections.findIndex(s => s.id === activeSection?.id) === lessonSections.length - 1
   const isFirstSection = lessonSections.findIndex(s => s.id === activeSection?.id) === 0
-  const isFirstLesson = allLessons.findIndex(l => l.id === activeLesson?.id) === 0
+  const isFirstLesson  = allLessons.findIndex(l => l.id === activeLesson?.id) === 0
 
   return (
     <div className={`min-h-screen flex flex-col ${bg}`}>
 
-      {/* ── Top nav ── */}
-      <nav className={`border-b ${borderCol} px-6 py-3 flex items-center justify-between sticky top-0 ${dark ? 'bg-[#0a0a0a]/95' : 'bg-white/95'} backdrop-blur z-50 shrink-0`}>
+      {/* Top nav */}
+      <nav className={`border-b ${borderCol} px-6 py-3 flex items-center justify-between sticky top-0 ${surfaceBg}/95 backdrop-blur z-50 shrink-0`}>
         <div className="flex items-center gap-4">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className={`${mutedText} hover:text-current transition-colors p-1`}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -236,10 +243,9 @@ export default function CoursePlayer() {
         </div>
       </nav>
 
-      {/* ── Breadcrumb — always visible ── */}
-      <div className={`border-b ${borderCol} px-6 py-2 ${dark ? 'bg-[#0a0a0a]' : 'bg-white'} flex items-center gap-2 text-xs flex-wrap shrink-0`}>
-        <span style={{ color: dark ? '#666' : '#888' }} className="font-medium">{course?.title || '…'}</span>
-
+      {/* Breadcrumb */}
+      <div className={`border-b ${borderCol} px-6 py-2 ${surfaceBg} flex items-center gap-2 text-xs flex-wrap shrink-0`}>
+        <span style={{ color: dark ? '#666' : '#999' }} className="font-medium">{course?.title || '…'}</span>
         {activeModuleForLesson && (
           <>
             <span className={dark ? 'text-[#2a2a2a]' : 'text-[#ddd]'}>/</span>
@@ -248,14 +254,12 @@ export default function CoursePlayer() {
             </button>
           </>
         )}
-
         {activeLesson && (
           <>
             <span className={dark ? 'text-[#2a2a2a]' : 'text-[#ddd]'}>/</span>
             <span style={{ color: dark ? '#aaa' : '#444' }}>{activeLesson.title}</span>
           </>
         )}
-
         {activeSection && lessonSections.length > 1 && (
           <>
             <span className={dark ? 'text-[#2a2a2a]' : 'text-[#ddd]'}>/</span>
@@ -263,7 +267,6 @@ export default function CoursePlayer() {
             <span className={mutedText}>({lessonSections.findIndex(s => s.id === activeSection.id) + 1}/{lessonSections.length})</span>
           </>
         )}
-
         {activeModule && !activeLesson && (
           <>
             <span className={dark ? 'text-[#2a2a2a]' : 'text-[#ddd]'}>/</span>
@@ -274,8 +277,8 @@ export default function CoursePlayer() {
 
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ── Sidebar ── */}
-        <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} shrink-0 border-r ${borderCol} overflow-y-auto transition-all duration-200 ${dark ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
+        {/* Sidebar */}
+        <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} shrink-0 border-r ${borderCol} overflow-y-auto transition-all duration-200 ${sidebarBg}`}>
           <div className="p-4 min-w-[288px]">
             {modules.map((mod, mIdx) => {
               const modActive = activeModule?.id === mod.id
@@ -284,7 +287,11 @@ export default function CoursePlayer() {
                 <div key={mod.id} className="mb-6">
                   <button
                     onClick={() => navigateToModule(mod)}
-                    className={`w-full text-left px-2 py-1.5 rounded-lg mb-2 transition-colors group flex items-center justify-between gap-2 ${modActive ? (dark ? 'bg-[#1a1a1a] text-white' : 'bg-[#f0f0f0] text-black') : (dark ? 'text-[#555] hover:text-[#888]' : 'text-[#aaa] hover:text-[#666]')}`}
+                    className={`w-full text-left px-2 py-1.5 rounded-lg mb-2 transition-colors group flex items-center justify-between gap-2 ${
+                      modActive
+                        ? (dark ? 'bg-[#1a1a1a] text-white' : 'bg-[#efefed] text-[#111]')
+                        : (dark ? 'text-[#555] hover:text-[#888]' : 'text-[#aaa] hover:text-[#555]')
+                    }`}
                   >
                     <span className="text-xs uppercase tracking-widest">Module {mIdx + 1} · {mod.title}</span>
                     {hasIntro && <span className="text-xs opacity-0 group-hover:opacity-60 transition-opacity">›</span>}
@@ -292,30 +299,48 @@ export default function CoursePlayer() {
 
                   <div className="space-y-1">
                     {mod.lessons.map((lesson) => {
-                      const isActive = lesson.id === activeLesson?.id
-                      const isDone = lesson.progress?.completed
+                      const isActive   = lesson.id === activeLesson?.id
+                      const isDone     = lesson.progress?.completed
                       const isExpanded = expandedLessons.has(lesson.id)
                       return (
                         <div key={lesson.id}>
                           <button
                             onClick={() => navigateToLesson(lesson)}
-                            className={`w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-colors ${isActive ? (dark ? 'bg-[#1a1a1a] text-white' : 'bg-[#f0f0f0] text-black') : (dark ? 'text-[#888] hover:text-[#ccc] hover:bg-[#111]' : 'text-[#666] hover:text-black hover:bg-[#f5f5f5]')}`}
+                            className={`w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-colors ${
+                              isActive
+                                ? (dark ? 'bg-[#1a1a1a] text-white' : 'bg-[#efefed] text-[#111]')
+                                : (dark ? 'text-[#888] hover:text-[#ccc] hover:bg-[#111]' : 'text-[#666] hover:text-[#111] hover:bg-[#f0f0ee]')
+                            }`}
                           >
                             <span className="mt-0.5 flex-shrink-0">
                               {isDone
                                 ? <span className="text-[#10b981] text-sm">✓</span>
-                                : <span className={`w-4 h-4 rounded-full border flex-shrink-0 inline-block ${isActive ? (dark ? 'border-white' : 'border-black') : (dark ? 'border-[#333]' : 'border-[#ccc]')}`} />
+                                : <span className={`w-4 h-4 rounded-full border flex-shrink-0 inline-block ${
+                                    isActive
+                                      ? (dark ? 'border-white' : 'border-[#111]')
+                                      : (dark ? 'border-[#333]' : 'border-[#ccc]')
+                                  }`} />
                               }
                             </span>
                             <span className="text-sm leading-snug flex-1">{lesson.title}</span>
                             <span className="text-xs opacity-40">{isExpanded ? '▲' : '▼'}</span>
                           </button>
+
                           {isExpanded && isActive && lessonSections.map((sec, si) => {
                             const secActive = sec.id === activeSection?.id
-                            const typeIcon = sec.content_type === 'video' ? '🎬' : sec.content_type === 'audio' ? '🎵' : sec.content_type === 'pdf' ? '📄' : sec.content_type === 'quiz' ? '❓' : sec.content_type === 'slides' ? '🖥️' : sec.content_type === 'excel' ? '📊' : '📝'
+                            const typeIcon = sec.content_type === 'video' ? '🎬'
+                              : sec.content_type === 'audio' ? '🎵'
+                              : sec.content_type === 'pdf' ? '📄'
+                              : sec.content_type === 'quiz' ? '❓'
+                              : sec.content_type === 'slides' ? '🖥️'
+                              : sec.content_type === 'excel' ? '📊' : '📝'
                             return (
                               <button key={sec.id} onClick={() => setActiveSection(sec)}
-                                className={`w-full text-left pl-9 pr-3 py-2 flex items-center gap-2 text-xs transition-colors rounded-lg ${secActive ? (dark ? 'text-white bg-[#222]' : 'text-black bg-[#ebebeb]') : (dark ? 'text-[#666] hover:text-[#aaa] hover:bg-[#111]' : 'text-[#999] hover:text-black hover:bg-[#f5f5f5]')}`}>
+                                className={`w-full text-left pl-9 pr-3 py-2 flex items-center gap-2 text-xs transition-colors rounded-lg ${
+                                  secActive
+                                    ? (dark ? 'text-white bg-[#222]' : 'text-[#111] bg-[#e8e8e4]')
+                                    : (dark ? 'text-[#666] hover:text-[#aaa] hover:bg-[#111]' : 'text-[#999] hover:text-[#444] hover:bg-[#f0f0ee]')
+                                }`}>
                                 <span className="opacity-60">{typeIcon}</span>
                                 <span className="truncate">{si + 1}. {sec.title}</span>
                               </button>
@@ -331,10 +356,8 @@ export default function CoursePlayer() {
           </div>
         </aside>
 
-        {/* ── Main content ── */}
+        {/* Main content */}
         <main className="flex-1 overflow-y-auto">
-
-          {/* Module intro */}
           {activeModule && !activeLesson ? (
             <ModuleIntroScreen
               mod={activeModule}
@@ -350,14 +373,16 @@ export default function CoursePlayer() {
             </div>
           ) : (
             <div className="max-w-3xl mx-auto px-8 py-10">
-              <h1 className="text-2xl font-bold mb-8">{activeSection?.title || activeLesson.title}</h1>
+              <h1 className={`text-2xl font-bold mb-8 ${dark ? 'text-white' : 'text-[#111]'}`}>
+                {activeSection?.title || activeLesson.title}
+              </h1>
 
               {activeSection
-                ? <SectionContent section={activeSection} />
+                ? <SectionContent section={activeSection} dark={dark} />
                 : <p className={mutedText}>No content in this lesson yet.</p>
               }
 
-              {/* Navigation — no mark complete button */}
+              {/* Navigation */}
               <div className={`mt-10 flex items-center justify-between border-t ${borderCol} pt-6`}>
                 <button
                   onClick={prevSection}
@@ -375,9 +400,7 @@ export default function CoursePlayer() {
                   disabled={isLastSection && isLastLesson}
                   className={`px-5 py-2.5 rounded-lg text-sm font-medium border ${borderCol} ${mutedText} hover:text-current hover:border-current transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2`}
                 >
-                  {isLastSection
-                    ? (isLastLesson ? 'Done' : 'Next lesson →')
-                    : 'Next section'}
+                  {isLastSection ? (isLastLesson ? 'Done' : 'Next lesson →') : 'Next section'}
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
                   </svg>
@@ -393,15 +416,15 @@ export default function CoursePlayer() {
 
 // ─── Module Intro Screen ──────────────────────────────────────────────────────
 function ModuleIntroScreen({ mod, dark, onStartModule }: { mod: ModuleWithLessons; dark: boolean; onStartModule: () => void }) {
-  const lessonCount = mod.lessons.length
+  const lessonCount    = mod.lessons.length
   const completedCount = mod.lessons.filter(l => l.progress?.completed).length
-  const mutedText = dark ? 'text-[#555]' : 'text-[#999]'
-  const borderCol = dark ? 'border-[#1a1a1a]' : 'border-[#e8e8e2]'
+  const mutedText = dark ? 'text-[#555]' : 'text-[#888]'
+  const borderCol = dark ? 'border-[#1a1a1a]' : 'border-[#e0e0da]'
 
   return (
     <div className="max-w-2xl mx-auto px-8 py-16">
       <p className={`${mutedText} text-xs uppercase tracking-widest mb-4`}>Module intro</p>
-      <h1 className="text-3xl font-bold mb-2 leading-tight">{mod.title}</h1>
+      <h1 className={`text-3xl font-bold mb-2 leading-tight ${dark ? 'text-white' : 'text-[#111]'}`}>{mod.title}</h1>
       <p className={`${mutedText} text-sm mb-8`}>
         {lessonCount} lesson{lessonCount !== 1 ? 's' : ''}
         {completedCount > 0 && ` · ${completedCount} completed`}
@@ -414,24 +437,24 @@ function ModuleIntroScreen({ mod, dark, onStartModule }: { mod: ModuleWithLesson
       )}
 
       {mod.description && (
-        <div className={`border-l-2 ${dark ? 'border-[#2a2a2a]' : 'border-[#e0e0e0]'} pl-5 mb-10`}>
-          <p className={`${dark ? 'text-[#aaa]' : 'text-[#555]'} leading-relaxed text-base whitespace-pre-wrap`}>{mod.description}</p>
+        <div className={`border-l-2 ${dark ? 'border-[#2a2a2a]' : 'border-[#ddd]'} pl-5 mb-10`}>
+          <p className={`${dark ? 'text-[#aaa]' : 'text-[#444]'} leading-relaxed text-base whitespace-pre-wrap`}>{mod.description}</p>
         </div>
       )}
 
       {mod.lessons.length > 0 && (
         <div className={`border ${borderCol} rounded-xl overflow-hidden mb-10`}>
-          <div className={`px-4 py-3 border-b ${borderCol} ${dark ? 'bg-[#0f0f0f]' : 'bg-[#fafafa]'}`}>
+          <div className={`px-4 py-3 border-b ${borderCol} ${dark ? 'bg-[#0f0f0f]' : 'bg-[#fafaf8]'}`}>
             <p className={`text-xs uppercase tracking-widest ${mutedText}`}>Lessons in this module</p>
           </div>
           {mod.lessons.map((lesson, idx) => (
-            <div key={lesson.id} className={`flex items-center gap-3 px-4 py-3 border-b ${borderCol} last:border-b-0`}>
+            <div key={lesson.id} className={`flex items-center gap-3 px-4 py-3 border-b ${borderCol} last:border-b-0 ${dark ? '' : 'bg-white'}`}>
               <span className={`text-xs w-5 ${mutedText}`}>{idx + 1}</span>
               {lesson.progress?.completed
                 ? <span className="text-[#10b981] text-sm flex-shrink-0">✓</span>
                 : <span className={`w-3.5 h-3.5 rounded-full border flex-shrink-0 ${dark ? 'border-[#333]' : 'border-[#ccc]'}`} />
               }
-              <span className={`text-sm ${dark ? 'text-[#888]' : 'text-[#666]'}`}>{lesson.title}</span>
+              <span className={`text-sm ${dark ? 'text-[#888]' : 'text-[#444]'}`}>{lesson.title}</span>
             </div>
           ))}
         </div>
@@ -439,7 +462,7 @@ function ModuleIntroScreen({ mod, dark, onStartModule }: { mod: ModuleWithLesson
 
       <button
         onClick={onStartModule}
-        className={`px-8 py-3 rounded-xl text-sm font-medium transition-colors ${dark ? 'bg-white text-black hover:bg-white/90' : 'bg-black text-white hover:bg-black/90'}`}
+        className={`px-8 py-3 rounded-xl text-sm font-medium transition-colors ${dark ? 'bg-white text-black hover:bg-white/90' : 'bg-[#111] text-white hover:bg-[#222]'}`}
       >
         {completedCount > 0 && completedCount < lessonCount ? 'Continue module →' : completedCount === lessonCount && lessonCount > 0 ? 'Review module →' : 'Start module →'}
       </button>
@@ -448,28 +471,44 @@ function ModuleIntroScreen({ mod, dark, onStartModule }: { mod: ModuleWithLesson
 }
 
 // ─── Section content ──────────────────────────────────────────────────────────
-function SectionContent({ section }: { section: Section }) {
+function SectionContent({ section, dark }: { section: Section; dark: boolean }) {
+  const proseColor = dark ? '#ccc' : '#222'
+  const h2Color    = dark ? '#fff' : '#111'
+  const h3Color    = dark ? '#eee' : '#1a1a1a'
+  const quoteColor = dark ? '#888' : '#666'
+  const quoteBorder= dark ? '#333' : '#ddd'
+  const codeColor  = dark ? '#aaa' : '#333'
+  const codeBg     = dark ? '#111' : '#f0f0ee'
+  const linkColor  = '#3b82f6'
+
   return (
     <div>
       <style>{`
-        .fv-content ul{list-style-type:disc!important;padding-left:1.5em!important;margin:.5em 0!important}
-        .fv-content ol{list-style-type:decimal!important;padding-left:1.5em!important;margin:.5em 0!important}
-        .fv-content li{display:list-item!important}
-        .fv-content h1{font-size:1.5em;font-weight:700;margin:.8em 0 .4em}
-        .fv-content h2{font-size:1.25em;font-weight:600;margin:.8em 0 .4em}
-        .fv-content h3{font-size:1.1em;font-weight:600;margin:.6em 0 .3em}
-        .fv-content p{margin:.5em 0}
-        .fv-content blockquote{border-left:3px solid #444;padding-left:1em;color:#888;margin:.5em 0}
-        .fv-content img{max-width:100%;border-radius:6px;margin:8px 0}
-        .fv-content a{color:#3b82f6;text-decoration:underline}
+        .fv-content ul { list-style-type: disc !important; padding-left: 1.5em !important; margin: .6em 0 !important; }
+        .fv-content ol { list-style-type: decimal !important; padding-left: 1.5em !important; margin: .6em 0 !important; }
+        .fv-content li { display: list-item !important; color: ${proseColor}; line-height: 1.75; margin-bottom: .25em; }
+        .fv-content h1 { font-size: 1.5em; font-weight: 700; margin: 1em 0 .4em; color: ${h2Color}; }
+        .fv-content h2 { font-size: 1.2em; font-weight: 700; margin: 1.2em 0 .4em; color: ${h2Color}; }
+        .fv-content h3 { font-size: 1.05em; font-weight: 600; margin: 1em 0 .3em; color: ${h3Color}; }
+        .fv-content h4 { font-size: .95em; font-weight: 600; margin: .8em 0 .25em; color: ${h3Color}; }
+        .fv-content p  { margin: .6em 0; color: ${proseColor}; line-height: 1.8; }
+        .fv-content strong { color: ${dark ? '#fff' : '#000'}; font-weight: 600; }
+        .fv-content em { font-style: italic; }
+        .fv-content blockquote { border-left: 3px solid ${quoteBorder}; padding-left: 1em; color: ${quoteColor}; margin: .6em 0; }
+        .fv-content code { background: ${codeBg}; color: ${codeColor}; padding: 1px 5px; border-radius: 4px; font-size: .88em; }
+        .fv-content img { max-width: 100%; border-radius: 6px; margin: 8px 0; display: block; }
+        .fv-content a { color: ${linkColor}; text-decoration: underline; }
       `}</style>
-      <SectionRenderer section={section} />
+      <SectionRenderer section={section} dark={dark} />
     </div>
   )
 }
 
-function SectionRenderer({ section }: { section: Section }) {
-  // ── New: render blocks array if present ──────────────────────────────────
+function SectionRenderer({ section, dark }: { section: Section; dark: boolean }) {
+  const mutedText = dark ? 'text-[#555]' : 'text-[#999]'
+  const borderCol = dark ? 'border-[#1a1a1a]' : 'border-[#e0e0da]'
+  const audioBg   = dark ? 'bg-[#111] border-[#1a1a1a]' : 'bg-[#f7f7f5] border-[#e0e0da]'
+
   const rawBlocks = (section as any).blocks
   if (rawBlocks) {
     let blocks: any[] = []
@@ -478,71 +517,78 @@ function SectionRenderer({ section }: { section: Section }) {
       return (
         <div className="space-y-6">
           {blocks.map((block: any, i: number) => (
-            <BlockRenderer key={block.id || i} block={block} />
+            <BlockRenderer key={block.id || i} block={block} dark={dark} />
           ))}
         </div>
       )
     }
   }
 
-  // ── Legacy: flat content_type / content_text / content_url ───────────────
   switch (section.content_type) {
     case 'text':
       return section.content_text
-        ? <div className="text-[#ccc] leading-relaxed fv-content" style={{ lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: section.content_text }} />
-        : <p className="text-[#555]">No content yet.</p>
+        ? <div className="fv-content" style={{ lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: section.content_text }} />
+        : <p className={mutedText}>No content yet.</p>
+
     case 'video':
       return (
         <div>
           {section.content_url?.includes('embed')
             ? <div className="aspect-video bg-[#111] rounded-lg overflow-hidden mb-4"><iframe src={section.content_url} className="w-full h-full" allowFullScreen /></div>
-            : <p className="text-[#555]">Video URL not set.</p>}
-          {section.content_text && <div className="mt-6 text-[#ccc] fv-content" dangerouslySetInnerHTML={{ __html: section.content_text }} />}
+            : <p className={mutedText}>Video URL not set.</p>}
+          {section.content_text && <div className="mt-6 fv-content" dangerouslySetInnerHTML={{ __html: section.content_text }} />}
         </div>
       )
+
     case 'audio':
       return (
-        <div className="bg-[#111] border border-[#1a1a1a] rounded-lg p-6 mb-4">
+        <div className={`${audioBg} border rounded-lg p-6 mb-4`}>
           {section.content_url
             ? <audio controls className="w-full"><source src={section.content_url} /></audio>
-            : <p className="text-[#555] text-center">Audio not available.</p>}
-          {section.content_text && <div className="mt-6 text-[#ccc] fv-content" dangerouslySetInnerHTML={{ __html: section.content_text }} />}
+            : <p className={`${mutedText} text-center`}>Audio not available.</p>}
+          {section.content_text && <div className="mt-6 fv-content" dangerouslySetInnerHTML={{ __html: section.content_text }} />}
         </div>
       )
+
     case 'pdf':
       return section.content_url
-        ? <iframe src={section.content_url} className="w-full rounded-lg border border-[#1a1a1a]" style={{ height: '70vh' }} />
-        : <p className="text-[#555]">PDF not available.</p>
+        ? <iframe src={section.content_url} className={`w-full rounded-lg border ${borderCol}`} style={{ height: '70vh' }} />
+        : <p className={mutedText}>PDF not available.</p>
+
     case 'slides':
       return section.content_url
-        ? <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(section.content_url)}`} className="w-full rounded-lg border border-[#1a1a1a]" style={{ height: '70vh' }} allowFullScreen />
-        : <p className="text-[#555]">Slides not available.</p>
+        ? <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(section.content_url)}`} className={`w-full rounded-lg border ${borderCol}`} style={{ height: '70vh' }} allowFullScreen />
+        : <p className={mutedText}>Slides not available.</p>
+
     case 'excel':
       return section.content_url
-        ? <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(section.content_url)}`} className="w-full rounded-lg border border-[#1a1a1a]" style={{ height: '60vh' }} />
-        : <p className="text-[#555]">File not available.</p>
+        ? <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(section.content_url)}`} className={`w-full rounded-lg border ${borderCol}`} style={{ height: '60vh' }} />
+        : <p className={mutedText}>File not available.</p>
+
     case 'quiz':
-      return <QuizPlayer questions={section.content_text || '[]'} />
+      return <QuizPlayer questions={section.content_text || '[]'} dark={dark} />
+
     default:
-      return <p className="text-[#555]">Unknown content type.</p>
+      return <p className={mutedText}>Unknown content type.</p>
   }
 }
 
-// ─── Block renderer (student view) ───────────────────────────────────────────
-function BlockRenderer({ block }: { block: any }) {
+function BlockRenderer({ block, dark }: { block: any; dark: boolean }) {
+  const mutedText = dark ? 'text-[#555]' : 'text-[#999]'
+  const borderCol = dark ? 'border-[#1a1a1a]' : 'border-[#e0e0da]'
+  const audioBg   = dark ? 'bg-[#111] border-[#1a1a1a]' : 'bg-[#f7f7f5] border-[#e0e0da]'
+
   switch (block.type) {
     case 'text':
       return block.content_text
-        ? <div className="text-[#ccc] leading-relaxed fv-content" style={{ lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: block.content_text }} />
+        ? <div className="fv-content" style={{ lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: block.content_text }} />
         : null
 
     case 'image':
       return block.content_url ? (
         <figure className="my-2">
           <img src={block.content_url} alt={block.content_text || ''} style={{ maxWidth: '100%', borderRadius: '8px', display: 'block' }} />
-          {block.content_text && (
-            <figcaption className="text-xs text-[#666] mt-2 text-center">{block.content_text}</figcaption>
-          )}
+          {block.content_text && <figcaption className={`text-xs ${mutedText} mt-2 text-center`}>{block.content_text}</figcaption>}
         </figure>
       ) : null
 
@@ -555,28 +601,28 @@ function BlockRenderer({ block }: { block: any }) {
 
     case 'audio':
       return block.content_url ? (
-        <div className="bg-[#111] border border-[#1a1a1a] rounded-lg p-5">
+        <div className={`${audioBg} border rounded-lg p-5`}>
           <audio controls className="w-full"><source src={block.content_url} /></audio>
         </div>
       ) : null
 
     case 'pdf':
       return block.content_url
-        ? <iframe src={block.content_url} className="w-full rounded-lg border border-[#1a1a1a]" style={{ height: '70vh' }} />
+        ? <iframe src={block.content_url} className={`w-full rounded-lg border ${borderCol}`} style={{ height: '70vh' }} />
         : null
 
     case 'slides':
       return block.content_url
-        ? <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(block.content_url)}`} className="w-full rounded-lg border border-[#1a1a1a]" style={{ height: '70vh' }} allowFullScreen />
+        ? <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(block.content_url)}`} className={`w-full rounded-lg border ${borderCol}`} style={{ height: '70vh' }} allowFullScreen />
         : null
 
     case 'excel':
       return block.content_url
-        ? <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(block.content_url)}`} className="w-full rounded-lg border border-[#1a1a1a]" style={{ height: '60vh' }} />
+        ? <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(block.content_url)}`} className={`w-full rounded-lg border ${borderCol}`} style={{ height: '60vh' }} />
         : null
 
     case 'quiz':
-      return <QuizPlayer questions={block.content_text || '[]'} />
+      return <QuizPlayer questions={block.content_text || '[]'} dark={dark} />
 
     default:
       return null
@@ -584,62 +630,116 @@ function BlockRenderer({ block }: { block: any }) {
 }
 
 // ─── Quiz Player ──────────────────────────────────────────────────────────────
-function QuizPlayer({ questions: raw }: { questions: string }) {
-  let questions: any[] = []
-  try { questions = JSON.parse(raw) } catch { questions = [] }
-  const [answers, setAnswers] = useState<Record<number, any>>({})
+function QuizPlayer({ questions: raw, dark }: { questions: string; dark: boolean }) {
+  let qs: any[] = []
+  try {
+    const parsed = JSON.parse(raw)
+    qs = parsed.questions || parsed
+  } catch { qs = [] }
+
+  const [answers, setAnswers]     = useState<Record<number, any>>({})
   const [submitted, setSubmitted] = useState(false)
-  if (!questions.length) return <p className="text-[#555]">No questions yet.</p>
+
+  const mutedText = dark ? 'text-[#555]'    : 'text-[#888]'
+  const cardBg    = dark ? 'bg-[#0f0f0f]'   : 'bg-[#fafaf8]'
+  const cardBorder= dark ? 'border-[#1a1a1a]': 'border-[#e0e0da]'
+  const qText     = dark ? 'text-[#ccc]'    : 'text-[#222]'
+  const optDefault= dark
+    ? 'border-[#222] text-[#888] hover:border-[#333] hover:text-[#ccc]'
+    : 'border-[#ddd] text-[#555] hover:border-[#bbb] hover:text-[#111]'
+  const optSelected = dark ? 'border-white/30 bg-white/5 text-white' : 'border-[#111]/30 bg-[#111]/5 text-[#111]'
+  const inputStyle  = dark
+    ? 'bg-[#111] border-[#222] text-[#ccc] focus:border-[#444]'
+    : 'bg-white border-[#ddd] text-[#222] focus:border-[#aaa]'
+
+  if (!qs.length) return <p className={mutedText}>No questions yet.</p>
+
   const typeColors: Record<string, string> = { multiple_choice: '#3b82f6', fill_blank: '#10b981', matching: '#f59e0b' }
+
   return (
     <div className="space-y-6">
-      {questions.map((q: any, qi: number) => (
-        <div key={qi} className="border border-[#1a1a1a] rounded-xl p-5 bg-[#0f0f0f]">
+      {qs.map((q: any, qi: number) => (
+        <div key={qi} className={`border ${cardBorder} rounded-xl p-5 ${cardBg}`}>
           <div className="flex items-center gap-2 mb-3">
             <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: typeColors[q.type] + '15', color: typeColors[q.type] }}>
               {q.type === 'multiple_choice' ? 'Multiple choice' : q.type === 'fill_blank' ? 'Fill in the blank' : 'Matching'}
             </span>
           </div>
           {q.image_url && <img src={q.image_url} className="max-w-full rounded-lg mb-3" style={{ maxHeight: '200px', objectFit: 'cover' }} />}
-          <p className="text-[#ccc] mb-4 leading-relaxed">{q.question}</p>
+          <p className={`${qText} mb-4 leading-relaxed`}>{q.question}</p>
+
           {q.type === 'multiple_choice' && (
             <div className="space-y-2">
               {(q.options || []).map((opt: string, oi: number) => {
                 const selected = answers[qi] === oi
-                const correct = submitted && oi === q.correct_index
-                const wrong = submitted && selected && oi !== q.correct_index
+                const correct  = submitted && oi === q.correct_index
+                const wrong    = submitted && selected && oi !== q.correct_index
                 return (
                   <button key={oi} onClick={() => !submitted && setAnswers(a => ({ ...a, [qi]: oi }))}
-                    className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors ${correct ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400' : wrong ? 'border-red-500/50 bg-red-500/10 text-red-400' : selected ? 'border-white/30 bg-white/5 text-white' : 'border-[#222] text-[#888] hover:border-[#333] hover:text-[#ccc]'}`}>
+                    className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors ${
+                      correct  ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400' :
+                      wrong    ? 'border-red-500/50 bg-red-500/10 text-red-400' :
+                      selected ? optSelected :
+                                 optDefault
+                    }`}>
                     {opt}
                   </button>
                 )
               })}
             </div>
           )}
+
           {q.type === 'fill_blank' && (
-            <input value={answers[qi] || ''} onChange={e => !submitted && setAnswers(a => ({ ...a, [qi]: e.target.value }))} placeholder="Your answer…"
-              className={`w-full bg-[#111] border rounded-lg px-4 py-3 text-sm outline-none ${submitted ? answers[qi]?.toLowerCase().trim() === q.correct_answer?.toLowerCase().trim() ? 'border-emerald-500/50 text-emerald-400' : 'border-red-500/50 text-red-400' : 'border-[#222] text-[#ccc] focus:border-[#444]'}`} />
+            <input
+              value={answers[qi] || ''}
+              onChange={e => !submitted && setAnswers(a => ({ ...a, [qi]: e.target.value }))}
+              placeholder="Your answer…"
+              className={`w-full border rounded-lg px-4 py-3 text-sm outline-none ${
+                submitted
+                  ? answers[qi]?.toLowerCase().trim() === q.correct_answer?.toLowerCase().trim()
+                    ? 'border-emerald-500/50 text-emerald-400'
+                    : 'border-red-500/50 text-red-400'
+                  : inputStyle
+              }`}
+            />
           )}
+
           {q.type === 'matching' && (
             <div className="grid grid-cols-2 gap-3">
               {(q.pairs || []).map((pair: any, pi: number) => (
                 <div key={pi} className="contents">
-                  <div className="px-3 py-2 bg-[#111] border border-[#222] rounded-lg text-sm text-[#ccc]">{pair.left}</div>
-                  <div className="px-3 py-2 bg-[#111] border border-[#222] rounded-lg text-sm text-[#888]">{pair.right}</div>
+                  <div className={`px-3 py-2 border rounded-lg text-sm ${dark ? 'bg-[#111] border-[#222] text-[#ccc]' : 'bg-white border-[#ddd] text-[#333]'}`}>{pair.left}</div>
+                  <div className={`px-3 py-2 border rounded-lg text-sm ${dark ? 'bg-[#111] border-[#222] text-[#888]' : 'bg-[#f7f7f5] border-[#ddd] text-[#666]'}`}>{pair.right}</div>
                 </div>
               ))}
             </div>
           )}
-          {submitted && q.explanation && <p className="mt-3 text-sm text-[#666] border-t border-[#1a1a1a] pt-3">{q.explanation}</p>}
+
+          {submitted && q.explanation && (
+            <p className={`mt-3 text-sm ${dark ? 'text-[#666]' : 'text-[#888]'} border-t ${dark ? 'border-[#1a1a1a]' : 'border-[#e0e0da]'} pt-3`}>
+              {q.explanation}
+            </p>
+          )}
         </div>
       ))}
+
       {!submitted ? (
-        <button onClick={() => setSubmitted(true)} className="px-6 py-2.5 bg-white text-black rounded-lg text-sm font-medium hover:bg-white/90 transition-colors">Submit answers</button>
+        <button onClick={() => setSubmitted(true)}
+          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${dark ? 'bg-white text-black hover:bg-white/90' : 'bg-[#111] text-white hover:bg-[#222]'}`}>
+          Submit answers
+        </button>
       ) : (
         <div className="flex items-center gap-3">
-          <p className="text-sm text-[#555]">Score: {questions.filter((q: any, qi: number) => q.type === 'multiple_choice' ? answers[qi] === q.correct_index : q.type === 'fill_blank' ? answers[qi]?.toLowerCase().trim() === q.correct_answer?.toLowerCase().trim() : true).length}/{questions.length}</p>
-          <button onClick={() => { setAnswers({}); setSubmitted(false) }} className="px-4 py-2 text-sm border border-[#222] rounded-lg text-[#888] hover:text-white hover:border-[#333] transition-colors">Retry</button>
+          <p className={`text-sm ${mutedText}`}>
+            Score: {qs.filter((q: any, qi: number) =>
+              q.type === 'multiple_choice' ? answers[qi] === q.correct_index :
+              q.type === 'fill_blank' ? answers[qi]?.toLowerCase().trim() === q.correct_answer?.toLowerCase().trim() : true
+            ).length}/{qs.length}
+          </p>
+          <button onClick={() => { setAnswers({}); setSubmitted(false) }}
+            className={`px-4 py-2 text-sm border rounded-lg transition-colors ${dark ? 'border-[#222] text-[#888] hover:text-white hover:border-[#333]' : 'border-[#ddd] text-[#888] hover:text-[#111] hover:border-[#aaa]'}`}>
+            Retry
+          </button>
         </div>
       )}
     </div>
