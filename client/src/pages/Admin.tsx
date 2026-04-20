@@ -363,9 +363,11 @@ function CourseDetailsForm({ course, t, onSaved, onCancel, onAddContent, onDelet
     await supabase.from('courses').update({ is_published: next }).eq('id', course.id)
   }
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+
   async function deleteCourse() {
     if (!course?.id) return
-    if (!confirm(`Delete "${course.title}"? This will remove all modules, lessons, and sections. Cannot be undone.`)) return
     setDeleting(true)
     await supabase.from('courses').delete().eq('id', course.id)
     onDeleted?.()
@@ -383,7 +385,7 @@ function CourseDetailsForm({ course, t, onSaved, onCancel, onAddContent, onDelet
         {/* Publish toggle — only for existing courses */}
         {!isNew && course && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button onClick={deleteCourse} disabled={deleting}
+            <button onClick={() => { setShowDeleteModal(true); setDeleteConfirmText('') }} disabled={deleting}
               style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', color: t.red, background: 'none', border: `1px solid ${t.red}30`, borderRadius: '7px', padding: '6px 12px', cursor: 'pointer', opacity: deleting ? 0.5 : 1 }}>
               <I.trash />{deleting ? 'Deleting…' : 'Delete'}
             </button>
@@ -448,6 +450,44 @@ function CourseDetailsForm({ course, t, onSaved, onCancel, onAddContent, onDelet
             style={{ backgroundColor: t.accent, color: t.accentText, border: 'none', borderRadius: '9px', padding: '11px 22px', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginLeft: '20px' }}>
             <I.build /> Add content →
           </button>
+        </div>
+      )}
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ backgroundColor: t.surface, border: `1px solid ${t.red}40`, borderRadius: '14px', padding: '28px', maxWidth: '420px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+            <div style={{ marginBottom: '20px' }}>
+              <p style={{ fontSize: '0.65rem', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.red, marginBottom: '8px', fontWeight: 600 }}>Destructive action</p>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: t.text, marginBottom: '8px' }}>Delete this course?</h3>
+              <p style={{ fontSize: '0.82rem', color: t.muted, lineHeight: 1.6 }}>
+                This will permanently delete <strong style={{ color: t.text }}>"{course?.title}"</strong> including all modules, lessons, sections, and student enrollments. This cannot be undone.
+              </p>
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '0.75rem', color: t.muted, display: 'block', marginBottom: '8px' }}>
+                Type <strong style={{ color: t.text }}>{course?.title}</strong> to confirm
+              </label>
+              <input
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                placeholder={course?.title || ''}
+                autoFocus
+                style={{ width: '100%', backgroundColor: t.bg, border: `1px solid ${deleteConfirmText === course?.title ? t.red : t.border}`, color: t.text, borderRadius: '8px', padding: '10px 14px', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' as const, transition: 'border-color 0.15s' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={() => { setShowDeleteModal(false); setDeleteConfirmText('') }}
+                style={{ fontSize: '0.855rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '8px', padding: '9px 20px', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button
+                onClick={deleteCourse}
+                disabled={deleteConfirmText !== course?.title || deleting}
+                style={{ fontSize: '0.855rem', fontWeight: 600, color: '#fff', backgroundColor: deleteConfirmText === course?.title ? t.red : t.dim, border: 'none', borderRadius: '8px', padding: '9px 20px', cursor: deleteConfirmText === course?.title ? 'pointer' : 'not-allowed', transition: 'background-color 0.15s', opacity: deleting ? 0.6 : 1 }}>
+                {deleting ? 'Deleting…' : 'Delete course'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
