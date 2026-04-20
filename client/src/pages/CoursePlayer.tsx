@@ -201,15 +201,16 @@ export default function CoursePlayer() {
     const lesson = allLessons.find(l => l.id === bookmarkedSection.lessonId)
     if (!lesson) return
     await navigateToLesson(lesson)
-    // After sections load, set the bookmarked section
     setTimeout(() => {
-      const { data: secs } = supabase.from('sections').select('*').eq('lesson_id', lesson.id).order('position')
+      supabase.from('sections').select('*').eq('lesson_id', lesson.id).order('position')
         .then(({ data }) => {
           const sec = (data || []).find((s: any) => s.id === bookmarkedSection.sectionId)
           if (sec) setActiveSection(sec)
         })
     }, 300)
   }
+
+  const isSequential = !!(course as any)?.is_sequential
 
   function isLessonUnlocked(lesson: LessonWithProgress, allLessons: LessonWithProgress[]) {
     if (!isSequential) return true
