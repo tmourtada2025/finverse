@@ -11,7 +11,8 @@ const supabase = createClient(
 // Map your Stripe Price IDs to Supabase course IDs
 // Add entries here as you create more courses
 const PRICE_TO_COURSE: Record<string, string> = {
-  'price_1TH3EAF3UWMXuQV82BRfEqfl': '99310134-babc-4935-addc-2a2547436473',
+  'price_1TH3EAF3UWMXuQV82BRfEqfl': '99310134-babc-4935-addc-2a2547436473', // The Trader's Financial Blueprint
+  'price_1TOFLAF3UWMXuQV8AvGjNczD':  '7698210c-73d5-4b96-8be1-ce45e8178d1b', // ABC
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -72,10 +73,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (profileError || !profile) {
       // User hasn't signed up yet — store pending enrollment
-      // They'll get access when they sign up with the same email
       console.log('No profile found for:', customerEmail, '— storing pending enrollment')
       await supabase.from('enrollments').upsert({
-        user_id: '00000000-0000-0000-0000-000000000000', // placeholder
+        user_id: '00000000-0000-0000-0000-000000000000',
         course_id: courseId,
         enrolled_at: new Date().toISOString(),
         stripe_session_id: session.id,
