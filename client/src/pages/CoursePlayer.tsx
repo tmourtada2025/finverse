@@ -24,6 +24,7 @@ export default function CoursePlayer() {
   const [lessonSections, setLessonSections] = useState<Section[]>([])
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set())
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
+  const [showWelcome, setShowWelcome] = useState(true)
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null)
   const [dataLoading, setDataLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -89,23 +90,10 @@ export default function CoursePlayer() {
     setModules(modulesWithLessons)
 
     if (!params.lessonId) {
-      const allLessons = modulesWithLessons.flatMap(m => m.lessons)
-      const firstIncomplete = allLessons.find(l => !l.progress?.completed)
-      const initialLesson = firstIncomplete || allLessons[0] || null
-      setActiveLesson(initialLesson)
-      setActiveModule(null)
-
-      if (initialLesson) {
-        const { data: secs } = await supabase.from('sections').select('*').eq('lesson_id', initialLesson.id).order('position')
-        const sections = secs || []
-        setLessonSections(sections)
-        setActiveSection(sections[0] || null)
-        setExpandedLessons(new Set([initialLesson.id]))
-        setExpandedModules(new Set(modulesWithLessons.map(m => m.id)))
-      }
+      // Stay on welcome screen — don't auto-navigate
+      setDataLoading(false)
+      return
     }
-
-    setDataLoading(false)
   }
 
   async function silentComplete(lesson: Lesson) {
@@ -223,7 +211,7 @@ export default function CoursePlayer() {
   const isFirstLesson  = allLessons.findIndex(l => l.id === activeLesson?.id) === 0
 
   return (
-    <div className={`min-h-screen flex flex-col ${bg}`}>
+    <div className={`h-screen flex flex-col ${bg}`}>
 
       {/* Top nav */}
       <nav className={`border-b ${borderCol} px-6 py-3 flex items-center justify-between sticky top-0 ${surfaceBg}/95 backdrop-blur z-50 shrink-0`}>
@@ -401,9 +389,18 @@ export default function CoursePlayer() {
               }}
             />
           ) : !activeLesson ? (
-            <div className="flex items-center justify-center h-full">
-              <p className={mutedText}>Select a lesson to begin.</p>
-            </div>
+            <CourseWelcomeScreen
+              course={course}
+              modules={modules}
+              dark={dark}
+              onStart={() => {
+                setShowWelcome(false)
+                const allLessons = modules.flatMap(m => m.lessons)
+                const firstIncomplete = allLessons.find(l => !l.progress?.completed)
+                const target = firstIncomplete || allLessons[0] || null
+                if (target) navigateToLesson(target)
+              }}
+            />
           ) : (
             <div className="max-w-3xl mx-auto px-8 py-10">
               <h1 className={`text-2xl font-bold mb-8 ${dark ? 'text-white' : 'text-[#111]'}`}>
@@ -442,6 +439,118 @@ export default function CoursePlayer() {
             </div>
           )}
         </main>
+      </div>
+    </div>
+  )
+}
+
+// ─── Course Welcome Screen ────────────────────────────────────────────────────
+function CourseWelcomeScreen({ course, modules, dark, onStart }: {
+  course: Course | null
+  modules: ModuleWithLessons[]
+  dark: boolean
+  onStart: () => void
+}) {
+  const totalLessons   = modules.reduce((s, m) => s + m.lessons.length, 0)
+  const completedCount = modules.flatMap(m => m.lessons).filter(l => l.progress?.completed).length
+  const isResume       = completedCount > 0
+  const mutedText = dark ? 'text-[#555]' : 'text-[#888]'
+  const borderCol = dark ? 'border-[#1a1a1a]' : 'border-[#e0e0da]'
+  const cardBg    = dark ? 'bg-[#0f0f0f]'    : 'bg-white'
+  const bodyText  = dark ? 'text-[#aaa]'      : 'text-[#444]'
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-2xl mx-auto px-8 py-16">
+
+        {/* Header */}
+        <p className={`${mutedText} text-xs uppercase tracking-widest mb-4`}>
+          {isResume ? 'Welcome back' : 'Welcome'}
+        </p>
+        <h1 className={`text-3xl md:text-4xl font-bold mb-3 leading-tight ${dark ? 'text-white' : 'text-[#111]'}`}>
+          {course?.title || 'The Course'}
+        </h1>
+        <p className={`${mutedText} text-sm mb-10`}>
+          {modules.length} modules · {totalLessons} lessons
+          {isResume && ` · ${completedCount} completed`}
+        </p>
+
+        {/* Welcome video placeholder — swap src for real embed when ready */}
+        <div className={`border ${borderCol} rounded-xl overflow-hidden mb-10`}>
+          <div className={`aspect-video ${dark ? 'bg-[#0d0d0d]' : 'bg-[#f0f0ee]'} flex flex-col items-center justify-center gap-3`}>
+            <div className={`w-14 h-14 rounded-full border-2 ${dark ? 'border-[#333]' : 'border-[#ddd]'} flex items-center justify-center`}>
+              <svg className={`w-6 h-6 ${mutedText}`} fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+            <p className={`text-sm ${mutedText}`}>Course intro video</p>
+            <p className={`text-xs ${dark ? 'text-[#333]' : 'text-[#ccc]'}`}>Add a YouTube embed URL in the course description to display here</p>
+          </div>
+        </div>
+
+        {/* What to expect */}
+        <div className={`border ${borderCol} rounded-xl overflow-hidden mb-10 ${cardBg}`}>
+          <div className={`px-5 py-4 border-b ${borderCol}`}>
+            <h3 className={`text-sm font-semibold ${dark ? 'text-white' : 'text-[#111]'}`}>How this course works</h3>
+          </div>
+          <div className="px-5 py-4 space-y-4">
+            {[
+              { icon: '📚', title: 'Lessons are divided into sections', body: 'Each lesson has multiple sections. Use the Next / Previous buttons at the bottom to move through them, or jump directly from the sidebar.' },
+              { icon: '✓',  title: 'Progress is tracked automatically', body: 'When you finish the last section of a lesson, it is marked complete. Your progress is saved as you go.' },
+              { icon: '❓', title: 'Knowledge checks at the end of each lesson', body: 'Every lesson ends with a quiz. Submit your answers to see your score and explanations.' },
+              { icon: '☰',  title: 'Use the sidebar to navigate', body: 'Click a module to expand it, then click any lesson to jump directly to it. Collapse modules you\'ve finished to keep things clean.' },
+            ].map(({ icon, title, body }) => (
+              <div key={title} className="flex gap-4">
+                <span className="text-lg flex-shrink-0 mt-0.5">{icon}</span>
+                <div>
+                  <p className={`text-sm font-medium mb-1 ${dark ? 'text-[#ddd]' : 'text-[#222]'}`}>{title}</p>
+                  <p className={`text-sm ${bodyText} leading-relaxed`}>{body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Module overview */}
+        <div className={`border ${borderCol} rounded-xl overflow-hidden mb-10 ${cardBg}`}>
+          <div className={`px-5 py-4 border-b ${borderCol}`}>
+            <h3 className={`text-sm font-semibold ${dark ? 'text-white' : 'text-[#111]'}`}>Course modules</h3>
+          </div>
+          {modules.map((mod, idx) => {
+            const done = mod.lessons.filter(l => l.progress?.completed).length
+            const total = mod.lessons.length
+            const pct = total > 0 ? Math.round((done / total) * 100) : 0
+            return (
+              <div key={mod.id} className={`flex items-center gap-4 px-5 py-3 border-b ${borderCol} last:border-b-0`}>
+                <span className={`text-xs w-6 flex-shrink-0 ${mutedText}`}>{idx + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm truncate ${dark ? 'text-[#ccc]' : 'text-[#333]'}`}>{mod.title}</p>
+                  <p className={`text-xs ${mutedText}`}>{total} lesson{total !== 1 ? 's' : ''}</p>
+                </div>
+                {pct === 100 ? (
+                  <span className="text-[#10b981] text-sm flex-shrink-0">✓</span>
+                ) : pct > 0 ? (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className={`w-16 h-1.5 rounded-full ${dark ? 'bg-[#1a1a1a]' : 'bg-[#eee]'} overflow-hidden`}>
+                      <div className="h-full bg-[#10b981] rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className={`text-xs ${mutedText}`}>{pct}%</span>
+                  </div>
+                ) : (
+                  <span className={`text-xs ${mutedText} flex-shrink-0`}>Not started</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* CTA */}
+        <button
+          onClick={onStart}
+          className={`px-8 py-3.5 rounded-xl text-sm font-semibold transition-colors ${dark ? 'bg-white text-black hover:bg-white/90' : 'bg-[#111] text-white hover:bg-[#222]'}`}
+        >
+          {isResume ? `Continue where you left off →` : 'Start course →'}
+        </button>
       </div>
     </div>
   )
