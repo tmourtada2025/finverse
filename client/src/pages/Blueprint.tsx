@@ -20,6 +20,8 @@ const modules = [
   { number: "04", title: "Taxes, Entities, and Jurisdiction", description: "The tax obligations most retail traders don't know they have. Structuring trading activity correctly from day one — whether as an individual, an LLC, or across jurisdictions.", icon: DollarSign },
   { number: "05", title: "Risk of Ruin — The Full Picture", description: "Risk of ruin is not just a position-sizing concept. Applied to your total financial life: how long your capital and reserves can sustain you, and what the true failure point is.", icon: Shield },
   { number: "06", title: "Building Wealth Alongside Trading", description: "Trading as one component of a broader wealth-building strategy. Asset allocation outside of trading accounts, compounding over time, and the transition from active trader to financially sovereign.", icon: BookOpen },
+  { number: "07", title: "Building Wealth While You Trade", description: "Compounding savings alongside an active trading operation. The performance treadmill exit strategy — building income streams uncorrelated with P&L so that trading becomes a wealth tool, not a survival mechanism.", icon: TrendingUp },
+  { number: "08", title: "The Psychology of Personal Finance", description: "Why traders self-sabotage their own financial plans — loss aversion outside the chart, revenge spending after drawdowns, lifestyle inflation after a good run. Systems that remove emotion from financial decisions.", icon: Brain },
 ];
 
 const forList = [
