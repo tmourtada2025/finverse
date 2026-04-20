@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { sendPurchaseConfirmationEmail } from './emailService'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-06-20' })
 const supabase = createClient(
@@ -83,6 +84,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         status: 'pending_signup',
         pending_email: customerEmail.toLowerCase(),
       }, { onConflict: 'stripe_session_id' })
+
+      // Send purchase confirmation email with account creation instructions
+      const { data: course } = await supabase.from('courses').select('title').eq('id', courseId).single()
+      try {
+        await sendPurchaseConfirmationEmail({
+          to: customerEmail,
+          courseTitle: course?.title || 'your course',
+        })
+      } catch (emailErr) {
+        console.error('Failed to send purchase email:', emailErr)
+      }
+
       return res.status(200).json({ received: true, status: 'pending_signup' })
     }
 
@@ -99,6 +112,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (enrollError) {
       console.error('Enrollment error:', enrollError)
       return res.status(500).json({ error: 'Failed to create enrollment' })
+    }
+
+    // Send purchase confirmation email (user already has account)
+    const { data: course } = await supabase.from('courses').select('title').eq('id', courseId).single()
+    try {
+      await sendPurchaseConfirmationEmail({
+        to: customerEmail,
+        courseTitle: course?.title || 'your course',
+      })
+    } catch (emailErr) {
+      console.error('Failed to send purchase email:', emailErr)
     }
 
     console.log('Enrolled:', customerEmail, 'in course:', courseId)
