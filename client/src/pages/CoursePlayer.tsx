@@ -185,6 +185,24 @@ export default function CoursePlayer() {
     else prevLesson()
   }
 
+  const isSequential = !!(course as any)?.is_sequential
+
+  function isLessonUnlocked(lesson: LessonWithProgress, allLessons: LessonWithProgress[]) {
+    if (!isSequential) return true
+    const idx = allLessons.findIndex(l => l.id === lesson.id)
+    if (idx === 0) return true
+    if (lesson.progress?.completed) return true
+    return allLessons.slice(0, idx).every(l => l.progress?.completed)
+  }
+
+  function isSectionUnlocked(secIdx: number, lesson: LessonWithProgress, allLessons: LessonWithProgress[]) {
+    if (!isSequential) return true
+    if (!isLessonUnlocked(lesson, allLessons)) return false
+    if (secIdx === 0) return true
+    const activeSectionIdx = lessonSections.findIndex(s => s.id === activeSection?.id)
+    return secIdx <= activeSectionIdx + 1
+  }
+
   const activeModuleForLesson = activeLesson
     ? modules.find(m => m.lessons.some(l => l.id === activeLesson.id)) || null
     : activeModule
@@ -322,32 +340,39 @@ export default function CoursePlayer() {
                       const isActive   = lesson.id === activeLesson?.id
                       const isDone     = lesson.progress?.completed
                       const isExpanded = expandedLessons.has(lesson.id)
+                      const unlocked   = isLessonUnlocked(lesson, modules.flatMap(m => m.lessons))
                       return (
                         <div key={lesson.id}>
                           <button
-                            onClick={() => navigateToLesson(lesson)}
+                            onClick={() => unlocked && navigateToLesson(lesson)}
+                            disabled={!unlocked}
                             className={`w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-colors ${
-                              isActive
-                                ? (dark ? 'bg-[#1a1a1a] text-white' : 'bg-[#efefed] text-[#111]')
-                                : (dark ? 'text-[#888] hover:text-[#ccc] hover:bg-[#111]' : 'text-[#666] hover:text-[#111] hover:bg-[#f0f0ee]')
+                              !unlocked
+                                ? (dark ? 'text-[#333] cursor-not-allowed' : 'text-[#ccc] cursor-not-allowed')
+                                : isActive
+                                  ? (dark ? 'bg-[#1a1a1a] text-white' : 'bg-[#efefed] text-[#111]')
+                                  : (dark ? 'text-[#888] hover:text-[#ccc] hover:bg-[#111]' : 'text-[#666] hover:text-[#111] hover:bg-[#f0f0ee]')
                             }`}
                           >
                             <span className="mt-0.5 flex-shrink-0">
-                              {isDone
-                                ? <span className="text-[#10b981] text-sm">✓</span>
-                                : <span className={`w-4 h-4 rounded-full border flex-shrink-0 inline-block ${
-                                    isActive
-                                      ? (dark ? 'border-white' : 'border-[#111]')
-                                      : (dark ? 'border-[#333]' : 'border-[#ccc]')
-                                  }`} />
+                              {!unlocked
+                                ? <span className={`text-sm ${dark ? 'text-[#333]' : 'text-[#ccc]'}`}>🔒</span>
+                                : isDone
+                                  ? <span className="text-[#10b981] text-sm">✓</span>
+                                  : <span className={`w-4 h-4 rounded-full border flex-shrink-0 inline-block ${
+                                      isActive
+                                        ? (dark ? 'border-white' : 'border-[#111]')
+                                        : (dark ? 'border-[#333]' : 'border-[#ccc]')
+                                    }`} />
                               }
                             </span>
                             <span className="text-sm leading-snug flex-1">{lesson.title}</span>
-                            <span className="text-xs opacity-40">{isExpanded ? '▲' : '▼'}</span>
+                            {unlocked && <span className="text-xs opacity-40">{isExpanded ? '▲' : '▼'}</span>}
                           </button>
 
                           {isExpanded && isActive && lessonSections.map((sec, si) => {
-                            const secActive = sec.id === activeSection?.id
+                            const secActive   = sec.id === activeSection?.id
+                            const secUnlocked = isSectionUnlocked(si, lesson, modules.flatMap(m => m.lessons))
                             const typeIcon = sec.content_type === 'video' ? '🎬'
                               : sec.content_type === 'audio' ? '🎵'
                               : sec.content_type === 'pdf' ? '📄'
@@ -355,13 +380,17 @@ export default function CoursePlayer() {
                               : sec.content_type === 'slides' ? '🖥️'
                               : sec.content_type === 'excel' ? '📊' : '📝'
                             return (
-                              <button key={sec.id} onClick={() => setActiveSection(sec)}
+                              <button key={sec.id}
+                                onClick={() => secUnlocked && setActiveSection(sec)}
+                                disabled={!secUnlocked}
                                 className={`w-full text-left pl-9 pr-3 py-2 flex items-center gap-2 text-xs transition-colors rounded-lg ${
-                                  secActive
-                                    ? (dark ? 'text-white bg-[#222]' : 'text-[#111] bg-[#e8e8e4]')
-                                    : (dark ? 'text-[#666] hover:text-[#aaa] hover:bg-[#111]' : 'text-[#999] hover:text-[#444] hover:bg-[#f0f0ee]')
+                                  !secUnlocked
+                                    ? (dark ? 'text-[#2a2a2a] cursor-not-allowed' : 'text-[#ddd] cursor-not-allowed')
+                                    : secActive
+                                      ? (dark ? 'text-white bg-[#222]' : 'text-[#111] bg-[#e8e8e4]')
+                                      : (dark ? 'text-[#666] hover:text-[#aaa] hover:bg-[#111]' : 'text-[#999] hover:text-[#444] hover:bg-[#f0f0ee]')
                                 }`}>
-                                <span className="opacity-60">{typeIcon}</span>
+                                <span className="opacity-60">{secUnlocked ? typeIcon : '🔒'}</span>
                                 <span className="truncate">{si + 1}. {sec.title}</span>
                               </button>
                             )
@@ -427,7 +456,7 @@ export default function CoursePlayer() {
 
                 <button
                   onClick={nextSection}
-                  disabled={isLastSection && isLastLesson}
+                  disabled={(isLastSection && isLastLesson) || (isLastSection && isSequential && !isLessonUnlocked(modules.flatMap(m => m.lessons)[allLessons.findIndex(l => l.id === activeLesson?.id) + 1] as any, modules.flatMap(m => m.lessons)))}
                   className={`px-5 py-2.5 rounded-lg text-sm font-medium border ${borderCol} ${mutedText} hover:text-current hover:border-current transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2`}
                 >
                   {isLastSection ? (isLastLesson ? 'Done' : 'Next lesson →') : 'Next section'}

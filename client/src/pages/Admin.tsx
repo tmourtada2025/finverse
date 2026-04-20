@@ -335,7 +335,8 @@ function CourseDetailsForm({ course, t, onSaved, onCancel, onAddContent, onDelet
 }) {
   const isNew = !course?.id
   const [form, setForm]     = useState({ title: course?.title || '', slug: course?.slug || '', description: course?.description || '', price: course?.price ?? 0 })
-  const [published, setPublished] = useState(course?.is_published ?? false)
+  const [published, setPublished]     = useState(course?.is_published ?? false)
+  const [sequential, setSequential]   = useState((course as any)?.is_sequential ?? false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -345,11 +346,11 @@ function CourseDetailsForm({ course, t, onSaved, onCancel, onAddContent, onDelet
     if (!form.title.trim()) return
     setSaving(true)
     if (isNew) {
-      const { data } = await supabase.from('courses').insert({ ...form, is_published: false }).select().single()
+      const { data } = await supabase.from('courses').insert({ ...form, is_published: false, is_sequential: sequential }).select().single()
       setSaving(false)
       if (data) onSaved(data)
     } else {
-      const { data } = await supabase.from('courses').update({ ...form, is_published: published }).eq('id', course!.id).select().single()
+      const { data } = await supabase.from('courses').update({ ...form, is_published: published, is_sequential: sequential }).eq('id', course!.id).select().single()
       setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
       if (data) onSaved(data)
     }
@@ -401,6 +402,31 @@ function CourseDetailsForm({ course, t, onSaved, onCancel, onAddContent, onDelet
           <div><label style={lbl}>Price (USD)</label><input type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: Number(e.target.value) }))} style={inp} /></div>
         </div>
         <div><label style={lbl}>Description</label><textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} placeholder="What students will learn…" style={{ ...inp, resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.6 }} /></div>
+
+        {/* Navigation mode toggle */}
+        <div style={{ gridColumn: '1/-1' }}>
+          <label style={{ ...lbl, marginBottom: '10px' }}>Student navigation</label>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {[
+              { value: false, label: '🔓 Free flow', desc: 'Students jump to any lesson anytime' },
+              { value: true,  label: '🔒 Sequential', desc: 'Must complete each lesson to unlock the next' },
+            ].map(opt => (
+              <button
+                key={String(opt.value)}
+                type="button"
+                onClick={() => setSequential(opt.value)}
+                style={{
+                  flex: 1, padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left' as const,
+                  border: `1px solid ${sequential === opt.value ? (opt.value ? t.amber : t.green) : t.border}`,
+                  backgroundColor: sequential === opt.value ? (opt.value ? t.amber + '12' : t.green + '12') : 'transparent',
+                  transition: 'all 0.15s',
+                }}>
+                <p style={{ fontSize: '0.8rem', fontWeight: 600, color: sequential === opt.value ? (opt.value ? t.amber : t.green) : t.text, margin: '0 0 2px' }}>{opt.label}</p>
+                <p style={{ fontSize: '0.72rem', color: t.muted, margin: 0 }}>{opt.desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div style={{ display: 'flex', gap: '10px', paddingTop: '4px' }}>
           <button onClick={save} disabled={saving || !form.title.trim()}
