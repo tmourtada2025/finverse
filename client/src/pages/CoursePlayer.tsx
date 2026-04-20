@@ -23,6 +23,7 @@ export default function CoursePlayer() {
   const [activeSection, setActiveSection] = useState<Section | null>(null)
   const [lessonSections, setLessonSections] = useState<Section[]>([])
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set())
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null)
   const [dataLoading, setDataLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -100,6 +101,7 @@ export default function CoursePlayer() {
         setLessonSections(sections)
         setActiveSection(sections[0] || null)
         setExpandedLessons(new Set([initialLesson.id]))
+        setExpandedModules(new Set(modulesWithLessons.map(m => m.id)))
       }
     }
 
@@ -278,26 +280,56 @@ export default function CoursePlayer() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} shrink-0 border-r ${borderCol} overflow-y-auto transition-all duration-200 ${sidebarBg}`}>
-          <div className="p-4 min-w-[288px]">
+        <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} shrink-0 border-r ${borderCol} flex flex-col transition-all duration-200 ${sidebarBg} overflow-hidden`}>
+          <div className="flex-1 overflow-y-auto p-4 min-w-[288px]">
             {modules.map((mod, mIdx) => {
-              const modActive = activeModule?.id === mod.id
-              const hasIntro = !!(mod.description || mod.intro_video_url)
+              const modActive    = activeModule?.id === mod.id
+              const modExpanded  = expandedModules.has(mod.id)
+              const hasIntro     = !!(mod.description || mod.intro_video_url)
+              const doneCount    = mod.lessons.filter(l => l.progress?.completed).length
               return (
-                <div key={mod.id} className="mb-6">
-                  <button
-                    onClick={() => navigateToModule(mod)}
-                    className={`w-full text-left px-2 py-1.5 rounded-lg mb-2 transition-colors group flex items-center justify-between gap-2 ${
-                      modActive
-                        ? (dark ? 'bg-[#1a1a1a] text-white' : 'bg-[#efefed] text-[#111]')
-                        : (dark ? 'text-[#555] hover:text-[#888]' : 'text-[#aaa] hover:text-[#555]')
-                    }`}
-                  >
-                    <span className="text-xs uppercase tracking-widest">Module {mIdx + 1} · {mod.title}</span>
-                    {hasIntro && <span className="text-xs opacity-0 group-hover:opacity-60 transition-opacity">›</span>}
-                  </button>
+                <div key={mod.id} className="mb-2">
+                  {/* Module row — left side navigates, right chevron toggles expand */}
+                  <div className={`flex items-center rounded-lg mb-1 transition-colors ${
+                    modActive
+                      ? (dark ? 'bg-[#1a1a1a]' : 'bg-[#efefed]')
+                      : (dark ? 'hover:bg-[#111]' : 'hover:bg-[#f0f0ee]')
+                  }`}>
+                    <button
+                      onClick={() => navigateToModule(mod)}
+                      className={`flex-1 text-left px-2 py-2 flex items-center gap-2 ${
+                        modActive
+                          ? (dark ? 'text-white' : 'text-[#111]')
+                          : (dark ? 'text-[#555] hover:text-[#888]' : 'text-[#999] hover:text-[#555]')
+                      }`}
+                    >
+                      <span className="text-xs uppercase tracking-widest leading-snug flex-1">
+                        M{mIdx + 1} · {mod.title}
+                      </span>
+                      {doneCount > 0 && (
+                        <span className="text-[10px] text-[#10b981] flex-shrink-0">{doneCount}/{mod.lessons.length}</span>
+                      )}
+                    </button>
+                    {/* Expand/collapse chevron */}
+                    <button
+                      onClick={() => setExpandedModules(prev => {
+                        const next = new Set(prev)
+                        next.has(mod.id) ? next.delete(mod.id) : next.add(mod.id)
+                        return next
+                      })}
+                      className={`px-2 py-2 flex-shrink-0 transition-colors ${dark ? 'text-[#444] hover:text-[#888]' : 'text-[#bbb] hover:text-[#666]'}`}
+                      title={modExpanded ? 'Collapse module' : 'Expand module'}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                        style={{ transform: modExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
 
-                  <div className="space-y-1">
+                  {/* Lessons — only shown when module is expanded */}
+                  {modExpanded && (
+                  <div className="space-y-1 ml-2 pl-2" style={{ borderLeft: `1px solid ${dark ? '#1e1e1e' : '#e8e8e2'}` }}>
                     {mod.lessons.map((lesson) => {
                       const isActive   = lesson.id === activeLesson?.id
                       const isDone     = lesson.progress?.completed
@@ -350,6 +382,7 @@ export default function CoursePlayer() {
                       )
                     })}
                   </div>
+                  )} {/* end modExpanded */}
                 </div>
               )
             })}
