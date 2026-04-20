@@ -104,6 +104,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('Enrolled:', customerEmail, 'in course:', courseId)
   }
 
+  if (event.type === 'charge.refunded') {
+    const charge = event.data.object as Stripe.Charge
+
+    // Find enrollment by stripe_session_id via payment_intent
+    const paymentIntentId = charge.payment_intent as string
+    if (!paymentIntentId) {
+      console.error('No payment_intent on charge')
+      return res.status(200).json({ received: true, warning: 'No payment_intent' })
+    }
+
+    // Get the checkout session that created this payment intent
+    const sessions = await stripe.checkout.sessions.list({ payment_intent: paymentIntentId })
+    const session = sessions.data[0]
+    if (!session) {
+      console.error('No checkout session found for payment_intent:', paymentIntentId)
+      return res.status(200).json({ received: true, warning: 'No session found' })
+    }
+
+    // Soft revoke — set status to refunded, student loses access but progress preserved
+    const { error } = await supabase
+      .from('enrollments')
+      .update({
+        status: 'refunded',
+        refunded_at: new Date().toISOString(),
+      })
+      .eq('stripe_session_id', session.id)
+
+    if (error) {
+      console.error('Failed to revoke enrollment:', error)
+      return res.status(500).json({ error: 'Failed to revoke enrollment' })
+    }
+
+    console.log('Enrollment revoked for session:', session.id)
+  }
+
+
+
   return res.status(200).json({ received: true })
 }
 
