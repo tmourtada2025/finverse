@@ -25,6 +25,9 @@ export default function CoursePlayer() {
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set())
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
   const [showWelcome, setShowWelcome] = useState(true)
+  const [bookmarkedSection, setBookmarkedSection] = useState<{lessonId: string; sectionId: string} | null>(() => {
+    try { const b = localStorage.getItem(`fv-bookmark-${params.courseId}`); return b ? JSON.parse(b) : null } catch { return null }
+  })
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null)
   const [dataLoading, setDataLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -185,7 +188,28 @@ export default function CoursePlayer() {
     else prevLesson()
   }
 
-  const isSequential = !!(course as any)?.is_sequential
+  function saveBookmark() {
+    if (!activeLesson || !activeSection) return
+    const bookmark = { lessonId: activeLesson.id, sectionId: activeSection.id }
+    setBookmarkedSection(bookmark)
+    try { localStorage.setItem(`fv-bookmark-${courseId}`, JSON.stringify(bookmark)) } catch {}
+  }
+
+  async function jumpToBookmark() {
+    if (!bookmarkedSection) return
+    const allLessons = modules.flatMap(m => m.lessons)
+    const lesson = allLessons.find(l => l.id === bookmarkedSection.lessonId)
+    if (!lesson) return
+    await navigateToLesson(lesson)
+    // After sections load, set the bookmarked section
+    setTimeout(() => {
+      const { data: secs } = supabase.from('sections').select('*').eq('lesson_id', lesson.id).order('position')
+        .then(({ data }) => {
+          const sec = (data || []).find((s: any) => s.id === bookmarkedSection.sectionId)
+          if (sec) setActiveSection(sec)
+        })
+    }, 300)
+  }
 
   function isLessonUnlocked(lesson: LessonWithProgress, allLessons: LessonWithProgress[]) {
     if (!isSequential) return true
@@ -253,7 +277,11 @@ export default function CoursePlayer() {
 
       {/* Breadcrumb */}
       <div className={`border-b ${borderCol} px-6 py-2 ${surfaceBg} flex items-center gap-2 text-xs flex-wrap shrink-0`}>
-        <span style={{ color: dark ? '#666' : '#999' }} className="font-medium">{course?.title || '…'}</span>
+        <span
+          onClick={() => { setActiveLesson(null); setActiveModule(null); setActiveSection(null); setLessonSections([]) }}
+          style={{ color: dark ? '#666' : '#999', cursor: 'pointer' }}
+          className="font-medium hover:underline"
+        >{course?.title || '…'}</span>
         {activeModuleForLesson && (
           <>
             <span className={dark ? 'text-[#2a2a2a]' : 'text-[#ddd]'}>/</span>
@@ -429,6 +457,7 @@ export default function CoursePlayer() {
                 const target = firstIncomplete || allLessons[0] || null
                 if (target) navigateToLesson(target)
               }}
+              onJumpBookmark={bookmarkedSection ? jumpToBookmark : undefined}
             />
           ) : (
             <div className="max-w-3xl mx-auto px-8 py-10">
@@ -454,6 +483,19 @@ export default function CoursePlayer() {
                   Previous
                 </button>
 
+                {/* Bookmark button */}
+                <button
+                  onClick={saveBookmark}
+                  title="Bookmark this position"
+                  className={`px-3 py-2.5 rounded-lg text-sm border transition-colors ${
+                    bookmarkedSection?.sectionId === activeSection?.id
+                      ? (dark ? 'border-amber-500/50 text-amber-400 bg-amber-500/10' : 'border-amber-500/50 text-amber-600 bg-amber-50')
+                      : `${borderCol} ${mutedText} hover:text-current hover:border-current`
+                  }`}
+                >
+                  {bookmarkedSection?.sectionId === activeSection?.id ? '🔖 Saved' : '🔖'}
+                </button>
+
                 <button
                   onClick={nextSection}
                   disabled={(isLastSection && isLastLesson) || (isLastSection && isSequential && !isLessonUnlocked(modules.flatMap(m => m.lessons)[allLessons.findIndex(l => l.id === activeLesson?.id) + 1] as any, modules.flatMap(m => m.lessons)))}
@@ -474,11 +516,12 @@ export default function CoursePlayer() {
 }
 
 // ─── Course Welcome Screen ────────────────────────────────────────────────────
-function CourseWelcomeScreen({ course, modules, dark, onStart }: {
+function CourseWelcomeScreen({ course, modules, dark, onStart, onJumpBookmark }: {
   course: Course | null
   modules: ModuleWithLessons[]
   dark: boolean
   onStart: () => void
+  onJumpBookmark?: () => void
 }) {
   const totalLessons   = modules.reduce((s, m) => s + m.lessons.length, 0)
   const completedCount = modules.flatMap(m => m.lessons).filter(l => l.progress?.completed).length
@@ -574,12 +617,22 @@ function CourseWelcomeScreen({ course, modules, dark, onStart }: {
         </div>
 
         {/* CTA */}
-        <button
-          onClick={onStart}
-          className={`px-8 py-3.5 rounded-xl text-sm font-semibold transition-colors ${dark ? 'bg-white text-black hover:bg-white/90' : 'bg-[#111] text-white hover:bg-[#222]'}`}
-        >
-          {isResume ? `Continue where you left off →` : 'Start course →'}
-        </button>
+        <div className="flex items-center gap-4 flex-wrap">
+          <button
+            onClick={onStart}
+            className={`px-8 py-3.5 rounded-xl text-sm font-semibold transition-colors ${dark ? 'bg-white text-black hover:bg-white/90' : 'bg-[#111] text-white hover:bg-[#222]'}`}
+          >
+            {isResume ? `Continue where you left off →` : 'Start course →'}
+          </button>
+          {onJumpBookmark && (
+            <button
+              onClick={onJumpBookmark}
+              className={`px-6 py-3.5 rounded-xl text-sm font-medium border transition-colors ${dark ? 'border-amber-500/40 text-amber-400 hover:bg-amber-500/10' : 'border-amber-500/40 text-amber-600 hover:bg-amber-50'}`}
+            >
+              🔖 Jump to bookmark
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -668,7 +721,10 @@ function SectionContent({ section, dark }: { section: Section; dark: boolean }) 
         .fv-content blockquote { border-left: 3px solid ${quoteBorder}; padding-left: 1em; color: ${quoteColor}; margin: .6em 0; }
         .fv-content code { background: ${codeBg}; color: ${codeColor}; padding: 1px 5px; border-radius: 4px; font-size: .88em; }
         .fv-content img { max-width: 100%; border-radius: 6px; margin: 8px 0; display: block; }
-        .fv-content a { color: ${linkColor}; text-decoration: underline; }
+        .fv-content table { border-collapse: collapse; width: 100%; margin: .8em 0; font-size: .9em; }
+        .fv-content th { background: ${dark ? '#1a1a1a' : '#f0f0ee'}; font-weight: 600; font-size: .8em; text-transform: uppercase; letter-spacing: .05em; padding: 8px 12px; border: 1px solid ${dark ? '#2a2a2a' : '#ddd'}; text-align: left; color: ${dark ? '#aaa' : '#555'}; }
+        .fv-content td { padding: 8px 12px; border: 1px solid ${dark ? '#2a2a2a' : '#ddd'}; color: ${proseColor}; vertical-align: top; }
+        .fv-content tr:nth-child(even) td { background: ${dark ? '#0f0f0f' : '#fafaf8'}; }
       `}</style>
       <SectionRenderer section={section} dark={dark} />
     </div>
