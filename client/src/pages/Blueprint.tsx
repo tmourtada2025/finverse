@@ -43,18 +43,7 @@ const faqs = [
 ];
 
 function EnrolButton({ available }: { available: boolean }) {
-  if (!available) return (
-    <div>
-      <div className="inline-flex items-center gap-3 px-8 py-4 text-base font-medium tracking-wide text-white cursor-not-allowed opacity-50"
-        style={{ backgroundColor: "#3E5C76" }}>
-        Currently Unavailable
-      </div>
-      <p className="text-xs text-[#9EA7B3] opacity-50 mt-3">
-        This course is temporarily unavailable. Check back soon or{" "}
-        <a href="mailto:support@finverse.world" className="underline">contact us</a>.
-      </p>
-    </div>
-  )
+  if (!available) return null
   return (
     <a href={STRIPE_LINK} target="_blank" rel="noopener noreferrer"
       className="inline-flex items-center gap-3 px-8 py-4 text-base font-medium tracking-wide text-white transition-colors"
@@ -68,9 +57,15 @@ function EnrolButton({ available }: { available: boolean }) {
 
 function EnrolButtonSmall({ available }: { available: boolean }) {
   if (!available) return (
-    <div className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-medium text-white opacity-50 cursor-not-allowed"
-      style={{ backgroundColor: "#3E5C76" }}>
-      Currently Unavailable
+    <div>
+      <div className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-medium text-white opacity-50 cursor-not-allowed"
+        style={{ backgroundColor: "#3E5C76" }}>
+        Currently Unavailable
+      </div>
+      <p className="text-xs text-[#9EA7B3] opacity-50 mt-3 text-center">
+        Temporarily unavailable. Check back soon or{" "}
+        <a href="mailto:support@finverse.world" className="underline">contact us</a>.
+      </p>
     </div>
   )
   return (
@@ -127,10 +122,12 @@ export default function Blueprint() {
 
             <div className="md:col-span-5" style={{ backgroundColor: "rgba(62,92,118,0.08)", border: "1px solid rgba(62,92,118,0.25)", padding: "2rem" }}>
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-4">Course Access</p>
-              <div className="flex items-baseline gap-2 mb-6">
-                <span className="font-serif text-5xl font-bold text-[#F4F4F2]">$147</span>
-                <span className="text-sm text-[#9EA7B3] opacity-60 ml-1">one-time</span>
-              </div>
+              {available && (
+                <div className="flex items-baseline gap-2 mb-6">
+                  <span className="font-serif text-5xl font-bold text-[#F4F4F2]">$147</span>
+                  <span className="text-sm text-[#9EA7B3] opacity-60 ml-1">one-time</span>
+                </div>
+              )}
               <div style={{ height: "1px", backgroundColor: "rgba(158,167,179,0.12)", marginBottom: "1.5rem" }} />
               {["8 in-depth video modules","Personal capital structure framework","Income architecture worksheet","Tax planning checklist","Risk of ruin calculator","Lifetime access & future updates","14-day money-back guarantee"].map((item) => (
                 <div key={item} className="flex items-start gap-3 mb-3">
@@ -242,9 +239,11 @@ export default function Blueprint() {
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-6">Ready to start</p>
           <h2 className="font-serif text-3xl md:text-4xl font-bold text-[#F4F4F2] mb-4">One payment. Permanent access.</h2>
           <p className="text-[#9EA7B3] mb-10" style={{ lineHeight: "1.7" }}>Every module, every framework, every update — for the price of a single poorly-managed trade.</p>
-          <div className="flex items-baseline justify-center gap-1 mb-8">
-            <span className="font-serif text-6xl font-bold text-[#F4F4F2]">$147</span>
-          </div>
+          {available && (
+            <div className="flex items-baseline justify-center gap-1 mb-8">
+              <span className="font-serif text-6xl font-bold text-[#F4F4F2]">$147</span>
+            </div>
+          )}
           {ready && (
             <div className="flex flex-col items-center gap-4">
               <EnrolButton available={available!} />
