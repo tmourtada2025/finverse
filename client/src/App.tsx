@@ -12,6 +12,9 @@ import About from "./pages/About";
 import Resources from "./pages/Resources";
 import Blueprint from "./pages/Blueprint";
 import Education from "./pages/Education";
+import RefundPolicy from "./pages/RefundPolicy";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfUse from "./pages/TermsOfUse";
 import Layout from "./components/Layout";
 import { AuthProvider } from "@/lib/auth";
 import Login from "@/pages/Login";
@@ -43,6 +46,9 @@ function Router() {
               <Route path="/resources" component={Resources} />
               <Route path="/blueprint" component={Blueprint} />
               <Route path="/education" component={Education} />
+              <Route path="/refund-policy" component={RefundPolicy} />
+              <Route path="/privacy-policy" component={PrivacyPolicy} />
+              <Route path="/terms" component={TermsOfUse} />
               <Route path="/404" component={NotFound} />
               <Route component={NotFound} />
             </Switch>
