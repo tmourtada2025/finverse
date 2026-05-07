@@ -11,37 +11,15 @@ import { supabase } from "@/lib/supabase";
 const UDEMY_URL = "https://www.udemy.com/course/smart-money-concepts-the-complete-guide-to-smart-trading/?referralCode=C4DBD99FE2D9012F18F5";
 const COURSE_SLUG = "traders-financial-blueprint";
 
-const upcoming = [
-  {
-    title: "Advanced Order Flow & Institutional Execution",
-    category: "Market Structure",
-    description: "Depth of market, tape reading, and institutional execution techniques layered on top of the SMC framework.",
-    status: "In Development",
-  },
-  {
-    title: "Trading Psychology — The Inner Circle Method",
-    category: "Psychology",
-    description: "The psychological framework behind the Sovereign Trader Institute's Inner Circle cohort program.",
-    status: "Coming Soon",
-  },
-  {
-    title: "Portfolio Construction for Active Traders",
-    category: "Personal Finance",
-    description: "How to manage multiple asset classes, allocate between trading and investment accounts, and build a resilient long-term portfolio.",
-    status: "Coming Soon",
-  },
-];
-
 export default function Education() {
   const [blueprintAvailable, setBlueprintAvailable] = useState<boolean | null>(null)
+  const [pipeline, setPipeline] = useState<any[]>([])
 
   useEffect(() => {
-    supabase
-      .from('courses')
-      .select('is_published')
-      .eq('slug', COURSE_SLUG)
-      .single()
+    supabase.from('courses').select('is_published').eq('slug', COURSE_SLUG).single()
       .then(({ data }) => setBlueprintAvailable(data?.is_published ?? false))
+    supabase.from('pipeline').select('*').order('position')
+      .then(({ data }) => setPipeline(data || []))
   }, [])
 
   const ready = blueprintAvailable !== null
@@ -197,8 +175,8 @@ export default function Education() {
             <h2 className="font-serif text-2xl md:text-3xl font-bold text-[#F4F4F2]">Courses in Development</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
-            {upcoming.map((course) => (
-              <div key={course.title} style={{ backgroundColor: "rgba(158,167,179,0.02)", border: "1px solid rgba(158,167,179,0.08)", padding: "1.75rem" }}>
+            {pipeline.map((course) => (
+              <div key={course.id} style={{ backgroundColor: "rgba(158,167,179,0.02)", border: "1px solid rgba(158,167,179,0.08)", padding: "1.75rem" }}>
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-[#9EA7B3] opacity-50">{course.category}</p>
                   <span className="text-[9px] uppercase tracking-[0.1em] px-1.5 py-0.5" style={{ color: "rgba(158,167,179,0.4)", border: "1px solid rgba(158,167,179,0.12)" }}>{course.status}</span>
@@ -207,6 +185,9 @@ export default function Education() {
                 <p className="text-xs text-[#9EA7B3] opacity-60" style={{ lineHeight: "1.7" }}>{course.description}</p>
               </div>
             ))}
+            {pipeline.length === 0 && (
+              <p className="text-[#9EA7B3] text-sm col-span-3">No courses in development yet.</p>
+            )}
           </div>
         </div>
       </section>

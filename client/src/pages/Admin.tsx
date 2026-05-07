@@ -10,7 +10,7 @@ type AdminView =
   | 'overview' | 'users' | 'user_profile' | 'enrollments'
   | 'analytics' | 'notifications' | 'import'
   | 'course_new' | 'course_details' | 'course_content'
-  | 'lesson_editor' | 'module_editor' | 'journal' | 'calendar'
+  | 'lesson_editor' | 'module_editor' | 'journal' | 'calendar' | 'pipeline'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const I = {
@@ -137,6 +137,7 @@ export default function Admin() {
     else if (view === 'import')        parts.push('Import Course')
     else if (view === 'journal')       parts.push('Journal')
     else if (view === 'calendar')      parts.push('Posting Calendar')
+    else if (view === 'pipeline')      parts.push('Course Pipeline')
     else                               parts.push('Overview')
 
     return (
@@ -174,6 +175,7 @@ export default function Admin() {
       case 'import':        return <CourseImporter />
       case 'journal':       return <JournalSection t={t} />
       case 'calendar':      return <CalendarSection t={t} onEditPost={(post) => { setView('journal') }} />
+      case 'pipeline':      return <PipelineSection t={t} />
       case 'course_new':    return (
         <CourseDetailsForm
           key="new"
@@ -297,6 +299,7 @@ export default function Admin() {
             <NavBtn id="import"   label="Import Course" Icon={I.import} />
             <NavBtn id="journal"  label="Journal"        Icon={() => <span style={{ fontSize: '0.9rem' }}>✍️</span>} />
             <NavBtn id="calendar" label="Calendar"       Icon={() => <span style={{ fontSize: '0.9rem' }}>📅</span>} />
+            <NavBtn id="pipeline" label="Pipeline"       Icon={() => <span style={{ fontSize: '0.9rem' }}>🚀</span>} />
           </div>
         </nav>
 
@@ -1792,6 +1795,187 @@ Format each post as "POST 1:", "POST 2:" etc. on its own line. Keep the tone dir
         </button>
         <button onClick={onCancel} style={{ backgroundColor: 'transparent', color: t.muted, border: 'none', fontSize: '0.855rem', cursor: 'pointer', marginLeft: '4px' }}>Cancel</button>
       </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PIPELINE SECTION
+// ══════════════════════════════════════════════════════════════════════════════
+function PipelineSection({ t }: { t: any }) {
+  const [courses, setCourses]       = useState<any[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [editing, setEditing]       = useState<any | null>(null)
+  const [isNew, setIsNew]           = useState(false)
+  const [saving, setSaving]         = useState(false)
+  const [saved, setSaved]           = useState(false)
+
+  useEffect(() => { fetchCourses() }, [])
+
+  async function fetchCourses() {
+    const { data } = await supabase.from('pipeline').select('*').order('position')
+    setCourses(data || [])
+    setLoading(false)
+  }
+
+  function openNew() {
+    setEditing({ title: '', category: 'Market Structure', description: '', status: 'Coming Soon', position: (courses.length + 1) })
+    setIsNew(true)
+    setSaved(false)
+  }
+
+  function openEdit(course: any) {
+    setEditing({ ...course })
+    setIsNew(false)
+    setSaved(false)
+  }
+
+  async function deleteCourse(id: string) {
+    if (!confirm('Delete this pipeline course?')) return
+    await supabase.from('pipeline').delete().eq('id', id)
+    fetchCourses()
+  }
+
+  async function save() {
+    if (!editing?.title?.trim()) return
+    setSaving(true)
+    const payload = { ...editing, updated_at: new Date().toISOString() }
+    if (isNew) {
+      await supabase.from('pipeline').insert(payload)
+    } else {
+      await supabase.from('pipeline').update(payload).eq('id', editing.id)
+    }
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => { setEditing(null); fetchCourses() }, 600)
+  }
+
+  const { inp, lbl, card } = styles(t)
+  const STATUSES = ['Coming Soon', 'In Development', 'In Review', 'Launching Soon']
+  const CATEGORIES = ['Market Structure', 'Psychology', 'Personal Finance', 'Macro']
+  const statusColor: Record<string, string> = {
+    'Coming Soon':    t.muted,
+    'In Development': t.amber,
+    'In Review':      t.blue,
+    'Launching Soon': t.green,
+  }
+
+  if (editing) {
+    return (
+      <div style={{ maxWidth: 600 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
+          <button onClick={() => { setEditing(null); fetchCourses() }}
+            style={{ background: 'none', border: `1px solid ${t.border}`, color: t.muted, cursor: 'pointer', fontSize: '0.8rem', borderRadius: '7px', padding: '6px 12px' }}>
+            ← Back
+          </button>
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: t.text }}>{isNew ? 'New pipeline course' : 'Edit pipeline course'}</h2>
+        </div>
+
+        <div style={{ ...card, display: 'flex', flexDirection: 'column' as const, gap: '16px' }}>
+          <div>
+            <label style={lbl}>Title</label>
+            <input value={editing.title} onChange={e => setEditing((p: any) => ({ ...p, title: e.target.value }))}
+              placeholder="Course title…" style={inp} autoFocus />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div>
+              <label style={lbl}>Category</label>
+              <select value={editing.category} onChange={e => setEditing((p: any) => ({ ...p, category: e.target.value }))}
+                style={{ ...inp, cursor: 'pointer' }}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Status</label>
+              <select value={editing.status} onChange={e => setEditing((p: any) => ({ ...p, status: e.target.value }))}
+                style={{ ...inp, cursor: 'pointer' }}>
+                {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={lbl}>Description</label>
+            <textarea value={editing.description || ''} onChange={e => setEditing((p: any) => ({ ...p, description: e.target.value }))}
+              rows={3} placeholder="Short description shown on the Education page…"
+              style={{ ...inp, resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.6 }} />
+          </div>
+
+          <div>
+            <label style={lbl}>Display order</label>
+            <input type="number" value={editing.position || 0} onChange={e => setEditing((p: any) => ({ ...p, position: parseInt(e.target.value) || 0 }))}
+              style={{ ...inp, width: '80px' }} />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', marginTop: '16px', alignItems: 'center' }}>
+          <button onClick={save} disabled={saving || !editing.title?.trim()}
+            style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '10px 22px', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', opacity: (saving || !editing.title?.trim()) ? 0.6 : 1, transition: 'background-color 0.2s' }}>
+            {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save'}
+          </button>
+          <button onClick={() => { setEditing(null); fetchCourses() }}
+            style={{ backgroundColor: 'transparent', color: t.muted, border: 'none', fontSize: '0.855rem', cursor: 'pointer' }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ maxWidth: 700 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <div>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: t.text }}>Course Pipeline</h2>
+          <p style={{ fontSize: '0.78rem', color: t.muted, marginTop: '2px' }}>Courses shown in the "In Development" section on the Education page.</p>
+        </div>
+        <button onClick={openNew}
+          style={{ backgroundColor: t.accent, color: t.accentText, border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '0.855rem', fontWeight: 600, cursor: 'pointer' }}>
+          + Add course
+        </button>
+      </div>
+
+      {loading && <p style={{ color: t.muted }}>Loading…</p>}
+
+      {!loading && courses.length === 0 && (
+        <div style={{ border: `1px dashed ${t.border}`, borderRadius: '12px', padding: '48px', textAlign: 'center' as const, color: t.muted }}>
+          No pipeline courses yet.
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '8px' }}>
+        {courses.map(course => (
+          <div key={course.id} style={{ border: `1px solid ${t.border}`, borderRadius: '10px', padding: '16px 20px', backgroundColor: t.surface, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' as const }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: t.text }}>{course.title}</span>
+                <span style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: '4px', border: `1px solid ${statusColor[course.status] || t.border}50`, color: statusColor[course.status] || t.muted }}>
+                  {course.status}
+                </span>
+                <span style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: '4px', backgroundColor: t.dim, color: t.muted }}>
+                  {course.category}
+                </span>
+              </div>
+              <p style={{ fontSize: '0.75rem', color: t.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{course.description || '—'}</p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              <button onClick={() => openEdit(course)}
+                style={{ fontSize: '0.78rem', color: t.muted, border: `1px solid ${t.border}`, background: 'none', borderRadius: '7px', padding: '6px 14px', cursor: 'pointer' }}>
+                Edit
+              </button>
+              <button onClick={() => deleteCourse(course.id)}
+                style={{ fontSize: '0.78rem', color: t.red, border: `1px solid ${t.red}30`, background: 'none', borderRadius: '7px', padding: '6px 14px', cursor: 'pointer' }}>
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p style={{ fontSize: '0.72rem', color: t.muted, marginTop: '12px' }}>
+        Changes appear on the Education page immediately after saving.
+      </p>
     </div>
   )
 }
