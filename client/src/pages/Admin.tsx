@@ -169,6 +169,8 @@ export default function Admin() {
   function toggleSection(s: 'platform' | 'courses' | 'tools') {
     setSectionOpen(p => ({ ...p, [s]: !p[s] }))
   }
+
+  function renderMain() {
     switch (view) {
       case 'overview':      return <OverviewSection t={t} onNavigate={(v) => setView(v as AdminView)} />
       case 'users':         return <UsersSection t={t} onViewProfile={(id) => { setSelectedUserId(id); setView('user_profile') }} />
