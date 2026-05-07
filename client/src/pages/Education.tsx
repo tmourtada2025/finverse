@@ -14,11 +14,17 @@ const COURSE_SLUG = "traders-financial-blueprint";
 export default function Education() {
   const [blueprintAvailable, setBlueprintAvailable] = useState<boolean | null>(null)
   const [pipeline, setPipeline] = useState<any[]>([])
+  const [publishedTitles, setPublishedTitles] = useState<string[]>([])
 
   useEffect(() => {
-    supabase.from('courses').select('is_published').eq('slug', COURSE_SLUG).single()
+    supabase.from('courses').select('is_published, title').eq('slug', COURSE_SLUG).single()
       .then(({ data }) => setBlueprintAvailable(data?.is_published ?? false))
-    supabase.from('pipeline').select('*').order('position')
+
+    // Get all published LMS course titles to exclude from pipeline
+    supabase.from('courses').select('title').eq('is_published', true)
+      .then(({ data }) => setPublishedTitles((data || []).map((c: any) => c.title.toLowerCase())))
+
+    supabase.from('pipeline').select('*').order('position').limit(3)
       .then(({ data }) => setPipeline(data || []))
   }, [])
 
@@ -174,20 +180,34 @@ export default function Education() {
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-4">In the Pipeline</p>
             <h2 className="font-serif text-2xl md:text-3xl font-bold text-[#F4F4F2]">Courses in Development</h2>
           </div>
+          {/* Always 3-column grid regardless of item count */}
           <div className="grid md:grid-cols-3 gap-6">
-            {pipeline.map((course) => (
-              <div key={course.id} style={{ backgroundColor: "rgba(158,167,179,0.02)", border: "1px solid rgba(158,167,179,0.08)", padding: "1.75rem" }}>
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-[#9EA7B3] opacity-50">{course.category}</p>
-                  <span className="text-[9px] uppercase tracking-[0.1em] px-1.5 py-0.5" style={{ color: "rgba(158,167,179,0.4)", border: "1px solid rgba(158,167,179,0.12)" }}>{course.status}</span>
+            {(() => {
+              const visible = pipeline
+                .filter(c => !publishedTitles.includes(c.title.toLowerCase()))
+                .slice(0, 3)
+
+              // Pad to exactly 3 slots
+              const slots = [...visible]
+              while (slots.length < 3) slots.push(null)
+
+              return slots.map((course, i) => (
+                <div key={course?.id || `empty-${i}`} style={{ backgroundColor: "rgba(158,167,179,0.02)", border: "1px solid rgba(158,167,179,0.08)", padding: "1.75rem", minHeight: "140px", display: "flex", flexDirection: "column" as const, justifyContent: course ? "flex-start" : "center", alignItems: course ? "flex-start" : "center" }}>
+                  {course ? (
+                    <>
+                      <div className="flex items-center justify-between w-full mb-4">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-[#9EA7B3] opacity-50">{course.category}</p>
+                        <span className="text-[9px] uppercase tracking-[0.1em] px-1.5 py-0.5" style={{ color: "rgba(158,167,179,0.4)", border: "1px solid rgba(158,167,179,0.12)" }}>{course.status}</span>
+                      </div>
+                      <h4 className="font-serif text-base font-bold text-[#F4F4F2] mb-3 leading-snug">{course.title}</h4>
+                      <p className="text-xs text-[#9EA7B3] opacity-60" style={{ lineHeight: "1.7" }}>{course.description}</p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-[#9EA7B3] opacity-30 text-center">Coming soon —<br />check back for updates.</p>
+                  )}
                 </div>
-                <h4 className="font-serif text-base font-bold text-[#F4F4F2] mb-3 leading-snug">{course.title}</h4>
-                <p className="text-xs text-[#9EA7B3] opacity-60" style={{ lineHeight: "1.7" }}>{course.description}</p>
-              </div>
-            ))}
-            {pipeline.length === 0 && (
-              <p className="text-[#9EA7B3] text-sm col-span-3">No courses in development yet.</p>
-            )}
+              ))
+            })()}
           </div>
         </div>
       </section>
