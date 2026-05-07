@@ -10,7 +10,7 @@ type AdminView =
   | 'overview' | 'users' | 'user_profile' | 'enrollments'
   | 'analytics' | 'notifications' | 'import'
   | 'course_new' | 'course_details' | 'course_content'
-  | 'lesson_editor' | 'module_editor' | 'journal'
+  | 'lesson_editor' | 'module_editor' | 'journal' | 'calendar'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const I = {
@@ -136,6 +136,7 @@ export default function Admin() {
     else if (view === 'notifications') parts.push('Notifications')
     else if (view === 'import')        parts.push('Import Course')
     else if (view === 'journal')       parts.push('Journal')
+    else if (view === 'calendar')      parts.push('Posting Calendar')
     else                               parts.push('Overview')
 
     return (
@@ -172,6 +173,7 @@ export default function Admin() {
       case 'notifications': return <NotificationsSection t={t} />
       case 'import':        return <CourseImporter />
       case 'journal':       return <JournalSection t={t} />
+      case 'calendar':      return <CalendarSection t={t} onEditPost={(post) => { setView('journal') }} />
       case 'course_new':    return (
         <CourseDetailsForm
           key="new"
@@ -292,8 +294,9 @@ export default function Admin() {
           {/* Import */}
           <div style={{ marginTop: '14px' }}>
             <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.muted, padding: '4px 12px 6px', opacity: 0.5 }}>Tools</p>
-            <NavBtn id="import"  label="Import Course" Icon={I.import} />
-            <NavBtn id="journal" label="Journal"        Icon={() => <span style={{ fontSize: '0.9rem' }}>✍️</span>} />
+            <NavBtn id="import"   label="Import Course" Icon={I.import} />
+            <NavBtn id="journal"  label="Journal"        Icon={() => <span style={{ fontSize: '0.9rem' }}>✍️</span>} />
+            <NavBtn id="calendar" label="Calendar"       Icon={() => <span style={{ fontSize: '0.9rem' }}>📅</span>} />
           </div>
         </nav>
 
@@ -1485,6 +1488,309 @@ function PostEditor({ post, isNew, t, onSaved, onCancel }: { post: any; isNew: b
         <button onClick={onCancel} style={{ backgroundColor: 'transparent', color: t.muted, border: 'none', fontSize: '0.855rem', cursor: 'pointer', marginLeft: '4px' }}>
           Cancel
         </button>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// POSTING CALENDAR
+// ══════════════════════════════════════════════════════════════════════════════
+function CalendarSection({ t, onEditPost }: { t: any; onEditPost: (post: any) => void }) {
+  const [posts, setPosts]       = useState<any[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [monthOffset, setMonthOffset] = useState(0)
+  const [editingPost, setEditingPost] = useState<any | null>(null)
+
+  useEffect(() => { fetchPosts() }, [])
+
+  async function fetchPosts() {
+    const { data } = await supabase.from('posts').select('*').order('planned_date', { ascending: true })
+    setPosts(data || [])
+    setLoading(false)
+  }
+
+  const today = new Date()
+  const viewDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1)
+  const viewYear = viewDate.getFullYear()
+  const viewMonth = viewDate.getMonth()
+  const monthName = viewDate.toLocaleDateString('en', { month: 'long', year: 'numeric' })
+
+  // Build weeks grid for this month
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay()
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
+  const cells: (number | null)[] = Array(firstDay).fill(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+  const weeks = []
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
+
+  function postsForDay(day: number) {
+    const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    return posts.filter(p => (p.planned_date || '').startsWith(iso) || (p.published_at || '').startsWith(iso))
+  }
+
+  function isSunday(day: number) {
+    return new Date(viewYear, viewMonth, day).getDay() === 0
+  }
+
+  const catColor: Record<string, string> = {
+    Structure:  '#3E5C76',
+    Macro:      '#f59e0b',
+    Psychology: '#8b5cf6',
+  }
+
+  if (editingPost) {
+    return (
+      <CalendarPostEditor
+        post={editingPost}
+        t={t}
+        onSaved={() => { setEditingPost(null); fetchPosts() }}
+        onCancel={() => setEditingPost(null)}
+      />
+    )
+  }
+
+  return (
+    <div style={{ maxWidth: 900 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: t.text }}>Posting Calendar</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button onClick={() => setMonthOffset(o => o - 1)} style={{ background: 'none', border: `1px solid ${t.border}`, color: t.muted, borderRadius: '7px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.85rem' }}>←</button>
+          <span style={{ fontSize: '0.9rem', fontWeight: 600, color: t.text, minWidth: '160px', textAlign: 'center' as const }}>{monthName}</span>
+          <button onClick={() => setMonthOffset(o => o + 1)} style={{ background: 'none', border: `1px solid ${t.border}`, color: t.muted, borderRadius: '7px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.85rem' }}>→</button>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+        {Object.entries(catColor).map(([cat, color]) => (
+          <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color }} />
+            <span style={{ fontSize: '0.72rem', color: t.muted }}>{cat}</span>
+          </div>
+        ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ width: 10, height: 10, borderRadius: '2px', backgroundColor: t.green + '30', border: `1px solid ${t.green}50` }} />
+          <span style={{ fontSize: '0.72rem', color: t.muted }}>Published</span>
+        </div>
+      </div>
+
+      {/* Calendar grid */}
+      <div style={{ border: `1px solid ${t.border}`, borderRadius: '12px', overflow: 'hidden' }}>
+        {/* Day headers */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', backgroundColor: t.surface }}>
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+            <div key={d} style={{ padding: '10px 8px', textAlign: 'center' as const, fontSize: '0.7rem', fontWeight: 600, color: d === 'Sun' ? t.amber : t.muted, textTransform: 'uppercase' as const, letterSpacing: '0.08em', borderBottom: `1px solid ${t.border}` }}>
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Weeks */}
+        {weeks.map((week, wi) => (
+          <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: wi < weeks.length - 1 ? `1px solid ${t.border}` : 'none' }}>
+            {week.map((day, di) => {
+              const dayPosts = day ? postsForDay(day) : []
+              const isToday = day && new Date().getDate() === day && new Date().getMonth() === viewMonth && new Date().getFullYear() === viewYear
+              const sunday = day ? isSunday(day) : false
+              return (
+                <div key={di} style={{
+                  minHeight: '90px', padding: '8px', borderRight: di < 6 ? `1px solid ${t.border}` : 'none',
+                  backgroundColor: !day ? (t.bg) : sunday ? (t.amber + '08') : 'transparent',
+                }}>
+                  {day && (
+                    <>
+                      <div style={{ fontSize: '0.75rem', fontWeight: isToday ? 700 : 400, color: isToday ? t.accent : sunday ? t.amber : t.muted, marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span>{day}</span>
+                        {sunday && <span style={{ fontSize: '0.6rem', color: t.amber, opacity: 0.6 }}>publish</span>}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '3px' }}>
+                        {dayPosts.map(post => (
+                          <button key={post.id} onClick={() => setEditingPost(post)}
+                            style={{
+                              width: '100%', textAlign: 'left' as const, padding: '4px 7px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontSize: '0.68rem', lineHeight: 1.3,
+                              backgroundColor: post.is_published ? t.green + '20' : catColor[post.category] + '20',
+                              color: post.is_published ? t.green : catColor[post.category] || t.muted,
+                              borderLeft: `2px solid ${post.is_published ? t.green : catColor[post.category] || t.muted}`,
+                            }}>
+                            <div style={{ fontWeight: 600, marginBottom: '1px' }}>{post.category}</div>
+                            <div style={{ opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{post.title}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+
+      <p style={{ fontSize: '0.72rem', color: t.muted, marginTop: '12px' }}>Click any article to open the editor. Sundays are highlighted as publish days.</p>
+    </div>
+  )
+}
+
+// ── Calendar Post Editor (with LinkedIn generator) ────────────────────────────
+function CalendarPostEditor({ post, t, onSaved, onCancel }: { post: any; t: any; onSaved: () => void; onCancel: () => void }) {
+  const [form, setForm]               = useState({ ...post })
+  const [saving, setSaving]           = useState(false)
+  const [saved, setSaved]             = useState(false)
+  const [generatingLinkedIn, setGeneratingLinkedIn] = useState(false)
+  const { inp, lbl, card }            = styles(t)
+
+  function slugify(title: string) {
+    return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  }
+
+  async function generateLinkedInThread() {
+    if (!form.content && !form.excerpt) return
+    setGeneratingLinkedIn(true)
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: `You are writing a LinkedIn thread for a market structure trading educator named Toufic Mourtada (The Trader Alchemist), founder of FinVerse.
+
+Article title: ${form.title}
+Category: ${form.category}
+Excerpt: ${form.excerpt || ''}
+Article content (HTML, extract the key ideas): ${(form.content || '').replace(/<[^>]+>/g, ' ').slice(0, 2000)}
+
+Write a LinkedIn thread with exactly this structure:
+POST 1 (Hook): A single striking statement or question that stops the scroll. Max 2 lines. No hashtags yet.
+POST 2: The core insight or problem — what most traders get wrong about this topic. 3-4 lines.
+POST 3: The key framework or principle from the article. Use short punchy lines. Can use a simple list.
+POST 4: A practical takeaway — one thing they can apply immediately. 3-4 lines.
+POST 5 (CTA): "Full breakdown on FinVerse.world →" then the article URL: https://finverse.world/blog/${form.slug || slugify(form.title)}
+Add 3-5 relevant hashtags at the end of post 5 only.
+
+Format each post as "POST 1:", "POST 2:" etc. on its own line. Keep the tone direct, analytical, no fluff. This is for serious traders not beginners.`
+          }]
+        })
+      })
+      const data = await response.json()
+      const thread = data.content?.[0]?.text || ''
+      setForm((p: any) => ({ ...p, linkedin_thread: thread }))
+    } catch {
+      alert('Failed to generate thread. Try again.')
+    }
+    setGeneratingLinkedIn(false)
+  }
+
+  async function save(publish?: boolean) {
+    setSaving(true)
+    const payload = {
+      ...form,
+      slug: form.slug || slugify(form.title),
+      is_published: publish !== undefined ? publish : form.is_published,
+      published_at: (publish || form.is_published) ? (form.published_at || new Date().toISOString()) : null,
+      updated_at: new Date().toISOString(),
+    }
+    if (!form.id) {
+      await supabase.from('posts').insert(payload)
+    } else {
+      await supabase.from('posts').update(payload).eq('id', form.id)
+    }
+    setSaving(false); setSaved(true)
+    setTimeout(() => onSaved(), 800)
+  }
+
+  return (
+    <div style={{ maxWidth: 800 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
+        <button onClick={onCancel} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: `1px solid ${t.border}`, color: t.muted, cursor: 'pointer', fontSize: '0.8rem', borderRadius: '7px', padding: '6px 12px' }}>← Calendar</button>
+        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: t.text }}>{form.title || 'New post'}</h2>
+        <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', backgroundColor: form.is_published ? t.green + '20' : t.dim, color: form.is_published ? t.green : t.muted }}>
+          {form.is_published ? 'Published' : 'Planned'}
+        </span>
+      </div>
+
+      <div style={{ ...card, display: 'flex', flexDirection: 'column' as const, gap: '16px', marginBottom: '16px' }}>
+        <div>
+          <label style={lbl}>Title</label>
+          <input value={form.title} onChange={e => setForm((p: any) => ({ ...p, title: e.target.value }))} style={inp} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
+          <div>
+            <label style={lbl}>Slug</label>
+            <input value={form.slug || ''} onChange={e => setForm((p: any) => ({ ...p, slug: e.target.value }))} style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Category</label>
+            <select value={form.category} onChange={e => setForm((p: any) => ({ ...p, category: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
+              {['Structure', 'Macro', 'Psychology'].map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Planned date</label>
+            <input type="date" value={form.planned_date || ''} onChange={e => setForm((p: any) => ({ ...p, planned_date: e.target.value }))} style={inp} />
+          </div>
+        </div>
+        <div>
+          <label style={lbl}>Excerpt</label>
+          <textarea value={form.excerpt || ''} onChange={e => setForm((p: any) => ({ ...p, excerpt: e.target.value }))} rows={2}
+            style={{ ...inp, resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.6 }} />
+        </div>
+        <div>
+          <label style={lbl}>Thumbnail image</label>
+          <AdminFileUploader bucket="post-images" accept="image/*" icon="🖼️" label="thumbnail" maxMB={5}
+            value={form.thumbnail_url || ''} onChange={(v: string) => setForm((p: any) => ({ ...p, thumbnail_url: v }))} t={t} />
+        </div>
+      </div>
+
+      {/* Content */}
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{ ...lbl, marginBottom: '8px' }}>Article content</label>
+        <RichEditorInline value={form.content || ''} onChange={(v: string) => setForm((p: any) => ({ ...p, content: v }))} t={t} />
+      </div>
+
+      {/* LinkedIn Thread */}
+      <div style={{ ...card, marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <div>
+            <label style={{ ...lbl, margin: 0 }}>LinkedIn thread</label>
+            <p style={{ fontSize: '0.72rem', color: t.muted, marginTop: '2px' }}>Auto-generated from article content. Review and copy to LinkedIn.</p>
+          </div>
+          <button onClick={generateLinkedInThread} disabled={generatingLinkedIn || (!form.content && !form.excerpt)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#0077b5', color: '#fff', border: 'none', borderRadius: '7px', padding: '8px 16px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', opacity: (generatingLinkedIn || (!form.content && !form.excerpt)) ? 0.5 : 1 }}>
+            {generatingLinkedIn ? '⏳ Generating…' : '✨ Generate thread'}
+          </button>
+        </div>
+        <textarea
+          value={form.linkedin_thread || ''}
+          onChange={e => setForm((p: any) => ({ ...p, linkedin_thread: e.target.value }))}
+          rows={12}
+          placeholder="Click 'Generate thread' after writing your article content…"
+          style={{ ...inp, resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.7, fontSize: '0.82rem' }}
+        />
+        {form.linkedin_thread && (
+          <button onClick={() => { navigator.clipboard.writeText(form.linkedin_thread); alert('Thread copied to clipboard!') }}
+            style={{ marginTop: '8px', background: 'none', border: `1px solid ${t.border}`, color: t.muted, borderRadius: '7px', padding: '6px 14px', cursor: 'pointer', fontSize: '0.78rem' }}>
+            📋 Copy to clipboard
+          </button>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <button onClick={() => save(true)} disabled={saving || !form.title?.trim()}
+          style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '10px 22px', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', opacity: (saving || !form.title?.trim()) ? 0.6 : 1, transition: 'background-color 0.2s' }}>
+          {saved ? '✓ Saved' : saving ? 'Saving…' : 'Publish'}
+        </button>
+        <button onClick={() => save(false)} disabled={saving || !form.title?.trim()}
+          style={{ backgroundColor: 'transparent', color: t.muted, border: `1px solid ${t.border}`, borderRadius: '8px', padding: '10px 22px', fontSize: '0.875rem', cursor: 'pointer', opacity: (saving || !form.title?.trim()) ? 0.6 : 1 }}>
+          Save draft
+        </button>
+        <button onClick={onCancel} style={{ backgroundColor: 'transparent', color: t.muted, border: 'none', fontSize: '0.855rem', cursor: 'pointer', marginLeft: '4px' }}>Cancel</button>
       </div>
     </div>
   )
