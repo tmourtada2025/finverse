@@ -1,17 +1,14 @@
 /*
  * The Trader's Financial Blueprint — Sales Page
- *
- * $147 | Stripe-ready
- * STRIPE_LINK constant — replace "#" with your Stripe payment link
+ * Enrol button disabled when course is unpublished in Supabase
  */
 
+import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle, BookOpen, TrendingUp, Shield, Brain, DollarSign, BarChart2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
-// ─── REPLACE THIS WITH YOUR STRIPE PAYMENT LINK ───────────────────────────────
 const STRIPE_LINK = "https://buy.stripe.com/6oUbJ1eeK6YmdRDbRufjG01";
-// ──────────────────────────────────────────────────────────────────────────────
-
-const PRICE = "$147";
+const COURSE_SLUG = "traders-financial-blueprint";
 
 const modules = [
   { number: "01", title: "The Trader's Financial Paradox", description: "Why traders who can read a chart cannot read a balance sheet — and how that gap silently drains capital even during winning streaks. The psychology of separating trading performance from financial health.", icon: Brain },
@@ -40,12 +37,67 @@ const notForList = [
 const faqs = [
   { q: "Is this a trading strategy course?", a: "No. This course covers personal financial management specifically for traders — capital structuring, income architecture, taxes, and wealth building. Trading strategies are covered in the SMC course." },
   { q: "Do I need to be profitable before taking this?", a: "No. The earlier you build the right financial structure, the better. Most traders build bad habits around money management before they become profitable — this course helps you avoid that." },
-  { q: "How long is the course?", a: "Six modules. Designed to be completed over a weekend or spread across a week. The content is dense and practical — not padded." },
+  { q: "How long is the course?", a: "Eight modules. Designed to be completed over a weekend or spread across a week. The content is dense and practical — not padded." },
   { q: "Is there a refund policy?", a: "Yes. If you complete the course and feel it did not deliver value, contact us within 14 days for a full refund. No questions asked." },
   { q: "How is the course delivered?", a: "Video lessons with downloadable frameworks and worksheets. Lifetime access on purchase." },
 ];
 
+function EnrolButton({ available }: { available: boolean }) {
+  if (!available) return (
+    <div>
+      <div className="inline-flex items-center gap-3 px-8 py-4 text-base font-medium tracking-wide text-white cursor-not-allowed opacity-50"
+        style={{ backgroundColor: "#3E5C76" }}>
+        Currently Unavailable
+      </div>
+      <p className="text-xs text-[#9EA7B3] opacity-50 mt-3">
+        This course is temporarily unavailable. Check back soon or{" "}
+        <a href="mailto:support@finverse.world" className="underline">contact us</a>.
+      </p>
+    </div>
+  )
+  return (
+    <a href={STRIPE_LINK} target="_blank" rel="noopener noreferrer"
+      className="inline-flex items-center gap-3 px-8 py-4 text-base font-medium tracking-wide text-white transition-colors"
+      style={{ backgroundColor: "#3E5C76" }}
+      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#4d6d87")}
+      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3E5C76")}>
+      Enrol Now — $147 <ArrowRight size={18} />
+    </a>
+  )
+}
+
+function EnrolButtonSmall({ available }: { available: boolean }) {
+  if (!available) return (
+    <div className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-medium text-white opacity-50 cursor-not-allowed"
+      style={{ backgroundColor: "#3E5C76" }}>
+      Currently Unavailable
+    </div>
+  )
+  return (
+    <a href={STRIPE_LINK} target="_blank" rel="noopener noreferrer"
+      className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-medium tracking-wide text-white transition-colors"
+      style={{ backgroundColor: "#3E5C76" }}
+      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#4d6d87")}
+      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3E5C76")}>
+      Enrol Now <ArrowRight size={14} />
+    </a>
+  )
+}
+
 export default function Blueprint() {
+  const [available, setAvailable] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    supabase
+      .from('courses')
+      .select('is_published')
+      .eq('slug', COURSE_SLUG)
+      .single()
+      .then(({ data }) => setAvailable(data?.is_published ?? false))
+  }, [])
+
+  const ready = available !== null
+
   return (
     <div style={{ backgroundColor: "#111318" }}>
 
@@ -69,16 +121,10 @@ export default function Blueprint() {
                   </div>
                 ))}
               </div>
-              <a href={STRIPE_LINK} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 px-8 py-4 text-base font-medium tracking-wide text-white transition-colors"
-                style={{ backgroundColor: "#3E5C76" }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#4d6d87")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3E5C76")}>
-                Enrol Now — $147
-                <ArrowRight size={18} />
-              </a>
-              <p className="text-xs text-[#9EA7B3] opacity-50 mt-4">Secure checkout via Stripe. One-time payment. Lifetime access.</p>
+              {ready && <EnrolButton available={available!} />}
+              {available && <p className="text-xs text-[#9EA7B3] opacity-50 mt-4">Secure checkout via Stripe. One-time payment. Lifetime access.</p>}
             </div>
+
             <div className="md:col-span-5" style={{ backgroundColor: "rgba(62,92,118,0.08)", border: "1px solid rgba(62,92,118,0.25)", padding: "2rem" }}>
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-4">Course Access</p>
               <div className="flex items-baseline gap-2 mb-6">
@@ -93,13 +139,7 @@ export default function Blueprint() {
                 </div>
               ))}
               <div style={{ height: "1px", backgroundColor: "rgba(158,167,179,0.12)", margin: "1.5rem 0" }} />
-              <a href={STRIPE_LINK} target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-medium tracking-wide text-white transition-colors"
-                style={{ backgroundColor: "#3E5C76" }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#4d6d87")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3E5C76")}>
-                Enrol Now <ArrowRight size={14} />
-              </a>
+              {ready && <EnrolButtonSmall available={available!} />}
             </div>
           </div>
         </div>
@@ -205,14 +245,12 @@ export default function Blueprint() {
           <div className="flex items-baseline justify-center gap-1 mb-8">
             <span className="font-serif text-6xl font-bold text-[#F4F4F2]">$147</span>
           </div>
-          <a href={STRIPE_LINK} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-3 px-10 py-4 text-base font-medium tracking-wide text-white transition-colors mb-4"
-            style={{ backgroundColor: "#3E5C76" }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#4d6d87")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3E5C76")}>
-            Enrol Now <ArrowRight size={18} />
-          </a>
-          <p className="text-xs text-[#9EA7B3] opacity-40 mt-4">Secure checkout via Stripe. 14-day refund guarantee. No subscriptions.</p>
+          {ready && (
+            <div className="flex flex-col items-center gap-4">
+              <EnrolButton available={available!} />
+              {available && <p className="text-xs text-[#9EA7B3] opacity-40">Secure checkout via Stripe. 14-day refund guarantee. No subscriptions.</p>}
+            </div>
+          )}
         </div>
       </section>
 
