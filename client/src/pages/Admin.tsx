@@ -84,6 +84,11 @@ export default function Admin() {
   const [activeCourse, setActiveCourse]   = useState<Course | null>(null)
   const [editingModule, setEditingModule] = useState<any | null>(null)
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null)
+  const [sectionOpen, setSectionOpen]     = useState({ platform: true, courses: true, tools: true })
+
+  function toggleSection(s: 'platform' | 'courses' | 'tools') {
+    setSectionOpen(p => ({ ...p, [s]: !p[s] }))
+  }
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
 
   const t = mkT(dark)
@@ -163,11 +168,6 @@ export default function Admin() {
         {label}
       </button>
     )
-  }
-
-  const [sectionOpen, setSectionOpen] = useState({ platform: true, courses: true, tools: true })
-  function toggleSection(s: 'platform' | 'courses' | 'tools') {
-    setSectionOpen(p => ({ ...p, [s]: !p[s] }))
   }
 
   function renderMain() {
