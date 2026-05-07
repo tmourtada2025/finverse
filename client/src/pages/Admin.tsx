@@ -10,7 +10,7 @@ type AdminView =
   | 'overview' | 'users' | 'user_profile' | 'enrollments'
   | 'analytics' | 'notifications' | 'import'
   | 'course_new' | 'course_details' | 'course_content'
-  | 'lesson_editor' | 'module_editor'
+  | 'lesson_editor' | 'module_editor' | 'journal'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const I = {
@@ -135,6 +135,7 @@ export default function Admin() {
     else if (view === 'analytics')     parts.push('Analytics')
     else if (view === 'notifications') parts.push('Notifications')
     else if (view === 'import')        parts.push('Import Course')
+    else if (view === 'journal')       parts.push('Journal')
     else                               parts.push('Overview')
 
     return (
@@ -170,6 +171,7 @@ export default function Admin() {
       case 'analytics':     return <AnalyticsSection t={t} />
       case 'notifications': return <NotificationsSection t={t} />
       case 'import':        return <CourseImporter />
+      case 'journal':       return <JournalSection t={t} />
       case 'course_new':    return (
         <CourseDetailsForm
           key="new"
@@ -290,7 +292,8 @@ export default function Admin() {
           {/* Import */}
           <div style={{ marginTop: '14px' }}>
             <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.muted, padding: '4px 12px 6px', opacity: 0.5 }}>Tools</p>
-            <NavBtn id="import" label="Import Course" Icon={I.import} />
+            <NavBtn id="import"  label="Import Course" Icon={I.import} />
+            <NavBtn id="journal" label="Journal"        Icon={() => <span style={{ fontSize: '0.9rem' }}>✍️</span>} />
           </div>
         </nav>
 
@@ -1270,6 +1273,206 @@ function AnalyticsSection({ t }: { t:any }) {
           <thead style={{borderBottom:`1px solid ${t.border}`}}><tr>{['Course','Enrolled','Completed','Rate'].map(h=><th key={h} style={{textAlign:'left' as const,fontSize:'0.68rem',textTransform:'uppercase' as const,letterSpacing:'0.08em',color:t.muted,padding:'10px 20px',fontWeight:400}}>{h}</th>)}</tr></thead>
           <tbody>{data.courseStats.length===0?<tr><td colSpan={4} style={{padding:'20px',color:t.muted,textAlign:'center' as const}}>No data yet.</td></tr>:data.courseStats.map((c:any)=>(<tr key={c.id} style={{borderTop:`1px solid ${t.border}`}}><td style={{padding:'12px 20px',color:t.text}}>{c.title}{!c.is_published&&<span style={{fontSize:'0.65rem',color:t.muted,marginLeft:'6px'}}>(draft)</span>}</td><td style={{padding:'12px 20px',color:t.muted}}>{c.enrolled}</td><td style={{padding:'12px 20px',color:t.muted}}>{c.completed}</td><td style={{padding:'12px 20px'}}><div style={{display:'flex',alignItems:'center',gap:'8px'}}><div style={{width:80,height:4,backgroundColor:t.dim,borderRadius:'2px',overflow:'hidden'}}><div style={{height:'100%',width:`${c.rate}%`,backgroundColor:c.rate>=70?t.green:c.rate>=40?t.amber:t.red,borderRadius:'2px'}}/></div><span style={{fontSize:'0.78rem',color:t.muted}}>{c.rate}%</span></div></td></tr>))}</tbody>
         </table>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// JOURNAL SECTION
+// ══════════════════════════════════════════════════════════════════════════════
+function JournalSection({ t }: { t: any }) {
+  const [posts, setPosts]             = useState<any[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [editingPost, setEditingPost] = useState<any | null>(null)
+  const [isNew, setIsNew]             = useState(false)
+
+  useEffect(() => { fetchPosts() }, [])
+
+  async function fetchPosts() {
+    const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false })
+    setPosts(data || [])
+    setLoading(false)
+  }
+
+  function openNew() {
+    setEditingPost({ title: '', slug: '', excerpt: '', content: '', category: 'Structure', thumbnail_url: '', is_published: false })
+    setIsNew(true)
+  }
+
+  function openEdit(post: any) {
+    setEditingPost({ ...post })
+    setIsNew(false)
+  }
+
+  async function deletePost(id: string) {
+    if (!confirm('Delete this post?')) return
+    await supabase.from('posts').delete().eq('id', id)
+    fetchPosts()
+  }
+
+  if (editingPost) {
+    return (
+      <PostEditor
+        post={editingPost}
+        isNew={isNew}
+        t={t}
+        onSaved={() => { setEditingPost(null); fetchPosts() }}
+        onCancel={() => setEditingPost(null)}
+      />
+    )
+  }
+
+  return (
+    <div style={{ maxWidth: 800 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: t.text }}>Journal Posts</h2>
+        <button onClick={openNew}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: t.accent, color: t.accentText, border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '0.855rem', fontWeight: 600, cursor: 'pointer' }}>
+          + New post
+        </button>
+      </div>
+
+      {loading && <p style={{ color: t.muted }}>Loading…</p>}
+
+      {!loading && posts.length === 0 && (
+        <div style={{ border: `1px dashed ${t.border}`, borderRadius: '12px', padding: '48px', textAlign: 'center' as const, color: t.muted }}>
+          No posts yet. Click "+ New post" to write your first article.
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '8px' }}>
+        {posts.map(post => (
+          <div key={post.id} style={{ border: `1px solid ${t.border}`, borderRadius: '10px', padding: '16px 20px', backgroundColor: t.surface, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 600, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{post.title || 'Untitled'}</span>
+                <span style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: '4px', border: `1px solid ${post.is_published ? t.green + '50' : t.border}`, color: post.is_published ? t.green : t.muted, flexShrink: 0 }}>
+                  {post.is_published ? 'Published' : 'Draft'}
+                </span>
+                <span style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: '4px', backgroundColor: t.dim, color: t.muted, flexShrink: 0 }}>{post.category}</span>
+              </div>
+              <p style={{ fontSize: '0.75rem', color: t.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{post.excerpt || '—'}</p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              <button onClick={() => openEdit(post)} style={{ fontSize: '0.78rem', color: t.muted, border: `1px solid ${t.border}`, background: 'none', borderRadius: '7px', padding: '6px 14px', cursor: 'pointer' }}>Edit</button>
+              <button onClick={() => deletePost(post.id)} style={{ fontSize: '0.78rem', color: t.red, border: `1px solid ${t.red}30`, background: 'none', borderRadius: '7px', padding: '6px 14px', cursor: 'pointer' }}>Delete</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PostEditor({ post, isNew, t, onSaved, onCancel }: { post: any; isNew: boolean; t: any; onSaved: () => void; onCancel: () => void }) {
+  const [form, setForm]     = useState({ ...post })
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved]   = useState(false)
+  const { inp, lbl, card }  = styles(t)
+
+  function slugify(title: string) {
+    return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  }
+
+  async function save(publish?: boolean) {
+    setSaving(true)
+    const payload = {
+      ...form,
+      is_published: publish !== undefined ? publish : form.is_published,
+      published_at: (publish || form.is_published) ? (form.published_at || new Date().toISOString()) : null,
+      updated_at: new Date().toISOString(),
+    }
+    if (isNew) {
+      await supabase.from('posts').insert(payload)
+    } else {
+      await supabase.from('posts').update(payload).eq('id', form.id)
+    }
+    setSaving(false); setSaved(true)
+    setTimeout(() => onSaved(), 800)
+  }
+
+  return (
+    <div style={{ maxWidth: 800 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
+        <button onClick={onCancel} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: `1px solid ${t.border}`, color: t.muted, cursor: 'pointer', fontSize: '0.8rem', borderRadius: '7px', padding: '6px 12px' }}>
+          ← Back
+        </button>
+        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: t.text }}>{isNew ? 'New post' : 'Edit post'}</h2>
+      </div>
+
+      <div style={{ ...card, display: 'flex', flexDirection: 'column' as const, gap: '16px', marginBottom: '16px' }}>
+        {/* Title */}
+        <div>
+          <label style={lbl}>Title</label>
+          <input value={form.title} onChange={e => {
+            const title = e.target.value
+            setForm((p: any) => ({ ...p, title, slug: isNew ? slugify(title) : p.slug }))
+          }} placeholder="Article title…" style={inp} />
+        </div>
+
+        {/* Slug + Category */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div>
+            <label style={lbl}>Slug</label>
+            <input value={form.slug} onChange={e => setForm((p: any) => ({ ...p, slug: e.target.value }))} placeholder="url-slug" style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Category</label>
+            <select value={form.category} onChange={e => setForm((p: any) => ({ ...p, category: e.target.value }))}
+              style={{ ...inp, cursor: 'pointer' }}>
+              {['Structure', 'Macro', 'Psychology'].map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Excerpt */}
+        <div>
+          <label style={lbl}>Excerpt</label>
+          <textarea value={form.excerpt} onChange={e => setForm((p: any) => ({ ...p, excerpt: e.target.value }))} rows={2}
+            placeholder="Short description shown in the article list…"
+            style={{ ...inp, resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.6 }} />
+        </div>
+
+        {/* Thumbnail */}
+        <div>
+          <label style={lbl}>Thumbnail image</label>
+          <AdminFileUploader
+            bucket="post-images"
+            accept="image/*"
+            icon="🖼️"
+            label="thumbnail"
+            maxMB={5}
+            value={form.thumbnail_url || ''}
+            onChange={(v: string) => setForm((p: any) => ({ ...p, thumbnail_url: v }))}
+            t={t}
+          />
+        </div>
+      </div>
+
+      {/* Content */}
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{ ...lbl, marginBottom: '8px' }}>Article content</label>
+        <RichEditorInline
+          value={form.content || ''}
+          onChange={(v: string) => setForm((p: any) => ({ ...p, content: v }))}
+          t={t}
+        />
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <button onClick={() => save(true)} disabled={saving || !form.title.trim()}
+          style={{ backgroundColor: saved ? t.green : t.accent, color: saved ? '#fff' : t.accentText, border: 'none', borderRadius: '8px', padding: '10px 22px', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', opacity: (saving || !form.title.trim()) ? 0.6 : 1, transition: 'background-color 0.2s' }}>
+          {saved ? '✓ Saved' : saving ? 'Saving…' : 'Publish'}
+        </button>
+        <button onClick={() => save(false)} disabled={saving || !form.title.trim()}
+          style={{ backgroundColor: 'transparent', color: t.muted, border: `1px solid ${t.border}`, borderRadius: '8px', padding: '10px 22px', fontSize: '0.875rem', cursor: 'pointer', opacity: (saving || !form.title.trim()) ? 0.6 : 1 }}>
+          Save as draft
+        </button>
+        <button onClick={onCancel} style={{ backgroundColor: 'transparent', color: t.muted, border: 'none', fontSize: '0.855rem', cursor: 'pointer', marginLeft: '4px' }}>
+          Cancel
+        </button>
       </div>
     </div>
   )
