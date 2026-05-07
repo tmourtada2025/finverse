@@ -1311,6 +1311,15 @@ function JournalSection({ t }: { t: any }) {
     fetchPosts()
   }
 
+  async function togglePublish(post: any) {
+    const next = !post.is_published
+    await supabase.from('posts').update({
+      is_published: next,
+      published_at: next ? (post.published_at || new Date().toISOString()) : null,
+    }).eq('id', post.id)
+    fetchPosts()
+  }
+
   if (editingPost) {
     return (
       <PostEditor
@@ -1355,6 +1364,9 @@ function JournalSection({ t }: { t: any }) {
               <p style={{ fontSize: '0.75rem', color: t.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{post.excerpt || '—'}</p>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              <button onClick={() => togglePublish(post)} style={{ fontSize: '0.78rem', color: post.is_published ? t.amber : t.green, border: `1px solid ${post.is_published ? t.amber + '40' : t.green + '40'}`, background: 'none', borderRadius: '7px', padding: '6px 14px', cursor: 'pointer' }}>
+                {post.is_published ? 'Unpublish' : 'Publish'}
+              </button>
               <button onClick={() => openEdit(post)} style={{ fontSize: '0.78rem', color: t.muted, border: `1px solid ${t.border}`, background: 'none', borderRadius: '7px', padding: '6px 14px', cursor: 'pointer' }}>Edit</button>
               <button onClick={() => deletePost(post.id)} style={{ fontSize: '0.78rem', color: t.red, border: `1px solid ${t.red}30`, background: 'none', borderRadius: '7px', padding: '6px 14px', cursor: 'pointer' }}>Delete</button>
             </div>
