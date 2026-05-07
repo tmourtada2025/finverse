@@ -10,7 +10,7 @@ type AdminView =
   | 'overview' | 'users' | 'user_profile' | 'enrollments'
   | 'analytics' | 'notifications' | 'import'
   | 'course_new' | 'course_details' | 'course_content'
-  | 'lesson_editor' | 'module_editor' | 'journal' | 'calendar' | 'pipeline'
+  | 'lesson_editor' | 'module_editor' | 'journal' | 'calendar' | 'pipeline' | 'course_list'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const I = {
@@ -138,6 +138,7 @@ export default function Admin() {
     else if (view === 'journal')       parts.push('Journal')
     else if (view === 'calendar')      parts.push('Posting Calendar')
     else if (view === 'pipeline')      parts.push('Course Pipeline')
+    else if (view === 'course_list')   parts.push('All Courses')
     else                               parts.push('Overview')
 
     return (
@@ -164,7 +165,10 @@ export default function Admin() {
     )
   }
 
-  function renderMain() {
+  const [sectionOpen, setSectionOpen] = useState({ platform: true, courses: true, tools: true })
+  function toggleSection(s: 'platform' | 'courses' | 'tools') {
+    setSectionOpen(p => ({ ...p, [s]: !p[s] }))
+  }
     switch (view) {
       case 'overview':      return <OverviewSection t={t} onNavigate={(v) => setView(v as AdminView)} />
       case 'users':         return <UsersSection t={t} onViewProfile={(id) => { setSelectedUserId(id); setView('user_profile') }} />
@@ -176,6 +180,7 @@ export default function Admin() {
       case 'journal':       return <JournalSection t={t} />
       case 'calendar':      return <CalendarSection t={t} onEditPost={(post) => { setView('journal') }} />
       case 'pipeline':      return <PipelineSection t={t} />
+      case 'course_list':   return <CourseListSection t={t} courses={courses} onOpen={openCourse} onNew={() => { setActiveCourse(null); setView('course_new') }} />
       case 'course_new':    return (
         <CourseDetailsForm
           key="new"
@@ -255,51 +260,68 @@ export default function Admin() {
         {/* Nav */}
         <nav style={{ flex: 1, padding: '10px', overflowY: 'auto' }}>
 
-          {/* Platform */}
-          <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.muted, padding: '8px 12px 4px', opacity: 0.5 }}>Platform</p>
-          <NavBtn id="overview"      label="Overview"      Icon={I.overview} />
-          <NavBtn id="users"         label="Users"         Icon={I.users} />
-          <NavBtn id="enrollments"   label="Enrollments"   Icon={I.enrollments} />
-          <NavBtn id="analytics"     label="Analytics"     Icon={I.analytics} />
-          <NavBtn id="notifications" label="Notifications" Icon={() => <span style={{ fontSize: '0.9rem' }}>🔔</span>} />
+          {/* Platform — collapsible */}
+          <button onClick={() => toggleSection('platform')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '8px 12px 4px', marginBottom: '2px' }}>
+            <span style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.muted, opacity: 0.6 }}>Platform</span>
+            <span style={{ fontSize: '0.6rem', color: t.muted, opacity: 0.4, transform: sectionOpen.platform ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▼</span>
+          </button>
+          {sectionOpen.platform && (
+            <>
+              <NavBtn id="overview"      label="Overview"      Icon={I.overview} />
+              <NavBtn id="users"         label="Users"         Icon={I.users} />
+              <NavBtn id="enrollments"   label="Enrollments"   Icon={I.enrollments} />
+              <NavBtn id="analytics"     label="Analytics"     Icon={I.analytics} />
+              <NavBtn id="notifications" label="Notifications" Icon={() => <span style={{ fontSize: '0.9rem' }}>🔔</span>} />
+            </>
+          )}
 
-          {/* Courses */}
-          <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px 6px' }}>
-            <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.muted, opacity: 0.5 }}>Courses</p>
-            <button
-              onClick={() => { setActiveCourse(null); setView('course_new') }}
-              style={{ fontSize: '0.68rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '5px', padding: '2px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <I.plus /> New
-            </button>
-          </div>
-
-          {/* Course list in sidebar */}
-          <div>
-            {courses.map(c => {
-              const active = activeCourse?.id === c.id && (view === 'course_details' || view === 'course_content' || view === 'lesson_editor' || view === 'module_editor')
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => openCourse(c)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '7px 12px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, borderRadius: '7px', marginBottom: '1px', backgroundColor: active ? t.activeNavBg : 'transparent', color: active ? t.activeNavText : t.navText, fontSize: '0.82rem', fontWeight: active ? 500 : 400, transition: 'all 0.1s' }}>
-                  <I.book />
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{c.title}</span>
-                  {c.is_published
-                    ? <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: '3px', backgroundColor: t.green + '20', color: t.green, flexShrink: 0 }}>Live</span>
-                    : <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: '3px', backgroundColor: t.border, color: t.muted, flexShrink: 0 }}>Draft</span>}
-                </button>
-              )
-            })}
-            {courses.length === 0 && <p style={{ fontSize: '0.75rem', color: t.dim, padding: '6px 12px' }}>No courses yet</p>}
-          </div>
-
-          {/* Import */}
+          {/* Courses — collapsible + clickable header */}
           <div style={{ marginTop: '14px' }}>
-            <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.muted, padding: '4px 12px 6px', opacity: 0.5 }}>Tools</p>
-            <NavBtn id="import"   label="Import Course" Icon={I.import} />
-            <NavBtn id="journal"  label="Journal"        Icon={() => <span style={{ fontSize: '0.9rem' }}>✍️</span>} />
-            <NavBtn id="calendar" label="Calendar"       Icon={() => <span style={{ fontSize: '0.9rem' }}>📅</span>} />
-            <NavBtn id="pipeline" label="Pipeline"       Icon={() => <span style={{ fontSize: '0.9rem' }}>🚀</span>} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px 4px' }}>
+              <button onClick={() => { setView('course_list'); toggleSection('courses') }} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                <span style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: view === 'course_list' ? t.accent : t.muted, opacity: view === 'course_list' ? 1 : 0.6 }}>Courses</span>
+                <span style={{ fontSize: '0.6rem', color: t.muted, opacity: 0.4, transform: sectionOpen.courses ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▼</span>
+              </button>
+              <button onClick={() => { setActiveCourse(null); setView('course_new') }}
+                style={{ fontSize: '0.68rem', color: t.muted, background: 'none', border: `1px solid ${t.border}`, borderRadius: '5px', padding: '2px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <I.plus /> New
+              </button>
+            </div>
+
+            {sectionOpen.courses && (
+              <div>
+                {courses.map(c => {
+                  const active = activeCourse?.id === c.id && (view === 'course_details' || view === 'course_content' || view === 'lesson_editor' || view === 'module_editor')
+                  return (
+                    <button key={c.id} onClick={() => openCourse(c)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '7px 12px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, borderRadius: '7px', marginBottom: '1px', backgroundColor: active ? t.activeNavBg : 'transparent', color: active ? t.activeNavText : t.navText, fontSize: '0.82rem', fontWeight: active ? 500 : 400, transition: 'all 0.1s' }}>
+                      <I.book />
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{c.title}</span>
+                      {c.is_published
+                        ? <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: '3px', backgroundColor: t.green + '20', color: t.green, flexShrink: 0 }}>Live</span>
+                        : <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: '3px', backgroundColor: t.border, color: t.muted, flexShrink: 0 }}>Draft</span>}
+                    </button>
+                  )
+                })}
+                {courses.length === 0 && <p style={{ fontSize: '0.75rem', color: t.dim, padding: '6px 12px' }}>No courses yet</p>}
+              </div>
+            )}
+          </div>
+
+          {/* Tools — collapsible */}
+          <div style={{ marginTop: '14px' }}>
+            <button onClick={() => toggleSection('tools')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 12px 4px', marginBottom: '2px' }}>
+              <span style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: t.muted, opacity: 0.6 }}>Tools</span>
+              <span style={{ fontSize: '0.6rem', color: t.muted, opacity: 0.4, transform: sectionOpen.tools ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▼</span>
+            </button>
+            {sectionOpen.tools && (
+              <>
+                <NavBtn id="import"   label="Import Course" Icon={I.import} />
+                <NavBtn id="journal"  label="Journal"        Icon={() => <span style={{ fontSize: '0.9rem' }}>✍️</span>} />
+                <NavBtn id="calendar" label="Calendar"       Icon={() => <span style={{ fontSize: '0.9rem' }}>📅</span>} />
+                <NavBtn id="pipeline" label="Pipeline"       Icon={() => <span style={{ fontSize: '0.9rem' }}>🚀</span>} />
+              </>
+            )}
           </div>
         </nav>
 
@@ -1976,6 +1998,69 @@ function PipelineSection({ t }: { t: any }) {
       <p style={{ fontSize: '0.72rem', color: t.muted, marginTop: '12px' }}>
         Changes appear on the Education page immediately after saving.
       </p>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COURSE LIST SECTION — All courses grouped by status
+// ══════════════════════════════════════════════════════════════════════════════
+function CourseListSection({ t, courses, onOpen, onNew }: {
+  t: any
+  courses: any[]
+  onOpen: (course: any) => void
+  onNew: () => void
+}) {
+  const published = courses.filter(c => c.is_published)
+  const drafts    = courses.filter(c => !c.is_published)
+
+  function Group({ title, items, color }: { title: string; items: any[]; color: string }) {
+    return (
+      <div style={{ marginBottom: '32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color }}>{title}</span>
+          <span style={{ fontSize: '0.68rem', padding: '1px 7px', borderRadius: '10px', backgroundColor: color + '15', color }}>{items.length}</span>
+        </div>
+        {items.length === 0 ? (
+          <p style={{ fontSize: '0.78rem', color: t.muted, padding: '16px', border: `1px dashed ${t.border}`, borderRadius: '8px', textAlign: 'center' as const }}>None</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '8px' }}>
+            {items.map(c => (
+              <button key={c.id} onClick={() => onOpen(c)}
+                style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '14px 18px', border: `1px solid ${t.border}`, borderRadius: '10px', backgroundColor: t.surface, cursor: 'pointer', textAlign: 'left' as const, transition: 'border-color 0.15s' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = color + '60'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = t.border}>
+                <div style={{ width: 36, height: 36, borderRadius: '8px', backgroundColor: color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: '1rem' }}>📚</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '0.875rem', fontWeight: 600, color: t.text, marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{c.title}</p>
+                  <p style={{ fontSize: '0.72rem', color: t.muted }}>${c.price} · {c.slug}</p>
+                </div>
+                <span style={{ fontSize: '0.72rem', padding: '3px 9px', borderRadius: '5px', backgroundColor: color + '15', color, flexShrink: 0, fontWeight: 500 }}>
+                  {c.is_published ? 'Live' : 'Draft'}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: t.muted }}>→</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ maxWidth: 700 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: t.text }}>All Courses</h2>
+        <button onClick={onNew}
+          style={{ backgroundColor: t.accent, color: t.accentText, border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '0.855rem', fontWeight: 600, cursor: 'pointer' }}>
+          + New course
+        </button>
+      </div>
+
+      <Group title="Published" items={published} color={t.green} />
+      <Group title="Draft"     items={drafts}    color={t.muted} />
     </div>
   )
 }
