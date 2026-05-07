@@ -126,8 +126,8 @@ export default function Admin() {
 
   const initials = profile?.full_name ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : 'A'
 
-  // Breadcrumb
-  function Breadcrumb() {
+  // Breadcrumb — plain function, not a component
+  function renderBreadcrumb() {
     const parts: string[] = []
     if (view === 'course_new')     parts.push('Courses', 'New course')
     else if (view === 'course_details' && activeCourse) parts.push('Courses', activeCourse.title)
@@ -158,11 +158,11 @@ export default function Admin() {
     )
   }
 
-  // Sidebar nav button
-  function NavBtn({ id, label, Icon }: { id: AdminView; label: string; Icon: () => JSX.Element }) {
+  // Sidebar nav button — plain function, not a component
+  function renderNavBtn(id: AdminView, label: string, Icon: () => JSX.Element) {
     const active = view === id
     return (
-      <button onClick={() => { setView(id); setActiveCourse(null) }}
+      <button key={id} onClick={() => { setView(id); setActiveCourse(null) }}
         style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '8px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left' as const, marginBottom: '1px', backgroundColor: active ? t.activeNavBg : 'transparent', color: active ? t.activeNavText : t.navText, fontWeight: active ? 500 : 400, fontSize: '0.84rem', transition: 'all 0.12s' }}>
         <span style={{ opacity: active ? 1 : 0.65, flexShrink: 0 }}><Icon /></span>
         {label}
@@ -269,11 +269,11 @@ export default function Admin() {
           </button>
           {sectionOpen.platform && (
             <>
-              <NavBtn id="overview"      label="Overview"      Icon={I.overview} />
-              <NavBtn id="users"         label="Users"         Icon={I.users} />
-              <NavBtn id="enrollments"   label="Enrollments"   Icon={I.enrollments} />
-              <NavBtn id="analytics"     label="Analytics"     Icon={I.analytics} />
-              <NavBtn id="notifications" label="Notifications" Icon={() => <span style={{ fontSize: '0.9rem' }}>🔔</span>} />
+              {renderNavBtn("overview",      "Overview",      I.overview)}
+              {renderNavBtn("users",         "Users",         I.users)}
+              {renderNavBtn("enrollments",   "Enrollments",   I.enrollments)}
+              {renderNavBtn("analytics",     "Analytics",     I.analytics)}
+              {renderNavBtn("notifications", "Notifications", () => <span style={{ fontSize: '0.9rem' }}>🔔</span>)}
             </>
           )}
 
@@ -318,10 +318,10 @@ export default function Admin() {
             </button>
             {sectionOpen.tools && (
               <>
-                <NavBtn id="import"   label="Import Course" Icon={I.import} />
-                <NavBtn id="journal"  label="Journal"        Icon={() => <span style={{ fontSize: '0.9rem' }}>✍️</span>} />
-                <NavBtn id="calendar" label="Calendar"       Icon={() => <span style={{ fontSize: '0.9rem' }}>📅</span>} />
-                <NavBtn id="pipeline" label="Pipeline"       Icon={() => <span style={{ fontSize: '0.9rem' }}>🚀</span>} />
+                {renderNavBtn("import",   "Import Course", I.import)}
+                {renderNavBtn("journal",  "Journal",       () => <span style={{ fontSize: '0.9rem' }}>✍️</span>)}
+                {renderNavBtn("calendar", "Calendar",      () => <span style={{ fontSize: '0.9rem' }}>📅</span>)}
+                {renderNavBtn("pipeline", "Pipeline",      () => <span style={{ fontSize: '0.9rem' }}>🚀</span>)}
               </>
             )}
           </div>
@@ -344,7 +344,7 @@ export default function Admin() {
       {/* ── Main ── */}
       <main style={{ flex: 1, overflowY: 'auto', minHeight: '100vh' }}>
         <div style={{ padding: '0 32px', height: 56, display: 'flex', alignItems: 'center', borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, backgroundColor: t.bg, zIndex: 10 }}>
-          <Breadcrumb />
+          {renderBreadcrumb()}
         </div>
         <div style={{ padding: '28px 32px' }}>
           {renderMain()}
