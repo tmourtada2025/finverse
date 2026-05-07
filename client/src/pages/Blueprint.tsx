@@ -42,19 +42,6 @@ const faqs = [
   { q: "How is the course delivered?", a: "Video lessons with downloadable frameworks and worksheets. Lifetime access on purchase." },
 ];
 
-function EnrolButton({ available }: { available: boolean }) {
-  if (!available) return null
-  return (
-    <a href={STRIPE_LINK} target="_blank" rel="noopener noreferrer"
-      className="inline-flex items-center gap-3 px-8 py-4 text-base font-medium tracking-wide text-white transition-colors"
-      style={{ backgroundColor: "#3E5C76" }}
-      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#4d6d87")}
-      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3E5C76")}>
-      Enrol Now — $147 <ArrowRight size={18} />
-    </a>
-  )
-}
-
 function EnrolButtonSmall({ available }: { available: boolean }) {
   if (!available) return (
     <div>
@@ -116,8 +103,6 @@ export default function Blueprint() {
                   </div>
                 ))}
               </div>
-              {ready && <EnrolButton available={available!} />}
-              {available && <p className="text-xs text-[#9EA7B3] opacity-50 mt-4">Secure checkout via Stripe. One-time payment. Lifetime access.</p>}
             </div>
 
             <div className="md:col-span-5" style={{ backgroundColor: "rgba(62,92,118,0.08)", border: "1px solid rgba(62,92,118,0.25)", padding: "2rem" }}>
@@ -137,6 +122,7 @@ export default function Blueprint() {
               ))}
               <div style={{ height: "1px", backgroundColor: "rgba(158,167,179,0.12)", margin: "1.5rem 0" }} />
               {ready && <EnrolButtonSmall available={available!} />}
+              {available && <p className="text-xs text-[#9EA7B3] opacity-50 mt-3 text-center">Secure checkout via Stripe. One-time payment. Lifetime access.</p>}
             </div>
           </div>
         </div>
@@ -246,7 +232,7 @@ export default function Blueprint() {
           )}
           {ready && (
             <div className="flex flex-col items-center gap-4">
-              <EnrolButton available={available!} />
+              <EnrolButtonSmall available={available!} />
               {available && <p className="text-xs text-[#9EA7B3] opacity-40">Secure checkout via Stripe. 14-day refund guarantee. No subscriptions.</p>}
             </div>
           )}
