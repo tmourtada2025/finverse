@@ -12,7 +12,6 @@ import { supabase } from "@/lib/supabase";
 import SupportChat from "@/components/SupportChat";
 
 const HERO_IMAGE = "https://files.manuscdn.com/user_upload_by_module/session_file/99087322/QcPaRPASaFbAtVEc.png";
-const UDEMY_URL = "https://www.udemy.com/course/smart-money-concepts-the-complete-guide-to-smart-trading/?referralCode=C4DBD99FE2D9012F18F5";
 
 interface Post {
   slug: string;
@@ -177,25 +176,25 @@ export default function Home() {
 
       <div style={{ height: "1px", backgroundColor: "#9EA7B3", opacity: 0.15 }} />
 
-      {/* ===== SECTION 5: UDEMY AD BANNER ===== */}
+      {/* ===== SECTION 5: EDUCATION CROSS-LINK ===== */}
       <section className="py-14 md:py-16" style={{ backgroundColor: "#0d0f14" }}>
         <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-start gap-5">
               <div className="hidden md:block w-px self-stretch" style={{ backgroundColor: "#3E5C76", opacity: 0.6 }} />
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-[#9EA7B3] opacity-50 mb-2">Course</p>
-                <h3 className="font-serif text-lg md:text-xl font-bold text-[#F4F4F2] mb-1.5">Smart Money Concepts — The Complete Guide to Smart Trading</h3>
-                <p className="text-xs text-[#9EA7B3] opacity-70">Hybrid structure integration for independent traders.</p>
+                <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-[#9EA7B3] opacity-50 mb-2">Courses</p>
+                <h3 className="font-serif text-lg md:text-xl font-bold text-[#F4F4F2] mb-1.5">Built for Serious Traders</h3>
+                <p className="text-xs text-[#9EA7B3] opacity-70">Smart Money Concepts · The Trader's Financial Blueprint</p>
               </div>
             </div>
-            <a href={UDEMY_URL} target="_blank" rel="noopener noreferrer"
+            <Link href="/education"
               className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium tracking-wide transition-colors whitespace-nowrap shrink-0"
               style={{ border: "1px solid #3E5C76", color: "#3E5C76" }}
               onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#3E5C76"; e.currentTarget.style.color = "#ffffff" }}
               onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#3E5C76" }}>
-              View Course <ArrowRight size={14} />
-            </a>
+              View Courses <ArrowRight size={14} />
+            </Link>
           </div>
         </div>
       </section>

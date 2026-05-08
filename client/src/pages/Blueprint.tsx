@@ -210,7 +210,7 @@ export default function Blueprint() {
           <div style={{ maxWidth: "720px" }}>
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-6">The Instructor</p>
             <h2 className="font-serif text-2xl md:text-3xl font-bold text-[#F4F4F2] mb-6">Toufic Mourtada — The Trader Alchemist</h2>
-            <p className="text-[#9EA7B3] mb-5" style={{ lineHeight: "1.8" }}>Toufic Mourtada is the founder of FinVerse and the Sovereign Trader Institute. He has spent over a decade at the intersection of market structure analysis and trader psychology — first applying these frameworks to his own trading, then building systems to teach them to others.</p>
+            <p className="text-[#9EA7B3] mb-5" style={{ lineHeight: "1.8" }}>Toufic Mourtada is the founder of FinVerse. He has spent over a decade at the intersection of market structure analysis and trader psychology — first applying these frameworks to his own trading, then building systems to teach them to others.</p>
             <p className="text-[#9EA7B3] mb-5" style={{ lineHeight: "1.8" }}>The Trader's Financial Blueprint emerged from a consistent pattern observed across hundreds of traders: technical competence and financial incompetence coexisting in the same person. The course is the structured response to that pattern — practical, direct, and built entirely on what actually costs traders money outside their charts.</p>
             <p className="text-[#9EA7B3]" style={{ lineHeight: "1.8" }}>His SMC course on Udemy has helped thousands of traders develop a rigorous technical framework. This course completes the other half of the equation.</p>
           </div>
