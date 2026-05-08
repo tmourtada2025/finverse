@@ -1,0 +1,17 @@
+# FinVerse — robots.txt
+# https://finverse.world
+
+User-agent: *
+Allow: /
+
+# Block admin and authenticated user areas from crawl
+Disallow: /admin
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /learn/
+Disallow: /login
+Disallow: /reset-password
+Disallow: /auth/
+
+Sitemap: https://finverse.world/sitemap.xml
