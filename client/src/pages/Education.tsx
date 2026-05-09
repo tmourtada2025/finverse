@@ -1,42 +1,43 @@
 /*
  * FinVerse Education Page — /education
- * Blueprint card respects is_published from Supabase.
- * Top-right badge: "Coming Soon" while unpublished, "New" for 90 days after first publish, none after.
- * CTA: "Preview Course" while unpublished, "View Course — $147" once published.
+ * Both course cards respect is_published from Supabase
+ * SMC migrated from Udemy referral to native FinVerse course card (V1 launch)
  */
 
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, ExternalLink, CheckCircle, BarChart2, Brain } from "lucide-react";
+import { ArrowRight, CheckCircle, BarChart2, Brain } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-const UDEMY_URL = "https://www.udemy.com/course/smart-money-concepts-the-complete-guide-to-smart-trading/?referralCode=C4DBD99FE2D9012F18F5";
-const COURSE_SLUG = "traders-financial-blueprint";
+const SMC_SLUG = "smc-complete-guide";
+const BLUEPRINT_SLUG = "traders-financial-blueprint";
 
-// Badge logic for FinVerse-hosted courses.
-// - Unpublished: "coming-soon"
-// - Published <= 90 days ago: "new"
-// - Published > 90 days ago: no badge
-type CourseBadge = "coming-soon" | "new" | null;
+type CourseAvailability = {
+  is_published: boolean | null;
+  published_at: string | null;
+};
 
-function getCourseBadge(course: { is_published: boolean; published_at: string | null } | null): CourseBadge {
-  if (!course) return null
-  if (!course.is_published) return "coming-soon"
-  if (!course.published_at) return null
-  const daysSincePublish = (Date.now() - new Date(course.published_at).getTime()) / 86400000
-  return daysSincePublish <= 90 ? "new" : null
+function isWithin90Days(publishedAt: string | null): boolean {
+  if (!publishedAt) return false;
+  const publishedDate = new Date(publishedAt);
+  const now = new Date();
+  const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+  return now.getTime() - publishedDate.getTime() <= ninetyDaysMs;
 }
 
 export default function Education() {
-  const [blueprintCourse, setBlueprintCourse] = useState<{ is_published: boolean; published_at: string | null } | null>(null)
+  const [smc, setSmc] = useState<CourseAvailability | null>(null)
+  const [blueprint, setBlueprint] = useState<CourseAvailability | null>(null)
   const [pipeline, setPipeline] = useState<any[]>([])
   const [publishedTitles, setPublishedTitles] = useState<string[]>([])
 
   useEffect(() => {
-    supabase.from('courses').select('is_published, published_at, title').eq('slug', COURSE_SLUG).single()
-      .then(({ data }) => setBlueprintCourse(data ? { is_published: data.is_published, published_at: data.published_at } : { is_published: false, published_at: null }))
+    supabase.from('courses').select('is_published, published_at').eq('slug', SMC_SLUG).single()
+      .then(({ data }) => setSmc(data as CourseAvailability ?? { is_published: false, published_at: null }))
 
-    // Get all published LMS course titles to exclude from pipeline
+    supabase.from('courses').select('is_published, published_at').eq('slug', BLUEPRINT_SLUG).single()
+      .then(({ data }) => setBlueprint(data as CourseAvailability ?? { is_published: false, published_at: null }))
+
     supabase.from('courses').select('title').eq('is_published', true)
       .then(({ data }) => setPublishedTitles((data || []).map((c: any) => c.title.toLowerCase())))
 
@@ -44,9 +45,11 @@ export default function Education() {
       .then(({ data }) => setPipeline(data || []))
   }, [])
 
-  const ready = blueprintCourse !== null
-  const blueprintAvailable = blueprintCourse?.is_published ?? false
-  const blueprintBadge = getCourseBadge(blueprintCourse)
+  const ready = smc !== null && blueprint !== null
+  const smcAvailable = smc?.is_published ?? false
+  const blueprintAvailable = blueprint?.is_published ?? false
+  const smcShowNew = smcAvailable && isWithin90Days(smc?.published_at ?? null)
+  const blueprintShowNew = blueprintAvailable && isWithin90Days(blueprint?.published_at ?? null)
 
   return (
     <div style={{ backgroundColor: "#111318" }}>
@@ -70,10 +73,10 @@ export default function Education() {
         <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
           <div className="grid md:grid-cols-2 gap-8">
 
-            {/* SMC Course — Udemy, always visible */}
+            {/* SMC — FinVerse, respects publish status */}
             <div className="flex flex-col" style={{
-              backgroundColor: "rgba(158,167,179,0.03)",
-              border: "1px solid rgba(158,167,179,0.1)",
+              backgroundColor: "rgba(62,92,118,0.06)",
+              border: "1px solid rgba(62,92,118,0.3)",
             }}>
               <div className="p-8 flex-1">
                 <div className="flex items-start justify-between mb-6">
@@ -83,15 +86,28 @@ export default function Education() {
                     </div>
                     <div>
                       <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[#9EA7B3] opacity-60">Market Structure</p>
-                      <span className="text-[9px] font-medium uppercase tracking-[0.1em] px-1.5 py-0.5" style={{ backgroundColor: "rgba(62,92,118,0.15)", color: "#3E5C76", border: "1px solid rgba(62,92,118,0.25)" }}>Udemy</span>
+                      <span className="text-[9px] font-medium uppercase tracking-[0.1em] px-1.5 py-0.5" style={{ backgroundColor: "rgba(62,92,118,0.15)", color: "#3E5C76", border: "1px solid rgba(62,92,118,0.25)" }}>FinVerse</span>
                     </div>
                   </div>
+                  {ready && smcShowNew && (
+                    <span className="text-[9px] font-medium uppercase tracking-[0.12em] px-2 py-1" style={{ backgroundColor: "rgba(62,92,118,0.2)", color: "#3E5C76", border: "1px solid rgba(62,92,118,0.3)" }}>New</span>
+                  )}
+                  {ready && !smcAvailable && (
+                    <span className="text-[9px] font-medium uppercase tracking-[0.12em] px-2 py-1" style={{ backgroundColor: "rgba(158,167,179,0.08)", color: "#9EA7B3", border: "1px solid rgba(158,167,179,0.2)" }}>Coming Soon</span>
+                  )}
                 </div>
                 <h2 className="font-serif text-2xl font-bold text-[#F4F4F2] mb-2 leading-snug">SMC: The Complete Guide to Smart Trading</h2>
-                <p className="text-xs text-[#9EA7B3] opacity-60 mb-4 uppercase tracking-[0.08em]">Smart Money Concepts — Hybrid Structure Integration</p>
-                <p className="text-sm text-[#9EA7B3] mb-6" style={{ lineHeight: "1.8" }}>A complete technical framework for independent traders. Covers institutional order flow, liquidity mechanics, fair value gaps, order blocks, and structural execution across all market sessions.</p>
+                <p className="text-xs text-[#9EA7B3] opacity-60 mb-4 uppercase tracking-[0.08em]">Smart Money Concepts — Institutional Order Flow</p>
+                <p className="text-sm text-[#9EA7B3] mb-6" style={{ lineHeight: "1.8" }}>The complete technical framework for independent traders. Read institutional order flow, identify liquidity engineering in real time, and trade with the smart money instead of becoming their liquidity.</p>
                 <div className="mb-6">
-                  {["Full SMC methodology from first principles","Liquidity pools, order blocks, fair value gaps","Multi-timeframe structural analysis","Session timing and volatility windows","Risk architecture and position sizing","Live trade walkthroughs"].map((h) => (
+                  {[
+                    "Five-module structural framework, twenty-five lessons",
+                    "Order blocks, fair value gaps, liquidity grabs",
+                    "Multi-timeframe execution from first principles",
+                    "Precision entries, stop placement, trade management",
+                    "Risk architecture and position sizing",
+                    "HD video, written reference, knowledge checks",
+                  ].map((h) => (
                     <div key={h} className="flex items-start gap-2.5 mb-2.5">
                       <CheckCircle size={13} className="shrink-0 mt-0.5" style={{ color: "#3E5C76" }} />
                       <span className="text-xs text-[#9EA7B3]" style={{ lineHeight: "1.6" }}>{h}</span>
@@ -99,7 +115,7 @@ export default function Education() {
                   ))}
                 </div>
                 <div className="flex items-center gap-4">
-                  {[["Level","Beginner → Advanced"],["Format","Self-paced"],["Price","On Udemy"]].map(([label, val], i) => (
+                  {[["Level","Beginner → Advanced"],["Format","5 Modules"],["Price", smcAvailable ? "$199 · One-time" : "—"]].map(([label, val], i) => (
                     <div key={label} className="flex items-center gap-4">
                       {i > 0 && <div style={{ width: "1px", height: "28px", backgroundColor: "rgba(158,167,179,0.15)" }} />}
                       <div>
@@ -111,13 +127,26 @@ export default function Education() {
                 </div>
               </div>
               <div className="px-8 py-5" style={{ borderTop: "1px solid rgba(158,167,179,0.08)" }}>
-                <a href={UDEMY_URL} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide transition-colors"
-                  style={{ border: "1px solid rgba(62,92,118,0.5)", color: "#3E5C76" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#3E5C76"; e.currentTarget.style.color = "#ffffff" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#3E5C76" }}>
-                  View on Udemy <ExternalLink size={13} />
-                </a>
+                {!ready ? null : smcAvailable ? (
+                  <Link href="/courses/smc-complete-guide"
+                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide text-white transition-colors"
+                    style={{ backgroundColor: "#3E5C76" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#4d6d87")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3E5C76")}>
+                    View Course — $199 <ArrowRight size={13} />
+                  </Link>
+                ) : (
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide text-white opacity-50 cursor-not-allowed"
+                      style={{ backgroundColor: "#3E5C76" }}>
+                      Launching Soon
+                    </div>
+                    <p className="text-xs text-[#9EA7B3] opacity-50 mt-3">
+                      Coming soon. Check back or{" "}
+                      <a href="mailto:support@finverse.world" className="underline">contact us</a>.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -137,16 +166,16 @@ export default function Education() {
                       <span className="text-[9px] font-medium uppercase tracking-[0.1em] px-1.5 py-0.5" style={{ backgroundColor: "rgba(62,92,118,0.15)", color: "#3E5C76", border: "1px solid rgba(62,92,118,0.25)" }}>FinVerse</span>
                     </div>
                   </div>
-                  {blueprintBadge === "coming-soon" && (
-                    <span className="text-[9px] font-medium uppercase tracking-[0.12em] px-2 py-1" style={{ backgroundColor: "rgba(158,167,179,0.1)", color: "#9EA7B3", border: "1px solid rgba(158,167,179,0.2)" }}>Coming Soon</span>
-                  )}
-                  {blueprintBadge === "new" && (
+                  {ready && blueprintShowNew && (
                     <span className="text-[9px] font-medium uppercase tracking-[0.12em] px-2 py-1" style={{ backgroundColor: "rgba(62,92,118,0.2)", color: "#3E5C76", border: "1px solid rgba(62,92,118,0.3)" }}>New</span>
+                  )}
+                  {ready && !blueprintAvailable && (
+                    <span className="text-[9px] font-medium uppercase tracking-[0.12em] px-2 py-1" style={{ backgroundColor: "rgba(158,167,179,0.08)", color: "#9EA7B3", border: "1px solid rgba(158,167,179,0.2)" }}>Coming Soon</span>
                   )}
                 </div>
                 <h2 className="font-serif text-2xl font-bold text-[#F4F4F2] mb-2 leading-snug">The Trader's Financial Blueprint</h2>
                 <p className="text-xs text-[#9EA7B3] opacity-60 mb-4 uppercase tracking-[0.08em]">Capital Structure · Income Architecture · Financial Sovereignty</p>
-                <p className="text-sm text-[#9EA7B3] mb-6" style={{ lineHeight: "1.8" }}>Most traders spend years learning how to read markets. Almost none learn what to do with the money those markets generate. Six focused modules covering everything outside the chart.</p>
+                <p className="text-sm text-[#9EA7B3] mb-6" style={{ lineHeight: "1.8" }}>Most traders spend years learning how to read markets. Almost none learn what to do with the money those markets generate. Eight focused modules covering everything outside the chart.</p>
                 <div className="mb-6">
                   {["Separating trading capital from personal finances","Income streams that survive drawdown periods","Tax obligations and entity structuring","Risk of ruin applied to your full financial life","Wealth building alongside active trading","Lifetime access and downloadable frameworks"].map((h) => (
                     <div key={h} className="flex items-start gap-2.5 mb-2.5">
@@ -156,7 +185,7 @@ export default function Education() {
                   ))}
                 </div>
                 <div className="flex items-center gap-4">
-                  {[["Level","All Levels"],["Format","6 Modules"],["Price", blueprintAvailable ? "$147 · One-time" : "—"]].map(([label, val], i) => (
+                  {[["Level","All Levels"],["Format","8 Modules"],["Price", blueprintAvailable ? "$147 · One-time" : "—"]].map(([label, val], i) => (
                     <div key={label} className="flex items-center gap-4">
                       {i > 0 && <div style={{ width: "1px", height: "28px", backgroundColor: "rgba(158,167,179,0.15)" }} />}
                       <div>
@@ -177,13 +206,16 @@ export default function Education() {
                     View Course — $147 <ArrowRight size={13} />
                   </Link>
                 ) : (
-                  <Link href="/blueprint"
-                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide transition-colors"
-                    style={{ border: "1px solid rgba(62,92,118,0.5)", color: "#3E5C76" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#3E5C76"; e.currentTarget.style.color = "#ffffff" }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#3E5C76" }}>
-                    Preview Course <ArrowRight size={13} />
-                  </Link>
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide text-white opacity-50 cursor-not-allowed"
+                      style={{ backgroundColor: "#3E5C76" }}>
+                      Launching Soon
+                    </div>
+                    <p className="text-xs text-[#9EA7B3] opacity-50 mt-3">
+                      Temporarily unavailable. Check back soon or{" "}
+                      <a href="mailto:support@finverse.world" className="underline">contact us</a>.
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -200,17 +232,13 @@ export default function Education() {
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-4">In the Pipeline</p>
             <h2 className="font-serif text-2xl md:text-3xl font-bold text-[#F4F4F2]">Courses in Development</h2>
           </div>
-          {/* Always 3-column grid regardless of item count */}
           <div className="grid md:grid-cols-3 gap-6">
             {(() => {
               const visible = pipeline
                 .filter(c => !publishedTitles.includes(c.title.toLowerCase()))
                 .slice(0, 3)
-
-              // Pad to exactly 3 slots
               const slots = [...visible]
               while (slots.length < 3) slots.push(null)
-
               return slots.map((course, i) => (
                 <div key={course?.id || `empty-${i}`} style={{ backgroundColor: "rgba(158,167,179,0.02)", border: "1px solid rgba(158,167,179,0.08)", padding: "1.75rem", minHeight: "140px", display: "flex", flexDirection: "column" as const, justifyContent: course ? "flex-start" : "center", alignItems: course ? "flex-start" : "center" }}>
                   {course ? (
