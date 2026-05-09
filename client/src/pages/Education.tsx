@@ -137,12 +137,15 @@ export default function Education() {
                   </Link>
                 ) : (
                   <div>
-                    <div className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide text-white opacity-50 cursor-not-allowed"
-                      style={{ backgroundColor: "#3E5C76" }}>
-                      Launching Soon
-                    </div>
+                    <Link href="/courses/smc-complete-guide"
+                      className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide transition-colors"
+                      style={{ border: "1px solid rgba(62,92,118,0.5)", color: "#3E5C76" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#3E5C76"; e.currentTarget.style.color = "#ffffff" }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#3E5C76" }}>
+                      Preview Course <ArrowRight size={13} />
+                    </Link>
                     <p className="text-xs text-[#9EA7B3] opacity-50 mt-3">
-                      Coming soon. Check back or{" "}
+                      Launching soon. Read the curriculum or{" "}
                       <a href="mailto:support@finverse.world" className="underline">contact us</a>.
                     </p>
                   </div>
@@ -207,12 +210,15 @@ export default function Education() {
                   </Link>
                 ) : (
                   <div>
-                    <div className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide text-white opacity-50 cursor-not-allowed"
-                      style={{ backgroundColor: "#3E5C76" }}>
-                      Launching Soon
-                    </div>
+                    <Link href="/blueprint"
+                      className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide transition-colors"
+                      style={{ border: "1px solid rgba(62,92,118,0.5)", color: "#3E5C76" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#3E5C76"; e.currentTarget.style.color = "#ffffff" }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#3E5C76" }}>
+                      Preview Course <ArrowRight size={13} />
+                    </Link>
                     <p className="text-xs text-[#9EA7B3] opacity-50 mt-3">
-                      Temporarily unavailable. Check back soon or{" "}
+                      Launching soon. Read the curriculum or{" "}
                       <a href="mailto:support@finverse.world" className="underline">contact us</a>.
                     </p>
                   </div>
