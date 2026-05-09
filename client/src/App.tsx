@@ -11,6 +11,7 @@ import Article from "./pages/Article";
 import About from "./pages/About";
 import Resources from "./pages/Resources";
 import Blueprint from "./pages/Blueprint";
+import CourseLandingSMC from "./pages/CourseLandingSMC";
 import Education from "./pages/Education";
 import RefundPolicy from "./pages/RefundPolicy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -23,7 +24,6 @@ import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
 import CoursePlayer from "@/pages/CoursePlayer";
 import Admin from "@/pages/Admin";
-
 function Router() {
   return (
     <Switch>
@@ -48,6 +48,7 @@ function Router() {
               <Route path="/about" component={About} />
               <Route path="/resources" component={Resources} />
               <Route path="/blueprint" component={Blueprint} />
+              <Route path="/courses/smc-complete-guide" component={CourseLandingSMC} />
               <Route path="/education" component={Education} />
               <Route path="/refund-policy" component={RefundPolicy} />
               <Route path="/privacy-policy" component={PrivacyPolicy} />
@@ -61,7 +62,6 @@ function Router() {
     </Switch>
   );
 }
-
 function App() {
   return (
     <ErrorBoundary>
@@ -76,5 +76,4 @@ function App() {
     </ErrorBoundary>
   );
 }
-
 export default App;
