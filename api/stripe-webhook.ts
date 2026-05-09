@@ -12,8 +12,9 @@ const supabase = createClient(
 // Map your Stripe Price IDs to Supabase course IDs
 // Add entries here as you create more courses
 const PRICE_TO_COURSE: Record<string, string> = {
-  'price_1TH3EAF3UWMXuQV82BRfEqfl': '99310134-babc-4935-addc-2a2547436473', // The Trader's Financial Blueprint
-  'price_1TOFLAF3UWMXuQV8AvGjNczD':  '7698210c-73d5-4b96-8be1-ce45e8178d1b', // ABC
+  'price_1TH3EAF3UWMXuQV82BRfEqfl': 'ce265a7b-c01f-4237-a284-05aa03af95f7', // The Trader's Financial Blueprint
+  'price_1TVF3LF3UWMXuQV8dB5Mk2bk': '09593932-a5f8-4038-a86d-27526a0f941c', // SMC: The Complete Guide to Smart Trading
+  'price_1TOFLAF3UWMXuQV8AvGjNczD': '7698210c-73d5-4b96-8be1-ce45e8178d1b', // E2E test product (course deleted, mapping inactive)
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
