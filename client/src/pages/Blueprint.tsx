@@ -45,13 +45,15 @@ const faqs = [
 function EnrolButtonSmall({ available }: { available: boolean }) {
   if (!available) return (
     <div>
-      <div className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-medium text-white opacity-50 cursor-not-allowed"
-        style={{ backgroundColor: "#3E5C76" }}>
-        Currently Unavailable
-      </div>
+      <a href="mailto:support@finverse.world?subject=Notify%20me%20when%20Blueprint%20launches&body=Please%20add%20my%20email%20to%20the%20Trader%27s%20Financial%20Blueprint%20launch%20list."
+        className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-medium tracking-wide transition-colors"
+        style={{ border: "1px solid rgba(62,92,118,0.5)", color: "#3E5C76" }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#3E5C76"; e.currentTarget.style.color = "#ffffff" }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#3E5C76" }}>
+        Notify Me When It Launches <ArrowRight size={14} />
+      </a>
       <p className="text-xs text-[#9EA7B3] opacity-50 mt-3 text-center">
-        Temporarily unavailable. Check back soon or{" "}
-        <a href="mailto:support@finverse.world" className="underline">contact us</a>.
+        Course in production. Lessons being recorded now.
       </p>
     </div>
   )
@@ -210,7 +212,7 @@ export default function Blueprint() {
           <div style={{ maxWidth: "720px" }}>
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-6">The Instructor</p>
             <h2 className="font-serif text-2xl md:text-3xl font-bold text-[#F4F4F2] mb-6">Toufic Mourtada — The Trader Alchemist</h2>
-            <p className="text-[#9EA7B3] mb-5" style={{ lineHeight: "1.8" }}>Toufic Mourtada is the founder of FinVerse. He has spent over a decade at the intersection of market structure analysis and trader psychology — first applying these frameworks to his own trading, then building systems to teach them to others.</p>
+            <p className="text-[#9EA7B3] mb-5" style={{ lineHeight: "1.8" }}>Toufic Mourtada is the founder of FinVerse and the Sovereign Trader Institute. He has spent over a decade at the intersection of market structure analysis and trader psychology — first applying these frameworks to his own trading, then building systems to teach them to others.</p>
             <p className="text-[#9EA7B3] mb-5" style={{ lineHeight: "1.8" }}>The Trader's Financial Blueprint emerged from a consistent pattern observed across hundreds of traders: technical competence and financial incompetence coexisting in the same person. The course is the structured response to that pattern — practical, direct, and built entirely on what actually costs traders money outside their charts.</p>
             <p className="text-[#9EA7B3]" style={{ lineHeight: "1.8" }}>His SMC course on Udemy has helped thousands of traders develop a rigorous technical framework. This course completes the other half of the equation.</p>
           </div>

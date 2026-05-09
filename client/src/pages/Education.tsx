@@ -1,6 +1,8 @@
 /*
  * FinVerse Education Page — /education
- * Blueprint card respects is_published from Supabase
+ * Blueprint card respects is_published from Supabase.
+ * Top-right badge: "Coming Soon" while unpublished, "New" for 90 days after first publish, none after.
+ * CTA: "Preview Course" while unpublished, "View Course — $147" once published.
  */
 
 import { useEffect, useState } from "react";
@@ -11,14 +13,28 @@ import { supabase } from "@/lib/supabase";
 const UDEMY_URL = "https://www.udemy.com/course/smart-money-concepts-the-complete-guide-to-smart-trading/?referralCode=C4DBD99FE2D9012F18F5";
 const COURSE_SLUG = "traders-financial-blueprint";
 
+// Badge logic for FinVerse-hosted courses.
+// - Unpublished: "coming-soon"
+// - Published <= 90 days ago: "new"
+// - Published > 90 days ago: no badge
+type CourseBadge = "coming-soon" | "new" | null;
+
+function getCourseBadge(course: { is_published: boolean; published_at: string | null } | null): CourseBadge {
+  if (!course) return null
+  if (!course.is_published) return "coming-soon"
+  if (!course.published_at) return null
+  const daysSincePublish = (Date.now() - new Date(course.published_at).getTime()) / 86400000
+  return daysSincePublish <= 90 ? "new" : null
+}
+
 export default function Education() {
-  const [blueprintAvailable, setBlueprintAvailable] = useState<boolean | null>(null)
+  const [blueprintCourse, setBlueprintCourse] = useState<{ is_published: boolean; published_at: string | null } | null>(null)
   const [pipeline, setPipeline] = useState<any[]>([])
   const [publishedTitles, setPublishedTitles] = useState<string[]>([])
 
   useEffect(() => {
-    supabase.from('courses').select('is_published, title').eq('slug', COURSE_SLUG).single()
-      .then(({ data }) => setBlueprintAvailable(data?.is_published ?? false))
+    supabase.from('courses').select('is_published, published_at, title').eq('slug', COURSE_SLUG).single()
+      .then(({ data }) => setBlueprintCourse(data ? { is_published: data.is_published, published_at: data.published_at } : { is_published: false, published_at: null }))
 
     // Get all published LMS course titles to exclude from pipeline
     supabase.from('courses').select('title').eq('is_published', true)
@@ -28,7 +44,9 @@ export default function Education() {
       .then(({ data }) => setPipeline(data || []))
   }, [])
 
-  const ready = blueprintAvailable !== null
+  const ready = blueprintCourse !== null
+  const blueprintAvailable = blueprintCourse?.is_published ?? false
+  const blueprintBadge = getCourseBadge(blueprintCourse)
 
   return (
     <div style={{ backgroundColor: "#111318" }}>
@@ -119,7 +137,12 @@ export default function Education() {
                       <span className="text-[9px] font-medium uppercase tracking-[0.1em] px-1.5 py-0.5" style={{ backgroundColor: "rgba(62,92,118,0.15)", color: "#3E5C76", border: "1px solid rgba(62,92,118,0.25)" }}>FinVerse</span>
                     </div>
                   </div>
-                  <span className="text-[9px] font-medium uppercase tracking-[0.12em] px-2 py-1" style={{ backgroundColor: "rgba(62,92,118,0.2)", color: "#3E5C76", border: "1px solid rgba(62,92,118,0.3)" }}>New</span>
+                  {blueprintBadge === "coming-soon" && (
+                    <span className="text-[9px] font-medium uppercase tracking-[0.12em] px-2 py-1" style={{ backgroundColor: "rgba(158,167,179,0.1)", color: "#9EA7B3", border: "1px solid rgba(158,167,179,0.2)" }}>Coming Soon</span>
+                  )}
+                  {blueprintBadge === "new" && (
+                    <span className="text-[9px] font-medium uppercase tracking-[0.12em] px-2 py-1" style={{ backgroundColor: "rgba(62,92,118,0.2)", color: "#3E5C76", border: "1px solid rgba(62,92,118,0.3)" }}>New</span>
+                  )}
                 </div>
                 <h2 className="font-serif text-2xl font-bold text-[#F4F4F2] mb-2 leading-snug">The Trader's Financial Blueprint</h2>
                 <p className="text-xs text-[#9EA7B3] opacity-60 mb-4 uppercase tracking-[0.08em]">Capital Structure · Income Architecture · Financial Sovereignty</p>
@@ -154,16 +177,13 @@ export default function Education() {
                     View Course — $147 <ArrowRight size={13} />
                   </Link>
                 ) : (
-                  <div>
-                    <div className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide text-white opacity-50 cursor-not-allowed"
-                      style={{ backgroundColor: "#3E5C76" }}>
-                      Currently Unavailable
-                    </div>
-                    <p className="text-xs text-[#9EA7B3] opacity-50 mt-3">
-                      Temporarily unavailable. Check back soon or{" "}
-                      <a href="mailto:support@finverse.world" className="underline">contact us</a>.
-                    </p>
-                  </div>
+                  <Link href="/blueprint"
+                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide transition-colors"
+                    style={{ border: "1px solid rgba(62,92,118,0.5)", color: "#3E5C76" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#3E5C76"; e.currentTarget.style.color = "#ffffff" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#3E5C76" }}>
+                    Preview Course <ArrowRight size={13} />
+                  </Link>
                 )}
               </div>
             </div>
