@@ -13,7 +13,7 @@ import SupportChat from "@/components/SupportChat";
 import SEO, { organizationSchema } from "@/components/SEO";
 
 const HERO_IMAGE = "https://files.manuscdn.com/user_upload_by_module/session_file/99087322/QcPaRPASaFbAtVEc.png";
-const UDEMY_URL = "https://www.udemy.com/course/smart-money-concepts-the-complete-guide-to-smart-trading/?referralCode=C4DBD99FE2D9012F18F5";
+const SMC_COURSE_URL = "/courses/smc-complete-guide";
 
 interface Post {
   slug: string;
@@ -185,7 +185,7 @@ export default function Home() {
 
       <div style={{ height: "1px", backgroundColor: "#9EA7B3", opacity: 0.15 }} />
 
-      {/* ===== SECTION 5: UDEMY AD BANNER ===== */}
+      {/* ===== SECTION 5: SMC COURSE BANNER ===== */}
       <section className="py-14 md:py-16" style={{ backgroundColor: "#0d0f14" }}>
         <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -197,13 +197,13 @@ export default function Home() {
                 <p className="text-xs text-[#9EA7B3] opacity-70">Hybrid structure integration for independent traders.</p>
               </div>
             </div>
-            <a href={UDEMY_URL} target="_blank" rel="noopener noreferrer"
+            <Link href={SMC_COURSE_URL}
               className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium tracking-wide transition-colors whitespace-nowrap shrink-0"
               style={{ border: "1px solid #3E5C76", color: "#3E5C76" }}
               onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#3E5C76"; e.currentTarget.style.color = "#ffffff" }}
               onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#3E5C76" }}>
               View Course <ArrowRight size={14} />
-            </a>
+            </Link>
           </div>
         </div>
       </section>
