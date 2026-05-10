@@ -7,6 +7,7 @@
  */
 
 import SEO from "@/components/SEO";
+import EmailCapture from "@/components/EmailCapture";
 
 interface FrameworkSection {
   number: string;
@@ -138,6 +139,39 @@ export default function Framework() {
           )}
         </section>
       ))}
+
+      {/* Thin divider before subscription block */}
+      <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
+        <div style={{ height: "1px", backgroundColor: "#9EA7B3", opacity: 0.15 }} />
+      </div>
+
+      {/* Email Capture */}
+      <section className="py-20 md:py-28">
+        <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-16">
+            <div className="lg:col-span-3">
+              <span
+                className="font-serif text-7xl md:text-8xl font-bold"
+                style={{ color: "#3E5C76", opacity: 0.2 }}
+              >
+                ✦
+              </span>
+            </div>
+            <div className="lg:col-span-9" style={{ maxWidth: "720px" }}>
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-6">
+                The Journal
+              </p>
+              <EmailCapture
+                source="framework_page"
+                variant="dark"
+                heading="Read what comes next."
+                description="Weekly analysis on market structure, macro context, and the psychology that breaks most traders. Direct, dense, no fluff."
+                buttonLabel="Subscribe"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
