@@ -3,22 +3,21 @@
  * generate-sitemap.mjs
  *
  * Build-time sitemap generator for FinVerse.
- * Pulls published blog posts and courses from Supabase and writes a fresh sitemap.xml.
+ * Pulls published blog posts and courses from Supabase REST API directly
+ * (no library, avoids Node 20 WebSocket compatibility issues).
  *
  * Runs as part of Vercel build via the `prebuild` npm script.
  *
- * Required env vars:
- *   SUPABASE_URL       - your Supabase project URL
- *   SUPABASE_ANON_KEY  - public anon key (read-only via RLS)
+ * Required env vars (reads either naming convention):
+ *   SUPABASE_URL or VITE_SUPABASE_URL
+ *   SUPABASE_ANON_KEY or VITE_SUPABASE_ANON_KEY
  *
- * Falls back gracefully if env vars are missing or Supabase is unreachable —
- * writes a minimal static sitemap with just the public pages so the build
- * does not fail.
+ * Falls back gracefully if env vars are missing or fetch fails —
+ * writes a static sitemap with public pages so the build does not fail.
  *
  * Output: client/public/sitemap.xml
  */
 
-import { createClient } from "@supabase/supabase-js";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,8 +39,7 @@ const STATIC_PAGES = [
   { loc: "/terms",           priority: "0.3",  changefreq: "yearly"  },
 ];
 
-// Course landing pages — render as urls regardless of publish state
-// (so search engines can index "Coming Soon" pages as well)
+// Course landing pages — render regardless of publish state
 const COURSE_LANDING_PAGES = [
   { loc: "/blueprint",                    priority: "0.9", changefreq: "weekly" },
   { loc: "/courses/smc-complete-guide",   priority: "0.9", changefreq: "weekly" },
@@ -71,14 +69,28 @@ function urlEntry({ loc, lastmod, priority, changefreq }) {
   return lines.join("\n");
 }
 
-async function fetchPosts(supabase) {
+async function fetchSupabaseTable(supabaseUrl, supabaseKey, query) {
+  const url = `${supabaseUrl}/rest/v1/${query}`;
+  const response = await fetch(url, {
+    headers: {
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+async function fetchPosts(supabaseUrl, supabaseKey) {
   try {
-    const { data, error } = await supabase
-      .from("posts")
-      .select("slug, published_at, updated_at")
-      .eq("is_published", true)
-      .order("published_at", { ascending: false });
-    if (error) throw error;
+    const data = await fetchSupabaseTable(
+      supabaseUrl,
+      supabaseKey,
+      "posts?select=slug,published_at,updated_at&is_published=eq.true&order=published_at.desc"
+    );
     return data || [];
   } catch (e) {
     console.warn("[sitemap] failed to fetch posts:", e.message);
@@ -86,13 +98,13 @@ async function fetchPosts(supabase) {
   }
 }
 
-async function fetchCourses(supabase) {
+async function fetchCourses(supabaseUrl, supabaseKey) {
   try {
-    const { data, error } = await supabase
-      .from("courses")
-      .select("slug, published_at, updated_at, is_published")
-      .order("published_at", { ascending: false, nullsFirst: false });
-    if (error) throw error;
+    const data = await fetchSupabaseTable(
+      supabaseUrl,
+      supabaseKey,
+      "courses?select=slug,published_at,updated_at,is_published"
+    );
     return data || [];
   } catch (e) {
     console.warn("[sitemap] failed to fetch courses:", e.message);
@@ -112,10 +124,9 @@ async function main() {
   let courses = [];
 
   if (supabaseUrl && supabaseKey) {
-    const supabase = createClient(supabaseUrl, supabaseKey);
     [posts, courses] = await Promise.all([
-      fetchPosts(supabase),
-      fetchCourses(supabase),
+      fetchPosts(supabaseUrl, supabaseKey),
+      fetchCourses(supabaseUrl, supabaseKey),
     ]);
     console.log(`[sitemap] fetched ${posts.length} posts, ${courses.length} courses`);
   } else {
@@ -123,9 +134,9 @@ async function main() {
   }
 
   const urls = [];
-
-  // Static pages — use today as lastmod since they change with deploys
   const today = isoDate(new Date());
+
+  // Static pages
   for (const page of STATIC_PAGES) {
     urls.push(urlEntry({
       loc: page.loc,
@@ -135,7 +146,7 @@ async function main() {
     }));
   }
 
-  // Course landing pages — use course's updated_at if available, else today
+  // Course landing pages
   for (const page of COURSE_LANDING_PAGES) {
     const slug = page.loc.split("/").pop();
     const matchingCourse = courses.find((c) => c.slug === slug);
@@ -166,7 +177,6 @@ ${urls.join("\n")}
 </urlset>
 `;
 
-  // Ensure output directory exists
   mkdirSync(dirname(OUT_PATH), { recursive: true });
   writeFileSync(OUT_PATH, xml, "utf8");
   console.log(`[sitemap] wrote ${urls.length} urls to ${OUT_PATH}`);
