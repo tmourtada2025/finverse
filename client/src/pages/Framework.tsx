@@ -107,7 +107,7 @@ export default function Framework() {
               <div className="lg:col-span-3">
                 <span
                   className="font-serif text-7xl md:text-8xl font-bold"
-                  style={{ color: "#3E5C76", opacity: 0.2 }}
+                  style={{ color: "#3E5C76", opacity: 0.45 }}
                 >
                   {section.number}
                 </span>
@@ -152,7 +152,7 @@ export default function Framework() {
             <div className="lg:col-span-3">
               <span
                 className="font-serif text-7xl md:text-8xl font-bold"
-                style={{ color: "#3E5C76", opacity: 0.2 }}
+                style={{ color: "#3E5C76", opacity: 0.45 }}
               >
                 ✦
               </span>
