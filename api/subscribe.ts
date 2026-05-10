@@ -188,36 +188,56 @@ async function sendWelcomeEmail(toEmail: string): Promise<boolean> {
     return false;
   }
 
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: [toEmail],
-        reply_to: REPLY_TO,
-        subject: "Welcome to FinVerse",
-        html: welcomeEmailHtml(),
-        text: welcomeEmailText(),
-      }),
-    });
+  const basePayload = {
+    from: FROM_EMAIL,
+    to: [toEmail],
+    subject: "Welcome to FinVerse",
+    html: welcomeEmailHtml(),
+    text: welcomeEmailText(),
+  };
 
-    if (!response.ok) {
+  // Try with reply_to first
+  let payload: Record<string, unknown> = { ...basePayload, reply_to: [REPLY_TO] };
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("[subscribe] welcome email sent, id:", data.id, "attempt:", attempt);
+        return true;
+      }
+
+      // Log full error
       const errBody = await response.text();
-      console.error("[subscribe] Resend error:", response.status, errBody);
+      console.error(
+        `[subscribe] Resend error attempt ${attempt}: status=${response.status} body=${errBody} payload_keys=${Object.keys(payload).join(",")}`
+      );
+
+      // If 422 validation error on first attempt, retry without reply_to
+      if (response.status === 422 && attempt === 1) {
+        console.log("[subscribe] Retrying without reply_to");
+        payload = { ...basePayload };
+        continue;
+      }
+
+      // Any other failure: give up
+      return false;
+    } catch (err) {
+      console.error(`[subscribe] Resend exception attempt ${attempt}:`, err);
       return false;
     }
-
-    const data = await response.json();
-    console.log("[subscribe] welcome email sent, id:", data.id);
-    return true;
-  } catch (err) {
-    console.error("[subscribe] Resend exception:", err);
-    return false;
   }
+
+  return false;
 }
 
 export default async function handler(
