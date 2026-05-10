@@ -7,8 +7,9 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle, BarChart2, Layers, Compass, Target, Activity, Zap, BookOpen, Brain } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import SEO, { courseSchema } from "@/components/SEO";
 
-const STRIPE_LINK = "https://buy.stripe.com/aFa4gzdaG0zY6pb4p2fjG04"; // TODO: paste Stripe Payment Link URL once created
+const STRIPE_LINK = "REPLACE_WITH_STRIPE_PAYMENT_LINK"; // TODO: paste Stripe Payment Link URL once created
 const COURSE_SLUG = "smc-complete-guide";
 const INTRO_VIDEO_URL = "https://iframe.mediadelivery.net/embed/656804/12da8be6-7e14-436b-a72d-db16e9d2caf8";
 
@@ -84,6 +85,21 @@ export default function CourseLandingSMC() {
 
   return (
     <div style={{ backgroundColor: "#111318" }}>
+      <SEO
+        title="Smart Money Concepts: The Complete Guide"
+        description="Read institutional order flow. Trade with the smart money instead of becoming their liquidity. The complete structural framework — five modules, twenty-five lessons, applied across markets."
+        canonical="/courses/smc-complete-guide"
+        ogType="website"
+        jsonLd={courseSchema({
+          name: "Smart Money Concepts: The Complete Guide to Smart Trading",
+          description: "The complete technical framework for independent traders. Five modules and twenty-five lessons covering Smart Money Concepts, market structure, order flow, execution, and advanced application.",
+          slug: "smc-complete-guide",
+          price: 199,
+          available: available ?? false,
+          numberOfLessons: 25,
+          totalDurationMinutes: 285,
+        })}
+      />
 
       {/* HERO */}
       <section className="py-24 md:py-32" style={{ borderBottom: "1px solid rgba(158,167,179,0.12)" }}>

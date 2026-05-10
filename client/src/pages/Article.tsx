@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link, Redirect } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { ArrowLeft } from "lucide-react";
+import SEO, { articleSchema } from "@/components/SEO";
 
 interface Post {
   id: string;
@@ -51,6 +52,23 @@ export default function Article() {
 
   return (
     <div style={{ backgroundColor: "#111318" }}>
+      <SEO
+        title={post.title}
+        description={post.excerpt}
+        canonical={`/blog/${post.slug}`}
+        ogType="article"
+        ogImage={post.thumbnail_url || undefined}
+        publishedTime={post.published_at}
+        author="Toufic Mourtada"
+        jsonLd={articleSchema({
+          title: post.title,
+          description: post.excerpt,
+          slug: post.slug,
+          publishedAt: post.published_at,
+          image: post.thumbnail_url || undefined,
+          category: post.category,
+        })}
+      />
       {/* Article Header */}
       <section className="pt-16 md:pt-24 pb-12">
         <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>

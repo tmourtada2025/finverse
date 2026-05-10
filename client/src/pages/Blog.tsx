@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { supabase } from "@/lib/supabase";
+import SEO from "@/components/SEO";
 
 type Category = "All" | "Structure" | "Macro" | "Psychology";
 const CATEGORIES: Category[] = ["All", "Structure", "Macro", "Psychology"];
@@ -46,6 +47,11 @@ export default function Blog() {
 
   return (
     <div style={{ backgroundColor: "#111318" }}>
+      <SEO
+        title="The Journal"
+        description="Weekly analysis of market structure, macro context, and trader psychology. Written for serious independent traders who want to read markets the way institutions read them."
+        canonical="/blog"
+      />
       {/* Header */}
       <section className="py-24 md:py-32">
         <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>

@@ -11,8 +11,8 @@
  */
 
 import { useState } from "react";
-import { useState } from "react";
 import { ArrowUpRight, ExternalLink } from "lucide-react";
+import SEO from "@/components/SEO";
 
 interface Resource {
   name: string;
@@ -94,6 +94,12 @@ const resources: Resource[] = [
     category: "Charting"
   },
   {
+    name: "Bookmap",
+    description: "Order flow and market depth visualization for traders who want to see liquidity heatmaps in real time. Particularly relevant for SMC practitioners studying institutional positioning at key structural levels. Free tier available for basic features; paid tiers unlock the full liquidity heatmap and advanced order flow tools.",
+    url: "https://bookmap.com",
+    category: "Charting"
+  },
+  {
     name: "Forex Factory Calendar",
     description: "Comprehensive economic calendar for session timing and volatility window planning. Essential for identifying high-impact events that affect institutional order flow and displacement candle formation.",
     url: "https://www.forexfactory.com/calendar",
@@ -131,6 +137,11 @@ export default function Resources() {
   const [showDisclosure, setShowDisclosure] = useState(false);
   return (
     <div style={{ backgroundColor: "#111318" }}>
+      <SEO
+        title="Resources"
+        description="Recommended brokers, charting platforms, and economic data sources for SMC practitioners. Curated tools for serious independent traders."
+        canonical="/resources"
+      />
       {/* Header */}
       <section className="py-24 md:py-32">
         <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>

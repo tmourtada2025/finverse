@@ -6,6 +6,8 @@
  * Thin line dividers only. No icon clutter.
  */
 
+import SEO from "@/components/SEO";
+
 interface FrameworkSection {
   number: string;
   title: string;
@@ -66,6 +68,11 @@ const sections: FrameworkSection[] = [
 export default function Framework() {
   return (
     <div style={{ backgroundColor: "#111318" }}>
+      <SEO
+        title="The Framework"
+        description="The hybrid institutional framework — Smart Money Concepts, classical technical rhythm, and risk architecture. A systematic approach for disciplined independent traders."
+        canonical="/framework"
+      />
       {/* Header */}
       <section className="py-24 md:py-32">
         <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>

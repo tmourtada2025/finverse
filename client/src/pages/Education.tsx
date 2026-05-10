@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, CheckCircle, BarChart2, Brain } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import SEO from "@/components/SEO";
 
 const SMC_SLUG = "smc-complete-guide";
 const BLUEPRINT_SLUG = "traders-financial-blueprint";
@@ -53,6 +54,11 @@ export default function Education() {
 
   return (
     <div style={{ backgroundColor: "#111318" }}>
+      <SEO
+        title="Courses"
+        description="Courses built for serious traders. Two disciplines — the technical framework for reading markets, and the financial framework for managing what those markets generate."
+        canonical="/education"
+      />
       <section className="py-24 md:py-32">
         <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
           <div style={{ maxWidth: "720px" }}>

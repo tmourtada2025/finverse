@@ -3,15 +3,24 @@
  * 
  * Color system: #111318, #F4F4F2, #3E5C76, #9EA7B3
  * Professional, measured tone. No motivational language.
+ * SVT section moved here from homepage — given proper context.
  */
 
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
+import SEO, { personSchema } from "@/components/SEO";
+
+const SVT_LOGO = "https://private-us-east-1.manuscdn.com/sessionFile/feCh4CM4AAJJxZhdsCxOxr/sandbox/hkMQ7Pc1wXfXSinLSpcHyK-img-1_1771581393000_na1fn_c292ZXJlaWduLXRyYWRlci1sb2dv.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvZmVDaDRDTTRBQUpKeFpoZHNDeE94ci9zYW5kYm94L2hrTVE3UGMxd1hmWFNpbkxTcGNIeUstaW1nLTFfMTc3MTU4MTM5MzAwMF9uYTFmbl9jMjkyWlhKbGFXZHVMWFJ5WVdSbGNpMXNiMmR2LnBuZz94LW9zcy1wcm9jZXNzPWltYWdlL3Jlc2l6ZSx3XzE5MjAsaF8xOTIwL2Zvcm1hdCx3ZWJwL3F1YWxpdHkscV84MCIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc5ODc2MTYwMH19fV19&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=SCLIa4s5VkuPxf21YxoKbu8MyFrH~3jRtcjbBeNaJ7nTwMTgf13yoh7QdMEPksixpHWE2sA8TgiduXDGsFy4H1eW5HNc18JDJ2g9D8Z7CWQao3vPYL7lm1JwDVRGZXuaHoXJCcO0DQAgPWS5mjn8rTGBBufKqzvkPnqbX~ttXlmz-FFs-wxM2Hy7fm7IMtdpZxpQhzYyepA-jDr3DIIRpeB66SkV-4mc8QYvY4ojESVsQgcsIHF1nhw4fxh5k1l3HTU6LXDSy9~DSGBKntrzfNBchY-NXL5UyqX2Zg9UYn7Brq9E~tvSZ8~-inct4YMEPnxA-8aINqk32M8D81Sy5w__";
 
 export default function About() {
   return (
     <div style={{ backgroundColor: "#111318" }}>
-      {/* Header */}
+      <SEO
+        title="About"
+        description="The story behind FinVerse and Toufic Mourtada — founder, trader, and author. The framework, the philosophy, and what FinVerse is building for serious independent traders."
+        canonical="/about"
+        jsonLd={personSchema}
+      />      {/* Header */}
       <section className="py-24 md:py-32">
         <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
           <div style={{ maxWidth: "720px" }}>
@@ -165,6 +174,58 @@ export default function About() {
                 the lessons, and the ongoing refinement of a framework built for 
                 structural precision and capital preservation.
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Thin divider */}
+      <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
+        <div style={{ height: "1px", backgroundColor: "#9EA7B3", opacity: 0.15 }} />
+      </div>
+
+      {/* Sovereign Trader Institute — moved from homepage for proper context */}
+      <section className="py-20 md:py-24">
+        <div className="px-5 mx-auto" style={{ maxWidth: "1200px" }}>
+          <div className="grid lg:grid-cols-12 gap-12 lg:gap-16">
+            <div className="lg:col-span-4">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#9EA7B3] mb-3">
+                Identity
+              </p>
+              <h2 className="font-serif text-2xl font-bold text-[#F4F4F2]">Sovereign Trader Institute</h2>
+            </div>
+            <div className="lg:col-span-8" style={{ maxWidth: "720px" }}>
+              <img
+                src={SVT_LOGO}
+                alt="Sovereign Trader Institute"
+                className="mb-8 w-full max-w-sm"
+                loading="lazy"
+              />
+              <p className="text-[#9EA7B3] mb-6" style={{ lineHeight: "1.7" }}>
+                The Sovereign Trader Institute is the structured identity framework behind 
+                FinVerse — governing performance architecture, psychological discipline, 
+                and capital allocation. It represents the operational philosophy that 
+                underpins every aspect of the trading methodology.
+              </p>
+              <p className="text-[#9EA7B3]" style={{ lineHeight: "1.7" }}>
+                Where FinVerse documents the analysis and framework, the Institute defines 
+                the standards of execution — the rules, the governance, and the accountability 
+                structures that separate systematic trading from discretionary guesswork.
+              </p>
+              <div className="mt-8">
+                <a
+                  href="https://sovereigntraderinstitute.world"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium tracking-wide transition-colors"
+                  style={{ border: "1px solid #3E5C76", color: "#3E5C76" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#3E5C76"; e.currentTarget.style.color = "#ffffff"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#3E5C76"; }}
+                >
+                  Visit Sovereign Trader Institute
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </a>
+              </div>
             </div>
           </div>
         </div>

@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle, BookOpen, TrendingUp, Shield, Brain, DollarSign, BarChart2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import SEO, { courseSchema } from "@/components/SEO";
 
 const STRIPE_LINK = "https://buy.stripe.com/6oUbJ1eeK6YmdRDbRufjG01";
 const COURSE_SLUG = "traders-financial-blueprint";
@@ -45,15 +46,13 @@ const faqs = [
 function EnrolButtonSmall({ available }: { available: boolean }) {
   if (!available) return (
     <div>
-      <a href="mailto:support@finverse.world?subject=Notify%20me%20when%20Blueprint%20launches&body=Please%20add%20my%20email%20to%20the%20Trader%27s%20Financial%20Blueprint%20launch%20list."
-        className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-medium tracking-wide transition-colors"
-        style={{ border: "1px solid rgba(62,92,118,0.5)", color: "#3E5C76" }}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#3E5C76"; e.currentTarget.style.color = "#ffffff" }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#3E5C76" }}>
-        Notify Me When It Launches <ArrowRight size={14} />
-      </a>
+      <div className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-medium text-white opacity-50 cursor-not-allowed"
+        style={{ backgroundColor: "#3E5C76" }}>
+        Currently Unavailable
+      </div>
       <p className="text-xs text-[#9EA7B3] opacity-50 mt-3 text-center">
-        Course in production. Lessons being recorded now.
+        Temporarily unavailable. Check back soon or{" "}
+        <a href="mailto:support@finverse.world" className="underline">contact us</a>.
       </p>
     </div>
   )
@@ -84,6 +83,20 @@ export default function Blueprint() {
 
   return (
     <div style={{ backgroundColor: "#111318" }}>
+      <SEO
+        title="The Trader's Financial Blueprint"
+        description="Eight modules covering everything outside the chart — capital separation, income architecture, drawdown survival, tax structure, and wealth building alongside active trading."
+        canonical="/blueprint"
+        ogType="website"
+        jsonLd={courseSchema({
+          name: "The Trader's Financial Blueprint",
+          description: "Personal financial architecture designed specifically for active traders. Eight modules covering capital separation, income smoothing, drawdown survival, tax structure, and parallel wealth building.",
+          slug: "traders-financial-blueprint",
+          price: 147,
+          available: available ?? false,
+          numberOfLessons: 47,
+        })}
+      />
 
       {/* HERO */}
       <section className="py-24 md:py-32" style={{ borderBottom: "1px solid rgba(158,167,179,0.12)" }}>

@@ -2,11 +2,18 @@
  * FinVerse — Terms of Use
  */
 
+import SEO from "@/components/SEO";
+
 export default function TermsOfUse() {
   const updated = "7 May 2026"
 
   return (
     <div style={{ backgroundColor: "#111318", minHeight: "100vh" }}>
+      <SEO
+        title="Terms of Use"
+        description="Terms governing your use of FinVerse and its courses, including disclaimers and limitations of liability."
+        canonical="/terms"
+      />
       <section className="py-24 md:py-32">
         <div className="px-5 mx-auto" style={{ maxWidth: "720px" }}>
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#3E5C76] mb-4">Legal</p>
