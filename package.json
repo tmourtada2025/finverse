@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite --host",
+    "prebuild": "node scripts/generate-sitemap.mjs",
     "build": "vite build",
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
