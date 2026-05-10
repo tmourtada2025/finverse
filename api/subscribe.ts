@@ -1,20 +1,32 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { welcomeEmail } from "./_emails/welcome";
+import { nurture1 } from "./_emails/nurture1";
+import { nurture2 } from "./_emails/nurture2";
+import { nurture3 } from "./_emails/nurture3";
+import { nurture4 } from "./_emails/nurture4";
+import { nurture5 } from "./_emails/nurture5";
 
 /**
  * POST /api/subscribe
  *
- * Body: { email: string, source?: string }
+ * Body: { email: string, source?: string, website?: string (honeypot) }
  *
  * Behavior:
  * - Validates email format
- * - Inserts new subscriber to Supabase (idempotent on email)
- * - Sends welcome email via Resend
+ * - Inserts new subscriber to Supabase (idempotent on email — silent dedup)
+ * - Sends welcome email immediately via Resend
+ * - Schedules 5 nurture emails for Day 3, 7, 14, 21, 28 using Resend's scheduled_at
  * - Returns 200 even for duplicates (don't expose subscription state)
  *
  * Why direct REST instead of @supabase/supabase-js:
  * - The library tries to initialize a Realtime WebSocket on createClient()
  * - Node 20 (Vercel default) lacks native WebSocket support
  * - Library crashes immediately. Direct fetch() against Supabase REST API bypasses entirely.
+ *
+ * Why scheduled_at for nurture sequence:
+ * - Resend Broadcasts fire at fixed calendar times, not relative to signup
+ * - scheduled_at lets us queue all 5 emails immediately, each with a future send time
+ * - Zero manual intervention needed after signup
  */
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -28,176 +40,234 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 interface SupabaseSubscriber {
   id: string;
   welcome_sent_at: string | null;
-  unsubscribed_at: string | null;
 }
 
-async function supabaseFetch(
-  path: string,
-  options: { method?: string; body?: unknown; prefer?: string } = {}
-): Promise<Response> {
-  const { method = "GET", body, prefer } = options;
-  const headers: Record<string, string> = {
-    apikey: SUPABASE_SERVICE_ROLE_KEY!,
-    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    "Content-Type": "application/json",
-  };
-  if (prefer) {
-    headers.Prefer = prefer;
+interface EmailContent {
+  subject: string;
+  html: string;
+  text: string;
+}
+
+/**
+ * Nurture sequence schedule.
+ * Days are relative to signup time. Each email is sent via Resend scheduled_at.
+ */
+const NURTURE_SCHEDULE = [
+  { day: 3, getEmail: nurture1 },
+  { day: 7, getEmail: nurture2 },
+  { day: 14, getEmail: nurture3 },
+  { day: 21, getEmail: nurture4 },
+  { day: 28, getEmail: nurture5 },
+];
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS / preflight
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
   }
 
-  const requestInit: RequestInit = { method, headers };
-  if (body !== undefined) {
-    requestInit.body = JSON.stringify(body);
+  if (req.method !== "POST") {
+    return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
 
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, requestInit);
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("[subscribe] Missing Supabase env vars");
+    return res.status(500).json({ ok: false, error: "Server misconfigured" });
+  }
+
+  // Parse body
+  let email: string;
+  let source: string;
+  let website: string;
+  try {
+    const body = req.body;
+    email = String(body.email || "").trim().toLowerCase();
+    source = String(body.source || "unknown").trim();
+    website = String(body.website || "").trim();
+  } catch {
+    return res.status(400).json({ ok: false, error: "Invalid request body" });
+  }
+
+  // Honeypot — silently accept and discard if filled
+  if (website.length > 0) {
+    console.log("[subscribe] Honeypot triggered, silent reject");
+    return res.status(200).json({ ok: true });
+  }
+
+  // Validate email
+  if (!email || !EMAIL_RE.test(email) || email.length > 254) {
+    return res.status(400).json({ ok: false, error: "Invalid email" });
+  }
+
+  // Insert or fetch subscriber (idempotent on email)
+  let subscriber: SupabaseSubscriber | null = null;
+  try {
+    subscriber = await upsertSubscriber(email, source);
+  } catch (err) {
+    console.error("[subscribe] Supabase upsert threw:", err);
+    return res.status(500).json({ ok: false, error: "Could not save subscription" });
+  }
+
+  if (!subscriber) {
+    return res.status(500).json({ ok: false, error: "Could not save subscription" });
+  }
+
+  // If welcome already sent, this is a duplicate — silently succeed
+  if (subscriber.welcome_sent_at) {
+    return res.status(200).json({ ok: true });
+  }
+
+  // Send welcome immediately. Wrapped to never block enrollment.
+  try {
+    const welcomeOk = await sendEmailNow(email, welcomeEmail());
+    if (welcomeOk) {
+      await markWelcomeSent(subscriber.id);
+    }
+  } catch (err) {
+    console.error("[subscribe] Welcome email send threw:", err);
+  }
+
+  // Schedule the 5 nurture emails. Each is queued in Resend with scheduled_at.
+  // If any individual scheduling fails, log and continue.
+  const signupTime = new Date();
+  for (const item of NURTURE_SCHEDULE) {
+    try {
+      const sendAt = new Date(signupTime.getTime() + item.day * 24 * 60 * 60 * 1000);
+      const emailContent = item.getEmail();
+      await scheduleEmail(email, emailContent, sendAt.toISOString());
+    } catch (err) {
+      console.error(`[subscribe] Failed to schedule Day ${item.day} nurture:`, err);
+    }
+  }
+
+  return res.status(200).json({ ok: true });
 }
 
-function welcomeEmailHtml(): string {
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Welcome to FinVerse</title>
-</head>
-<body style="margin:0;padding:0;background:#F4F4F2;font-family:Georgia,serif;color:#111318;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F4F2;padding:40px 20px;">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;">
-          <tr>
-            <td style="padding:48px 48px 24px 48px;">
-              <p style="font-family:Inter,Arial,sans-serif;font-size:11px;color:#9EA7B3;margin:0 0 8px 0;letter-spacing:0.12em;text-transform:uppercase;font-weight:500;">
-                FinVerse
-              </p>
-              <h1 style="font-family:Georgia,'Playfair Display',serif;font-size:32px;font-weight:700;color:#111318;margin:0 0 8px 0;line-height:1.1;letter-spacing:-0.01em;">
-                Welcome.
-              </h1>
-              <p style="font-family:Georgia,serif;font-size:14px;color:#9EA7B3;margin:0 0 32px 0;font-style:italic;">
-                The market reveals who you are.
-              </p>
+/**
+ * Upsert subscriber — fetch by email, insert if not present.
+ * Honors unsubscribed_at — does NOT re-enroll previously unsubscribed addresses.
+ */
+async function upsertSubscriber(email: string, source: string): Promise<SupabaseSubscriber | null> {
+  const fetchUrl = `${SUPABASE_URL}/rest/v1/subscribers?email=eq.${encodeURIComponent(email)}&select=id,welcome_sent_at,unsubscribed_at`;
+  const fetchRes = await fetch(fetchUrl, {
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY!,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY!}`,
+    },
+  });
 
-              <p style="font-family:Inter,Arial,sans-serif;font-size:16px;line-height:1.7;color:#111318;margin:0 0 16px 0;">
-                You signed up because you're looking for something more rigorous than what passes for trading education.
-              </p>
-              <p style="font-family:Inter,Arial,sans-serif;font-size:16px;line-height:1.7;color:#111318;margin:0 0 32px 0;">
-                Three things worth your time right now:
-              </p>
+  if (!fetchRes.ok) {
+    console.error("[subscribe] Fetch existing failed:", fetchRes.status, await fetchRes.text());
+    return null;
+  }
 
-              <div style="margin:0 0 24px 0;padding:20px 24px;background:#F4F4F2;border-left:3px solid #3E5C76;">
-                <p style="font-family:Inter,Arial,sans-serif;font-size:11px;color:#9EA7B3;margin:0 0 6px 0;letter-spacing:0.1em;text-transform:uppercase;font-weight:500;">
-                  01
-                </p>
-                <p style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#111318;margin:0 0 8px 0;line-height:1.3;">
-                  Read the Framework
-                </p>
-                <p style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#3E5C76;line-height:1.6;margin:0 0 12px 0;">
-                  The structural philosophy behind every analysis, course, and journal article on FinVerse.
-                </p>
-                <a href="https://finverse.world/framework" style="font-family:Inter,Arial,sans-serif;font-size:13px;color:#3E5C76;text-decoration:none;font-weight:600;letter-spacing:0.02em;">
-                  Read it &rarr;
-                </a>
-              </div>
+  const existing = (await fetchRes.json()) as Array<
+    SupabaseSubscriber & { unsubscribed_at: string | null }
+  >;
 
-              <div style="margin:0 0 24px 0;padding:20px 24px;background:#F4F4F2;border-left:3px solid #3E5C76;">
-                <p style="font-family:Inter,Arial,sans-serif;font-size:11px;color:#9EA7B3;margin:0 0 6px 0;letter-spacing:0.1em;text-transform:uppercase;font-weight:500;">
-                  02
-                </p>
-                <p style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#111318;margin:0 0 8px 0;line-height:1.3;">
-                  Preview the SMC course
-                </p>
-                <p style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#3E5C76;line-height:1.6;margin:0 0 12px 0;">
-                  Our complete guide to Smart Money Concepts. The first lesson of each module is free to preview.
-                </p>
-                <a href="https://finverse.world/courses/smc-complete-guide" style="font-family:Inter,Arial,sans-serif;font-size:13px;color:#3E5C76;text-decoration:none;font-weight:600;letter-spacing:0.02em;">
-                  Preview it &rarr;
-                </a>
-              </div>
+  // Honor unsubscribe — return existing row with welcome_sent_at populated
+  // so the caller's duplicate check short-circuits and no emails are sent
+  if (existing.length > 0 && existing[0].unsubscribed_at) {
+    console.log("[subscribe] Previously unsubscribed, ignoring:", email);
+    return { id: existing[0].id, welcome_sent_at: existing[0].welcome_sent_at || new Date().toISOString() };
+  }
 
-              <div style="margin:0 0 36px 0;padding:20px 24px;background:#F4F4F2;border-left:3px solid #3E5C76;">
-                <p style="font-family:Inter,Arial,sans-serif;font-size:11px;color:#9EA7B3;margin:0 0 6px 0;letter-spacing:0.1em;text-transform:uppercase;font-weight:500;">
-                  03
-                </p>
-                <p style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#111318;margin:0 0 8px 0;line-height:1.3;">
-                  Follow the Journal
-                </p>
-                <p style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#3E5C76;line-height:1.6;margin:0 0 12px 0;">
-                  Weekly analysis on market structure, macro context, and the psychology that breaks most traders.
-                </p>
-                <a href="https://finverse.world/blog" style="font-family:Inter,Arial,sans-serif;font-size:13px;color:#3E5C76;text-decoration:none;font-weight:600;letter-spacing:0.02em;">
-                  Read recent articles &rarr;
-                </a>
-              </div>
+  if (existing.length > 0) {
+    return existing[0];
+  }
 
-              <p style="font-family:Inter,Arial,sans-serif;font-size:15px;color:#111318;line-height:1.7;margin:0 0 16px 0;">
-                I'll send you something worth reading roughly once a week. No fluff, no FOMO, no fake urgency. If it's not useful, the unsubscribe link works.
-              </p>
-              <p style="font-family:Georgia,serif;font-size:16px;color:#111318;font-style:italic;margin:0;">
-                &mdash; Toufic
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 48px 32px 48px;border-top:1px solid #F4F4F2;">
-              <p style="font-family:Inter,Arial,sans-serif;font-size:11px;color:#9EA7B3;line-height:1.6;margin:0;letter-spacing:0.02em;">
-                You received this because you signed up at finverse.world.<br>
-                FinVerse &middot; The Trader Alchemist
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+  // New subscriber — insert
+  const insertUrl = `${SUPABASE_URL}/rest/v1/subscribers`;
+  const insertRes = await fetch(insertUrl, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY!,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY!}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({ email, source }),
+  });
+
+  if (!insertRes.ok) {
+    console.error("[subscribe] Insert failed:", insertRes.status, await insertRes.text());
+    return null;
+  }
+
+  const inserted = (await insertRes.json()) as SupabaseSubscriber[];
+  return inserted[0] || null;
 }
 
-function welcomeEmailText(): string {
-  return `Welcome to FinVerse.
-The market reveals who you are.
+/**
+ * Mark welcome email as sent.
+ */
+async function markWelcomeSent(subscriberId: string): Promise<void> {
+  const url = `${SUPABASE_URL}/rest/v1/subscribers?id=eq.${subscriberId}`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY!,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY!}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ welcome_sent_at: new Date().toISOString() }),
+  });
 
-You signed up because you're looking for something more rigorous than what passes for trading education.
-
-Three things worth your time right now:
-
-01. Read the Framework
-    The structural philosophy behind every analysis, course, and journal article on FinVerse.
-    https://finverse.world/framework
-
-02. Preview the SMC course
-    Our complete guide to Smart Money Concepts. The first lesson of each module is free to preview.
-    https://finverse.world/courses/smc-complete-guide
-
-03. Follow the Journal
-    Weekly analysis on market structure, macro context, and the psychology that breaks most traders.
-    https://finverse.world/blog
-
-I'll send you something worth reading roughly once a week. No fluff, no FOMO, no fake urgency. If it's not useful, the unsubscribe link works.
-
-— Toufic
-
----
-You received this because you signed up at finverse.world.
-FinVerse · The Trader Alchemist`;
+  if (!res.ok) {
+    console.error("[subscribe] Mark welcome_sent failed:", res.status, await res.text());
+  }
 }
 
-async function sendWelcomeEmail(toEmail: string): Promise<boolean> {
+/**
+ * Send email immediately via Resend.
+ */
+async function sendEmailNow(toEmail: string, content: EmailContent): Promise<boolean> {
+  return await sendViaResend(toEmail, content, undefined);
+}
+
+/**
+ * Schedule email for future delivery via Resend's scheduled_at parameter.
+ */
+async function scheduleEmail(
+  toEmail: string,
+  content: EmailContent,
+  sendAtIso: string
+): Promise<boolean> {
+  return await sendViaResend(toEmail, content, sendAtIso);
+}
+
+/**
+ * Internal: send to Resend with optional scheduled_at.
+ * Has fallback retry without reply_to if 422 validation error.
+ */
+async function sendViaResend(
+  toEmail: string,
+  content: EmailContent,
+  sendAtIso: string | undefined
+): Promise<boolean> {
   if (!RESEND_API_KEY) {
-    console.error("[subscribe] RESEND_API_KEY missing — skipping welcome email");
+    console.error("[subscribe] RESEND_API_KEY missing");
     return false;
   }
 
-  const basePayload = {
+  const basePayload: Record<string, unknown> = {
     from: FROM_EMAIL,
     to: [toEmail],
-    subject: "Welcome to FinVerse",
-    html: welcomeEmailHtml(),
-    text: welcomeEmailText(),
+    subject: content.subject,
+    html: content.html,
+    text: content.text,
   };
 
-  // Try with reply_to first
+  if (sendAtIso) {
+    basePayload.scheduled_at = sendAtIso;
+  }
+
   let payload: Record<string, unknown> = { ...basePayload, reply_to: [REPLY_TO] };
+  const label = sendAtIso ? `scheduled@${sendAtIso}` : "immediate";
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
@@ -212,133 +282,29 @@ async function sendWelcomeEmail(toEmail: string): Promise<boolean> {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("[subscribe] welcome email sent, id:", data.id, "attempt:", attempt);
+        console.log(
+          `[subscribe] Resend ${label} ok: id=${data.id} to=${toEmail} attempt=${attempt}`
+        );
         return true;
       }
 
-      // Log full error
       const errBody = await response.text();
       console.error(
-        `[subscribe] Resend error attempt ${attempt}: status=${response.status} body=${errBody} payload_keys=${Object.keys(payload).join(",")}`
+        `[subscribe] Resend ${label} error attempt ${attempt}: status=${response.status} body=${errBody}`
       );
 
-      // If 422 validation error on first attempt, retry without reply_to
       if (response.status === 422 && attempt === 1) {
-        console.log("[subscribe] Retrying without reply_to");
+        console.log(`[subscribe] Retrying ${label} without reply_to`);
         payload = { ...basePayload };
         continue;
       }
 
-      // Any other failure: give up
       return false;
     } catch (err) {
-      console.error(`[subscribe] Resend exception attempt ${attempt}:`, err);
+      console.error(`[subscribe] Resend ${label} exception attempt ${attempt}:`, err);
       return false;
     }
   }
 
   return false;
-}
-
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
-  res.setHeader("Access-Control-Allow-Origin", "https://finverse.world");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-  const email = (body?.email || "").trim().toLowerCase();
-  const source = (body?.source || "unknown").slice(0, 100);
-
-  if (!email || !EMAIL_RE.test(email)) {
-    return res.status(400).json({ error: "Invalid email address" });
-  }
-
-  if (email.length > 254) {
-    return res.status(400).json({ error: "Email too long" });
-  }
-
-  // Honeypot — body.website should be empty (form has hidden field)
-  if (body?.website) {
-    return res.status(200).json({ success: true });
-  }
-
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.error("[subscribe] Missing Supabase env vars");
-    return res.status(500).json({ error: "Server misconfigured" });
-  }
-
-  let subscriberId: string | null = null;
-  let isNewSubscriber = false;
-
-  // Try insert
-  try {
-    const insertResp = await supabaseFetch("subscribers", {
-      method: "POST",
-      body: { email, source },
-      prefer: "return=representation",
-    });
-
-    if (insertResp.ok) {
-      const inserted = (await insertResp.json()) as Array<{ id: string }>;
-      subscriberId = inserted[0]?.id || null;
-      isNewSubscriber = true;
-    } else if (insertResp.status === 409) {
-      // Duplicate — fetch existing
-      const existingResp = await supabaseFetch(
-        `subscribers?select=id,welcome_sent_at,unsubscribed_at&email=eq.${encodeURIComponent(email)}`
-      );
-      if (!existingResp.ok) {
-        console.error("[subscribe] Failed to fetch existing subscriber");
-        return res.status(500).json({ error: "Internal error" });
-      }
-      const existing = (await existingResp.json()) as SupabaseSubscriber[];
-      if (existing.length === 0) {
-        console.error("[subscribe] No subscriber found after dupe");
-        return res.status(500).json({ error: "Internal error" });
-      }
-      const sub = existing[0];
-      if (sub.unsubscribed_at) {
-        // Silent success for previously-unsubscribed users
-        return res.status(200).json({ success: true });
-      }
-      subscriberId = sub.id;
-      isNewSubscriber = false;
-    } else {
-      const errText = await insertResp.text();
-      console.error("[subscribe] Insert error:", insertResp.status, errText);
-      return res.status(500).json({ error: "Could not save subscription" });
-    }
-  } catch (err) {
-    console.error("[subscribe] Supabase exception:", err);
-    return res.status(500).json({ error: "Server error" });
-  }
-
-  // Send welcome email — only for new subscribers
-  if (isNewSubscriber) {
-    const sent = await sendWelcomeEmail(email);
-    if (sent && subscriberId) {
-      // Best-effort update — don't fail the request if this update fails
-      try {
-        await supabaseFetch(`subscribers?id=eq.${subscriberId}`, {
-          method: "PATCH",
-          body: { welcome_sent_at: new Date().toISOString() },
-        });
-      } catch (err) {
-        console.error("[subscribe] Failed to update welcome_sent_at:", err);
-      }
-    }
-  }
-
-  return res.status(200).json({ success: true });
 }
