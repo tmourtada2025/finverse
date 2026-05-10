@@ -23,7 +23,6 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = "Toufic at FinVerse <journal@finverse.world>";
 const REPLY_TO = "support@finverse.world";
 
-// Simple email regex — good enough, not perfect
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function welcomeEmailHtml(): string {
@@ -33,73 +32,86 @@ function welcomeEmailHtml(): string {
 <meta charset="utf-8">
 <title>Welcome to FinVerse</title>
 </head>
-<body style="margin:0;padding:0;background:#f7f7f5;font-family:Georgia,serif;color:#222;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f7f5;padding:40px 20px;">
+<body style="margin:0;padding:0;background:#F4F4F2;font-family:Georgia,serif;color:#111318;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F4F2;padding:40px 20px;">
     <tr>
       <td align="center">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;">
           <tr>
             <td style="padding:48px 48px 24px 48px;">
-              <h1 style="font-family:Georgia,serif;font-size:28px;font-weight:700;color:#111;margin:0 0 8px 0;line-height:1.2;">
-                Welcome to FinVerse.
+              <p style="font-family:Inter,Arial,sans-serif;font-size:11px;color:#9EA7B3;margin:0 0 8px 0;letter-spacing:0.12em;text-transform:uppercase;font-weight:500;">
+                FinVerse
+              </p>
+              <h1 style="font-family:Georgia,'Playfair Display',serif;font-size:32px;font-weight:700;color:#111318;margin:0 0 8px 0;line-height:1.1;letter-spacing:-0.01em;">
+                Welcome.
               </h1>
-              <p style="font-family:Georgia,serif;font-size:14px;color:#888;margin:0 0 32px 0;letter-spacing:0.05em;text-transform:uppercase;">
-                The market reveals who you are
-              </p>
-              <p style="font-family:Inter,Arial,sans-serif;font-size:16px;line-height:1.7;color:#222;margin:0 0 16px 0;">
-                You just signed up because you're looking for something more rigorous than what passes for trading education.
-              </p>
-              <p style="font-family:Inter,Arial,sans-serif;font-size:16px;line-height:1.7;color:#222;margin:0 0 32px 0;">
-                Here are three things worth your time right now:
+              <p style="font-family:Georgia,serif;font-size:14px;color:#9EA7B3;margin:0 0 32px 0;font-style:italic;">
+                The market reveals who you are.
               </p>
 
-              <div style="margin:0 0 28px 0;padding:20px;background:#fafaf8;border-left:3px solid #1e3a5f;">
-                <p style="font-family:Inter,Arial,sans-serif;font-size:15px;font-weight:600;color:#111;margin:0 0 6px 0;">
-                  1. Read the FinVerse Framework
+              <p style="font-family:Inter,Arial,sans-serif;font-size:16px;line-height:1.7;color:#111318;margin:0 0 16px 0;">
+                You signed up because you're looking for something more rigorous than what passes for trading education.
+              </p>
+              <p style="font-family:Inter,Arial,sans-serif;font-size:16px;line-height:1.7;color:#111318;margin:0 0 32px 0;">
+                Three things worth your time right now:
+              </p>
+
+              <div style="margin:0 0 24px 0;padding:20px 24px;background:#F4F4F2;border-left:3px solid #3E5C76;">
+                <p style="font-family:Inter,Arial,sans-serif;font-size:11px;color:#9EA7B3;margin:0 0 6px 0;letter-spacing:0.1em;text-transform:uppercase;font-weight:500;">
+                  01
                 </p>
-                <p style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#555;line-height:1.6;margin:0 0 8px 0;">
+                <p style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#111318;margin:0 0 8px 0;line-height:1.3;">
+                  Read the Framework
+                </p>
+                <p style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#3E5C76;line-height:1.6;margin:0 0 12px 0;">
                   The structural philosophy behind every analysis, course, and journal article on FinVerse.
                 </p>
-                <a href="https://finverse.world/framework" style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#1e3a5f;text-decoration:none;font-weight:600;">
+                <a href="https://finverse.world/framework" style="font-family:Inter,Arial,sans-serif;font-size:13px;color:#3E5C76;text-decoration:none;font-weight:600;letter-spacing:0.02em;">
                   Read it &rarr;
                 </a>
               </div>
 
-              <div style="margin:0 0 28px 0;padding:20px;background:#fafaf8;border-left:3px solid #1e3a5f;">
-                <p style="font-family:Inter,Arial,sans-serif;font-size:15px;font-weight:600;color:#111;margin:0 0 6px 0;">
-                  2. Preview the SMC course
+              <div style="margin:0 0 24px 0;padding:20px 24px;background:#F4F4F2;border-left:3px solid #3E5C76;">
+                <p style="font-family:Inter,Arial,sans-serif;font-size:11px;color:#9EA7B3;margin:0 0 6px 0;letter-spacing:0.1em;text-transform:uppercase;font-weight:500;">
+                  02
                 </p>
-                <p style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#555;line-height:1.6;margin:0 0 8px 0;">
+                <p style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#111318;margin:0 0 8px 0;line-height:1.3;">
+                  Preview the SMC course
+                </p>
+                <p style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#3E5C76;line-height:1.6;margin:0 0 12px 0;">
                   Our complete guide to Smart Money Concepts. The first lesson of each module is free to preview.
                 </p>
-                <a href="https://finverse.world/courses/smc-complete-guide" style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#1e3a5f;text-decoration:none;font-weight:600;">
+                <a href="https://finverse.world/courses/smc-complete-guide" style="font-family:Inter,Arial,sans-serif;font-size:13px;color:#3E5C76;text-decoration:none;font-weight:600;letter-spacing:0.02em;">
                   Preview it &rarr;
                 </a>
               </div>
 
-              <div style="margin:0 0 32px 0;padding:20px;background:#fafaf8;border-left:3px solid #1e3a5f;">
-                <p style="font-family:Inter,Arial,sans-serif;font-size:15px;font-weight:600;color:#111;margin:0 0 6px 0;">
-                  3. Follow the Journal
+              <div style="margin:0 0 36px 0;padding:20px 24px;background:#F4F4F2;border-left:3px solid #3E5C76;">
+                <p style="font-family:Inter,Arial,sans-serif;font-size:11px;color:#9EA7B3;margin:0 0 6px 0;letter-spacing:0.1em;text-transform:uppercase;font-weight:500;">
+                  03
                 </p>
-                <p style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#555;line-height:1.6;margin:0 0 8px 0;">
+                <p style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#111318;margin:0 0 8px 0;line-height:1.3;">
+                  Follow the Journal
+                </p>
+                <p style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#3E5C76;line-height:1.6;margin:0 0 12px 0;">
                   Weekly analysis on market structure, macro context, and the psychology that breaks most traders.
                 </p>
-                <a href="https://finverse.world/blog" style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#1e3a5f;text-decoration:none;font-weight:600;">
+                <a href="https://finverse.world/blog" style="font-family:Inter,Arial,sans-serif;font-size:13px;color:#3E5C76;text-decoration:none;font-weight:600;letter-spacing:0.02em;">
                   Read recent articles &rarr;
                 </a>
               </div>
 
-              <p style="font-family:Inter,Arial,sans-serif;font-size:15px;color:#222;line-height:1.7;margin:0 0 12px 0;">
+              <p style="font-family:Inter,Arial,sans-serif;font-size:15px;color:#111318;line-height:1.7;margin:0 0 16px 0;">
                 I'll send you something worth reading roughly once a week. No fluff, no FOMO, no fake urgency. If it's not useful, the unsubscribe link works.
               </p>
-              <p style="font-family:Georgia,serif;font-size:15px;color:#222;font-style:italic;margin:0;">
+              <p style="font-family:Georgia,serif;font-size:16px;color:#111318;font-style:italic;margin:0;">
                 &mdash; Toufic
               </p>
             </td>
           </tr>
           <tr>
-            <td style="padding:24px 48px 32px 48px;border-top:1px solid #eee;">
-              <p style="font-family:Inter,Arial,sans-serif;font-size:12px;color:#888;line-height:1.6;margin:0;">
+            <td style="padding:24px 48px 32px 48px;border-top:1px solid #F4F4F2;">
+              <p style="font-family:Inter,Arial,sans-serif;font-size:11px;color:#9EA7B3;line-height:1.6;margin:0;letter-spacing:0.02em;">
                 You received this because you signed up at finverse.world.<br>
                 FinVerse &middot; The Trader Alchemist
               </p>
@@ -117,21 +129,21 @@ function welcomeEmailText(): string {
   return `Welcome to FinVerse.
 The market reveals who you are.
 
-You just signed up because you're looking for something more rigorous than what passes for trading education.
+You signed up because you're looking for something more rigorous than what passes for trading education.
 
-Here are three things worth your time right now:
+Three things worth your time right now:
 
-1. Read the FinVerse Framework
-   The structural philosophy behind every analysis, course, and journal article on FinVerse.
-   https://finverse.world/framework
+01. Read the Framework
+    The structural philosophy behind every analysis, course, and journal article on FinVerse.
+    https://finverse.world/framework
 
-2. Preview the SMC course
-   Our complete guide to Smart Money Concepts. The first lesson of each module is free to preview.
-   https://finverse.world/courses/smc-complete-guide
+02. Preview the SMC course
+    Our complete guide to Smart Money Concepts. The first lesson of each module is free to preview.
+    https://finverse.world/courses/smc-complete-guide
 
-3. Follow the Journal
-   Weekly analysis on market structure, macro context, and the psychology that breaks most traders.
-   https://finverse.world/blog
+03. Follow the Journal
+    Weekly analysis on market structure, macro context, and the psychology that breaks most traders.
+    https://finverse.world/blog
 
 I'll send you something worth reading roughly once a week. No fluff, no FOMO, no fake urgency. If it's not useful, the unsubscribe link works.
 
@@ -184,7 +196,6 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // CORS for same-origin should not be needed but be defensive
   res.setHeader("Access-Control-Allow-Origin", "https://finverse.world");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -197,7 +208,6 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Parse and validate input
   const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
   const email = (body?.email || "").trim().toLowerCase();
   const source = (body?.source || "unknown").slice(0, 100);
@@ -206,18 +216,15 @@ export default async function handler(
     return res.status(400).json({ error: "Invalid email address" });
   }
 
-  // Length sanity
   if (email.length > 254) {
     return res.status(400).json({ error: "Email too long" });
   }
 
   // Honeypot — body.website should be empty (form has hidden field)
   if (body?.website) {
-    // Silent success for bots
     return res.status(200).json({ success: true });
   }
 
-  // Verify env vars
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error("[subscribe] Missing Supabase env vars");
     return res.status(500).json({ error: "Server misconfigured" });
@@ -227,11 +234,9 @@ export default async function handler(
     auth: { persistSession: false },
   });
 
-  // Insert subscriber (or fetch existing)
   let subscriberId: string | null = null;
   let isNewSubscriber = false;
 
-  // Try insert first
   const { data: insertData, error: insertError } = await supabase
     .from("subscribers")
     .insert({ email, source })
@@ -240,7 +245,7 @@ export default async function handler(
 
   if (insertError) {
     if (insertError.code === "23505") {
-      // Duplicate email — fetch existing record
+      // Duplicate email
       const { data: existing } = await supabase
         .from("subscribers")
         .select("id, welcome_sent_at, unsubscribed_at")
@@ -248,9 +253,7 @@ export default async function handler(
         .single();
 
       if (existing) {
-        // If they previously unsubscribed, don't re-engage
         if (existing.unsubscribed_at) {
-          // Silent success — don't expose unsubscription state
           return res.status(200).json({ success: true });
         }
         subscriberId = existing.id;
@@ -268,11 +271,9 @@ export default async function handler(
     isNewSubscriber = true;
   }
 
-  // Send welcome email — only for new subscribers OR existing without welcome_sent_at
   if (isNewSubscriber) {
     const sent = await sendWelcomeEmail(email);
     if (sent && subscriberId) {
-      // Best-effort update of welcome_sent_at — don't fail the request if this fails
       await supabase
         .from("subscribers")
         .update({ welcome_sent_at: new Date().toISOString() })
@@ -280,6 +281,5 @@ export default async function handler(
     }
   }
 
-  // Always return success to client (don't expose state)
   return res.status(200).json({ success: true });
 }
