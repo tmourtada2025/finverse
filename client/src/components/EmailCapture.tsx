@@ -8,6 +8,12 @@ interface EmailCaptureProps {
   source: string;
 
   /**
+   * Visual variant. 'dark' for dark backgrounds (e.g. Framework page),
+   * 'light' for light backgrounds (e.g. Blog articles).
+   */
+  variant?: "light" | "dark";
+
+  /**
    * Optional heading shown above the form.
    */
   heading?: string;
@@ -52,20 +58,21 @@ type FormState =
  * - Loading state during submission
  * - Inline success/error messaging (no toasts, no modals)
  * - Privacy-respecting: doesn't leak whether email was already subscribed
+ * - Theme-aware: light/dark variants matching FinVerse brand
  *
- * Usage:
- *   <EmailCapture
- *     source="framework_page"
- *     heading="Stay in the loop"
- *     description="Weekly analysis on structure, macro, and trader psychology."
- *   />
+ * FinVerse brand colors:
+ *   #111318 - dark background
+ *   #F4F4F2 - cream text on dark
+ *   #3E5C76 - slate blue accent
+ *   #9EA7B3 - muted text
  */
 export default function EmailCapture({
   source,
+  variant = "light",
   heading,
   description,
   buttonLabel = "Subscribe",
-  successMessage = "Welcome aboard. Check your inbox for a confirmation email — including from your spam folder if it's not in your main inbox.",
+  successMessage = "Welcome aboard. Check your inbox for a confirmation email — including your spam folder if it's not in your main inbox.",
   className = "",
 }: EmailCaptureProps) {
   const [email, setEmail] = useState("");
@@ -81,7 +88,6 @@ export default function EmailCapture({
       return;
     }
 
-    // Light client-side check — server does the real validation
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setState({ status: "error", message: "That doesn't look like a valid email." });
       return;
@@ -96,7 +102,7 @@ export default function EmailCapture({
         body: JSON.stringify({
           email: trimmed,
           source,
-          website, // honeypot — empty for humans
+          website,
         }),
       });
 
@@ -119,12 +125,38 @@ export default function EmailCapture({
     }
   }
 
+  // Theme tokens
+  const isDark = variant === "dark";
+  const tokens = {
+    headingColor: isDark ? "#F4F4F2" : "#111318",
+    descriptionColor: isDark ? "#9EA7B3" : "#555",
+    inputBg: isDark ? "transparent" : "#FFFFFF",
+    inputBorder: isDark ? "#3E5C76" : "#DDD",
+    inputText: isDark ? "#F4F4F2" : "#111",
+    inputPlaceholder: isDark ? "#9EA7B3" : "#999",
+    buttonBg: "#3E5C76", // brand slate blue — same in both variants
+    buttonText: "#F4F4F2",
+    buttonHoverBg: isDark ? "#4A6B87" : "#345066",
+    successBg: isDark ? "rgba(62, 92, 118, 0.15)" : "rgba(62, 92, 118, 0.08)",
+    successBorder: isDark ? "rgba(62, 92, 118, 0.4)" : "rgba(62, 92, 118, 0.3)",
+    successText: isDark ? "#F4F4F2" : "#111318",
+    errorText: isDark ? "#FCA5A5" : "#DC2626",
+    helperText: isDark ? "#9EA7B3" : "#888",
+  };
+
   if (state.status === "success") {
     return (
       <div
-        className={`border border-[#1e3a5f]/30 rounded-lg p-6 bg-[#1e3a5f]/5 ${className}`}
+        className={`rounded-lg p-6 ${className}`}
+        style={{
+          backgroundColor: tokens.successBg,
+          border: `1px solid ${tokens.successBorder}`,
+        }}
       >
-        <p className="text-[#1e3a5f] font-serif text-base leading-relaxed">
+        <p
+          className="font-serif text-base"
+          style={{ color: tokens.successText, lineHeight: "1.7" }}
+        >
           {successMessage}
         </p>
       </div>
@@ -134,15 +166,23 @@ export default function EmailCapture({
   return (
     <div className={className}>
       {heading && (
-        <h3 className="font-serif text-2xl text-[#111] mb-2 leading-tight">
+        <h3
+          className="font-serif text-2xl md:text-3xl font-bold mb-3 leading-tight"
+          style={{ color: tokens.headingColor }}
+        >
           {heading}
         </h3>
       )}
       {description && (
-        <p className="text-[#555] text-sm leading-relaxed mb-4">{description}</p>
+        <p
+          className="text-sm md:text-base mb-6"
+          style={{ color: tokens.descriptionColor, lineHeight: "1.7" }}
+        >
+          {description}
+        </p>
       )}
 
-      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
+      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
         {/* Honeypot — hidden from humans, attractive to bots */}
         <input
           type="text"
@@ -171,23 +211,40 @@ export default function EmailCapture({
           required
           disabled={state.status === "submitting"}
           aria-label="Email address"
-          className="flex-1 px-4 py-3 border border-[#ddd] rounded-lg bg-white text-[#111] text-sm focus:outline-none focus:border-[#1e3a5f] disabled:opacity-60"
+          className="flex-1 px-4 py-3 rounded-lg text-sm focus:outline-none transition-colors disabled:opacity-60"
+          style={{
+            backgroundColor: tokens.inputBg,
+            border: `1px solid ${tokens.inputBorder}`,
+            color: tokens.inputText,
+          }}
         />
 
         <button
           type="submit"
           disabled={state.status === "submitting"}
-          className="px-6 py-3 bg-[#1e3a5f] text-white rounded-lg text-sm font-semibold hover:bg-[#1e3a5f]/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+          className="px-6 py-3 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+          style={{
+            backgroundColor: tokens.buttonBg,
+            color: tokens.buttonText,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = tokens.buttonHoverBg;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = tokens.buttonBg;
+          }}
         >
           {state.status === "submitting" ? "Subscribing…" : buttonLabel}
         </button>
       </form>
 
       {state.status === "error" && (
-        <p className="mt-3 text-sm text-red-600">{state.message}</p>
+        <p className="mt-3 text-sm" style={{ color: tokens.errorText }}>
+          {state.message}
+        </p>
       )}
 
-      <p className="mt-3 text-xs text-[#888]">
+      <p className="mt-3 text-xs" style={{ color: tokens.helperText }}>
         No spam. Unsubscribe anytime.
       </p>
     </div>
