@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createClient } from "@supabase/supabase-js";
 
 /**
  * POST /api/subscribe
@@ -12,9 +11,10 @@ import { createClient } from "@supabase/supabase-js";
  * - Sends welcome email via Resend
  * - Returns 200 even for duplicates (don't expose subscription state)
  *
- * Why service role:
- * - We need to bypass RLS to mark welcome_sent_at after the Resend call
- * - Service role key is server-side only (Vercel env, never exposed to client)
+ * Why direct REST instead of @supabase/supabase-js:
+ * - The library tries to initialize a Realtime WebSocket on createClient()
+ * - Node 20 (Vercel default) lacks native WebSocket support
+ * - Library crashes immediately. Direct fetch() against Supabase REST API bypasses entirely.
  */
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -24,6 +24,34 @@ const FROM_EMAIL = "Toufic at FinVerse <journal@finverse.world>";
 const REPLY_TO = "support@finverse.world";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+interface SupabaseSubscriber {
+  id: string;
+  welcome_sent_at: string | null;
+  unsubscribed_at: string | null;
+}
+
+async function supabaseFetch(
+  path: string,
+  options: { method?: string; body?: unknown; prefer?: string } = {}
+): Promise<Response> {
+  const { method = "GET", body, prefer } = options;
+  const headers: Record<string, string> = {
+    apikey: SUPABASE_SERVICE_ROLE_KEY!,
+    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    "Content-Type": "application/json",
+  };
+  if (prefer) {
+    headers.Prefer = prefer;
+  }
+
+  const requestInit: RequestInit = { method, headers };
+  if (body !== undefined) {
+    requestInit.body = JSON.stringify(body);
+  }
+
+  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, requestInit);
+}
 
 function welcomeEmailHtml(): string {
   return `<!DOCTYPE html>
@@ -230,54 +258,65 @@ export default async function handler(
     return res.status(500).json({ error: "Server misconfigured" });
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
-
   let subscriberId: string | null = null;
   let isNewSubscriber = false;
 
-  const { data: insertData, error: insertError } = await supabase
-    .from("subscribers")
-    .insert({ email, source })
-    .select("id")
-    .single();
+  // Try insert
+  try {
+    const insertResp = await supabaseFetch("subscribers", {
+      method: "POST",
+      body: { email, source },
+      prefer: "return=representation",
+    });
 
-  if (insertError) {
-    if (insertError.code === "23505") {
-      // Duplicate email
-      const { data: existing } = await supabase
-        .from("subscribers")
-        .select("id, welcome_sent_at, unsubscribed_at")
-        .eq("email", email)
-        .single();
-
-      if (existing) {
-        if (existing.unsubscribed_at) {
-          return res.status(200).json({ success: true });
-        }
-        subscriberId = existing.id;
-        isNewSubscriber = false;
-      } else {
-        console.error("[subscribe] Could not find existing subscriber after dupe");
+    if (insertResp.ok) {
+      const inserted = (await insertResp.json()) as Array<{ id: string }>;
+      subscriberId = inserted[0]?.id || null;
+      isNewSubscriber = true;
+    } else if (insertResp.status === 409) {
+      // Duplicate — fetch existing
+      const existingResp = await supabaseFetch(
+        `subscribers?select=id,welcome_sent_at,unsubscribed_at&email=eq.${encodeURIComponent(email)}`
+      );
+      if (!existingResp.ok) {
+        console.error("[subscribe] Failed to fetch existing subscriber");
         return res.status(500).json({ error: "Internal error" });
       }
+      const existing = (await existingResp.json()) as SupabaseSubscriber[];
+      if (existing.length === 0) {
+        console.error("[subscribe] No subscriber found after dupe");
+        return res.status(500).json({ error: "Internal error" });
+      }
+      const sub = existing[0];
+      if (sub.unsubscribed_at) {
+        // Silent success for previously-unsubscribed users
+        return res.status(200).json({ success: true });
+      }
+      subscriberId = sub.id;
+      isNewSubscriber = false;
     } else {
-      console.error("[subscribe] Insert error:", insertError);
+      const errText = await insertResp.text();
+      console.error("[subscribe] Insert error:", insertResp.status, errText);
       return res.status(500).json({ error: "Could not save subscription" });
     }
-  } else {
-    subscriberId = insertData.id;
-    isNewSubscriber = true;
+  } catch (err) {
+    console.error("[subscribe] Supabase exception:", err);
+    return res.status(500).json({ error: "Server error" });
   }
 
+  // Send welcome email — only for new subscribers
   if (isNewSubscriber) {
     const sent = await sendWelcomeEmail(email);
     if (sent && subscriberId) {
-      await supabase
-        .from("subscribers")
-        .update({ welcome_sent_at: new Date().toISOString() })
-        .eq("id", subscriberId);
+      // Best-effort update — don't fail the request if this update fails
+      try {
+        await supabaseFetch(`subscribers?id=eq.${subscriberId}`, {
+          method: "PATCH",
+          body: { welcome_sent_at: new Date().toISOString() },
+        });
+      } catch (err) {
+        console.error("[subscribe] Failed to update welcome_sent_at:", err);
+      }
     }
   }
 
