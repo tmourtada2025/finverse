@@ -61,22 +61,6 @@ const brokers: Broker[] = [
     strengths: ["MENA-regulated", "Broad instrument coverage", "MT4/MT5 platforms", "Regulated FCA/CySEC"],
     url: "https://www.equiti-me.com/sc-en/?clickid=19833&affid=C01175584",
     affiliate: true
-  },
-    {
-    name: "IC Markets",
-    type: "ECN",
-    description: "One of the highest-volume ECN brokers globally. Raw spread accounts average 0.0-0.1 pips on EUR/USD with a $3.50/lot commission. Execution is consistently fast during London/NY overlap.",
-    strengths: ["Raw ECN spreads", "Fast execution on limit orders", "MT4/MT5/cTrader", "Regulated ASIC/CySEC"],
-    url: "#",
-    affiliate: true
-  },
-  {
-    name: "Pepperstone",
-    type: "ECN/STP",
-    description: "Strong execution infrastructure with both Razor (ECN) and Standard accounts. Particularly strong on indices — US30, NAS100, UK100 — with competitive spreads and reliable fills during high-volatility sessions.",
-    strengths: ["Strong index execution", "Razor ECN account", "MT4/MT5/cTrader/TradingView", "Regulated FCA/ASIC"],
-    url: "#",
-    affiliate: true
   }
 ];
 
