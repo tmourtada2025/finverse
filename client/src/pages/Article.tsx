@@ -126,14 +126,13 @@ export default function Article() {
               dangerouslySetInnerHTML={{ __html: post.content || '' }}
             />
 
-            {/* Udemy reference */}
+            {/* Course reference */}
             <div className="mt-20 pt-12" style={{ borderTop: "1px solid rgba(158,167,179,0.15)" }}>
               <p className="text-xs text-[#9EA7B3] opacity-60">
-                For a structured curriculum covering these concepts, see the{" "}
-                <a href="https://www.udemy.com/course/smart-money-concepts-the-complete-guide-to-smart-trading/?referralCode=C4DBD99FE2D9012F18F5"
-                  target="_blank" rel="noopener noreferrer" className="text-[#3E5C76] hover:underline">
-                  Smart Money Trading Course
-                </a>{" "}on Udemy.
+                For a structured curriculum covering these concepts in depth, see{" "}
+                <Link href="/courses/smc-complete-guide" className="text-[#3E5C76] hover:underline">
+                  The SMC Complete Guide
+                </Link>{" "}on FinVerse.
               </p>
             </div>
 
