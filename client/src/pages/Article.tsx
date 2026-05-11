@@ -126,15 +126,17 @@ export default function Article() {
               dangerouslySetInnerHTML={{ __html: post.content || '' }}
             />
 
-            {/* Course reference */}
-            <div className="mt-20 pt-12" style={{ borderTop: "1px solid rgba(158,167,179,0.15)" }}>
-              <p className="text-xs text-[#9EA7B3] opacity-60">
-                For a structured curriculum covering these concepts in depth, see{" "}
-                <Link href="/courses/smc-complete-guide" className="text-[#3E5C76] hover:underline">
-                  The SMC Complete Guide
-                </Link>{" "}on FinVerse.
-              </p>
-            </div>
+            {/* Course reference — shown only on Structure category articles */}
+            {post.category === "Structure" && (
+              <div className="mt-20 pt-12" style={{ borderTop: "1px solid rgba(158,167,179,0.15)" }}>
+                <p className="text-xs text-[#9EA7B3] opacity-60">
+                  For a structured curriculum covering these concepts in depth, see{" "}
+                  <Link href="/courses/smc-complete-guide" className="text-[#3E5C76] hover:underline">
+                    The SMC Complete Guide
+                  </Link>{" "}on FinVerse.
+                </p>
+              </div>
+            )}
 
             <div className="mt-12">
               <Link href="/blog" className="inline-flex items-center gap-2 text-sm text-[#3E5C76] hover:text-[#9EA7B3] transition-colors">
