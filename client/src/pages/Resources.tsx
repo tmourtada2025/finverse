@@ -4,10 +4,9 @@
  * Sections:
  * 1. Header
  * 2. Recommended Brokers (IB section — contextual, disclosed)
- * 3. Charting & Analysis Tools
- * 4. Economic Data
- * 5. Macro Research
- * 6. IB Disclosure
+ * 3. Charting & Analysis
+ * 4. Macro & Institutional Data
+ * 5. IB Disclosure
  */
 
 import { useState } from "react";
@@ -67,51 +66,51 @@ const brokers: Broker[] = [
 const resources: Resource[] = [
   {
     name: "TradingView",
-    description: "Primary charting platform for multi-timeframe structural analysis. Liquidity mapping, order block identification, and session overlay tools. The Pine Script environment enables custom SMC indicator development.",
+    description: "Primary charting platform for multi-timeframe structural analysis. The Premium tier enables the multi-monitor, multi-chart workflows required for serious institutional-style analysis. Pine Script environment supports custom SMC indicator development.",
     url: "https://www.tradingview.com",
-    category: "Charting"
+    category: "Charting & Analysis"
   },
   {
-    name: "MT4 / MT5",
-    description: "Industry standard execution platforms. Required by most ECN brokers. MT5 adds depth of market, additional order types, and broader instrument coverage. If your broker supports MT4 and MT5, default to MT5.",
-    url: "https://www.metatrader5.com",
-    category: "Charting"
+    name: "MultiCharts",
+    description: "Professional charting and automated trading platform used by serious discretionary and systematic traders. Industry-grade backtesting environment, broker-neutral execution, and multi-broker compatibility. The choice for traders who have outgrown retail-tier platforms.",
+    url: "https://www.multicharts.com",
+    category: "Charting & Analysis"
+  },
+  {
+    name: "NinjaTrader",
+    description: "Institutional-grade futures and forex platform with advanced order flow analytics and depth-of-market visualization. Strong fit for traders who work with US30, NAS100, and other index futures alongside spot FX. Robust strategy backtesting and automation capabilities.",
+    url: "https://ninjatrader.com",
+    category: "Charting & Analysis"
   },
   {
     name: "Bookmap",
-    description: "Order flow and market depth visualization for traders who want to see liquidity heatmaps in real time. Particularly relevant for SMC practitioners studying institutional positioning at key structural levels. Free tier available for basic features; paid tiers unlock the full liquidity heatmap and advanced order flow tools.",
+    description: "Order flow and liquidity heatmap visualization in real time. Particularly relevant for SMC practitioners studying institutional positioning at key structural levels. Free tier covers basics; paid tiers unlock the full liquidity heatmap and advanced order flow tools — the depth that separates structural analysis from intuition.",
     url: "https://bookmap.com",
-    category: "Charting"
+    category: "Charting & Analysis"
   },
   {
-    name: "Forex Factory Calendar",
-    description: "Comprehensive economic calendar for session timing and volatility window planning. Essential for identifying high-impact events that affect institutional order flow and displacement candle formation.",
-    url: "https://www.forexfactory.com/calendar",
-    category: "Economic Data"
-  },
-  {
-    name: "Investing.com Economic Calendar",
-    description: "Detailed economic event calendar with historical data and consensus forecasts. Useful for macro regime analysis and pre-session preparation.",
-    url: "https://www.investing.com/economic-calendar",
-    category: "Economic Data"
+    name: "Trading Economics",
+    description: "Country-level economic dashboards and forecasts across 196 economies. Primary research source for macro regime identification and the cross-asset context that shapes structural bias. Free tier is functional; the paid subscription unlocks deep historical data and API access.",
+    url: "https://tradingeconomics.com",
+    category: "Macro & Institutional Data"
   },
   {
     name: "Federal Reserve Economic Data (FRED)",
-    description: "Comprehensive database of economic data from the Federal Reserve Bank of St. Louis. Primary source for macro research and regime identification.",
+    description: "The Federal Reserve Bank of St. Louis economic data infrastructure. The primary source for US macro data and regime identification. If you cite a macro statistic in serious analysis, this is where the number originates.",
     url: "https://fred.stlouisfed.org",
-    category: "Macro Research"
+    category: "Macro & Institutional Data"
   },
   {
     name: "CFTC Commitment of Traders",
-    description: "Weekly institutional positioning data across futures markets. The non-commercial (large speculator) net positions provide directional bias context for weekly SMC structural analysis.",
+    description: "Weekly institutional positioning data across futures markets. The non-commercial (large speculator) net positions provide directional bias context for weekly SMC structural analysis. Public data, underused by retail, foundational for serious traders.",
     url: "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm",
-    category: "Macro Research"
+    category: "Macro & Institutional Data"
   },
   {
     name: "CME FedWatch Tool",
-    description: "Market-implied probabilities for Federal Reserve interest rate decisions. Critical for understanding macro positioning and institutional sentiment ahead of FOMC events.",
+    description: "Market-implied probabilities for Federal Reserve interest rate decisions, derived from Fed Funds futures pricing. Critical for understanding macro positioning and institutional sentiment ahead of FOMC events. Reads the rate expectations curve the way institutions actually price it.",
     url: "https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html",
-    category: "Macro Research"
+    category: "Macro & Institutional Data"
   }
 ];
 
@@ -123,7 +122,7 @@ export default function Resources() {
     <div style={{ backgroundColor: "#111318" }}>
       <SEO
         title="Resources"
-        description="Recommended brokers, charting platforms, and economic data sources for SMC practitioners. Curated tools for serious independent traders."
+        description="Recommended brokers, charting platforms, and macro data sources for SMC practitioners. Curated tools for serious independent traders."
         canonical="/resources"
       />
       {/* Header */}
