@@ -67,7 +67,7 @@ const resources: Resource[] = [
   {
     name: "TradingView",
     description: "Primary charting platform for multi-timeframe structural analysis. The Premium tier enables the multi-monitor, multi-chart workflows required for serious institutional-style analysis. Pine Script environment supports custom SMC indicator development.",
-    url: "https://www.tradingview.com",
+    url: "https://www.tradingview.com/?aff_id=139305",
     category: "Charting & Analysis"
   },
   {
