@@ -24,6 +24,8 @@ import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
 import CoursePlayer from "@/pages/CoursePlayer";
 import Admin from "@/pages/Admin";
+import SmcPatterns from "@/pages/SmcPatterns";
+
 function Router() {
   return (
     <Switch>
@@ -34,6 +36,7 @@ function Router() {
       <Route path="/learn/:courseId" component={CoursePlayer} />
       <Route path="/learn/:courseId/:lessonId" component={CoursePlayer} />
       <Route path="/admin" component={Admin} />
+      <Route path="/smc-patterns" component={SmcPatterns} />
       <Route>
         {() => (
           <Layout>
@@ -62,6 +65,7 @@ function Router() {
     </Switch>
   );
 }
+
 function App() {
   return (
     <ErrorBoundary>
@@ -76,4 +80,5 @@ function App() {
     </ErrorBoundary>
   );
 }
+
 export default App;
