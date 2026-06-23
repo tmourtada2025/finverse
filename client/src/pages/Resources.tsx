@@ -38,14 +38,6 @@ const brokers: Broker[] = [
     affiliate: true
   },
   {
-    name: "One Royal",
-    type: "ECN/STP",
-    description: "Multi-regulated broker offering ECN execution on FX and CFDs. Transparent pricing with no hidden fees. Suitable for SMC traders who require reliable order execution across multiple asset classes including FX majors, minors, and indices.",
-    strengths: ["Multi-regulated", "ECN execution", "MT4/MT5 platforms", "FX, indices, commodities"],
-    url: "https://vc.cabinet.oneroyal.com/links/go/3952",
-    affiliate: true
-  },
-  {
     name: "Taurex",
     type: "ECN",
     description: "ECN broker with competitive spreads and fast execution. Strong offering on FX majors and minors with transparent cost structure. Suitable for active structural traders looking for a regulated ECN environment with direct market access.",
